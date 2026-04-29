@@ -23,43 +23,44 @@
   # };
 
   # NOTE: Update these UUIDs after installation
-  # fileSystems."/" = {
-  #   device = "/dev/mapper/root";
-  #   fsType = "btrfs";
-  #   options = ["subvol=@root" "compress=zstd:3" "noatime" "ssd"];
-  # };
+  fileSystems."/" = {
+    device = "/dev/mapper/root";
+    fsType = "btrfs";
+    options = ["subvol=@root" "compress=zstd:3" "noatime" "ssd"];
+  };
 
-  # fileSystems."/home" = {
-  #   device = "/dev/mapper/root";
-  #   fsType = "btrfs";
-  #   options = ["subvol=@home" "compress=zstd:3" "noatime" "ssd"];
-  # };
+  fileSystems."/home" = {
+    device = "/dev/mapper/root";
+    fsType = "btrfs";
+    options = ["subvol=@home" "compress=zstd:3" "noatime" "ssd"];
+  };
 
-  # fileSystems."/var/log" = {
-  #   device = "/dev/mapper/root";
-  #   fsType = "btrfs";
-  #   options = ["subvol=@log" "compress=zstd:3" "noatime" "ssd"];
-  #   neededForBoot = true;
-  # };
+  fileSystems."/var/log" = {
+    device = "/dev/mapper/root";
+    fsType = "btrfs";
+    options = ["subvol=@log" "compress=zstd:3" "noatime" "ssd"];
+    neededForBoot = true;
+  };
 
-  # fileSystems."/var/cache" = {
-  #   device = "/dev/mapper/root";
-  #   fsType = "btrfs";
-  #   options = ["subvol=@cache" "compress=zstd:3" "noatime" "ssd"];
-  # };
+  fileSystems."/var/cache" = {
+    device = "/dev/mapper/root";
+    fsType = "btrfs";
+    options = ["subvol=@cache" "compress=zstd:3" "noatime" "ssd"];
+  };
 
-  # fileSystems."/swap" = {
-  #   device = "/dev/mapper/root";
-  #   fsType = "btrfs";
-  #   options = ["subvol=@swap" "noatime" "nodatacow"];
-  # };
+  fileSystems."/swap" = {
+    device = "/dev/mapper/root";
+    fsType = "btrfs";
+    options = ["subvol=@swap" "noatime" "nodatacow"];
+  };
 
+  # NOTE: Update with your actual ESP UUID
   # fileSystems."/boot" = {
   #   device = "/dev/disk/by-uuid/YOUR-ESP-UUID";
   #   fsType = "vfat";
   # };
 
-  # swapDevices = [{device = "/swap/swapfile"; size = 4096;}];
+  swapDevices = [{device = "/swap/swapfile"; size = 4096;}];
 
   networking.useDHCP = lib.mkDefault true;
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
