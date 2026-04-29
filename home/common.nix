@@ -53,7 +53,7 @@ in {
     # Communication
     signal-desktop
     slack
-    tdesktop
+    telegram-desktop
 
     # Browser
     brave
