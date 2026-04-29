@@ -150,11 +150,9 @@
     enable = true;
 
     plugins = with pkgs.tmuxPlugins; [
-      tmux-resurrect
-      tmux-continuum
-      tmux-battery
-      vim-tmux-navigator
-      tmux-yank
+      resurrect
+      continuum
+      rose-pine
     ];
 
     extraConfig = ''
@@ -251,7 +249,7 @@
       set-option -g status-left-length 80
       set-option -g status-right-length 80
       set-option -g status-left "#[bg=colour241,fg=colour248] #S #[bg=#EFE9E2,fg=colour241]"
-      set-option -g status-right "#[bg=#EFE9E2,fg=colour239]#[bg=colour239,fg=colour246] %Y-%m-%d  %H:%M #{battery_color_fg}#[bg=colour239]#{battery_color_bg}#[fg=colour223] #{battery_percentage} "
+      set-option -g status-right "#[bg=#EFE9E2,fg=colour239]#[bg=colour239,fg=colour246] %Y-%m-%d  %H:%M "
     '';
   };
 }
