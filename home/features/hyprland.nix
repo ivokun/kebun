@@ -435,9 +435,10 @@ in {
         "dbus-update-activation-environment --systemd --all"
       ];
     };
+  };
 
-    # ─── Hypridle ───
-    services.hypridle = {
+  # ─── Hypridle ───
+  services.hypridle = {
       enable = true;
 
       settings = {
@@ -465,7 +466,6 @@ in {
         ];
       };
     };
-  };
 
   # ─── Hyprlock ───
   programs.hyprlock = {
