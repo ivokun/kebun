@@ -23,12 +23,45 @@ This plan guides you through installing NixOS with Flakes on your Lenovo ThinkPa
   2. Multi-machine flake structure (`hosts/sakura/`, extensible)
   3. NixOS unstable channel
   4. zsh + oh-my-zsh (matching current Arch setup)
-  5. BTRFS + LUKS encryption (matching current Arch: `@root`, `@home`, `@log`, `@pkg`, `@swap`)
-  6. Hostname: `sakura` (fits the "kebun" garden theme — kebun = garden, sakura = cherry blossom)
+  5. BTRFS + LUKS encryption (`@root`, `@home`, `@log`, `@cache`, `@swap`)
+  6. Hostname: `sakura` (kebun = garden, sakura = cherry blossom)
   7. systemd-boot (cleaner for UEFI + BTRFS + LUKS)
   8. Hyprland via UWSM (matching current Arch setup)
   9. Rose Pine Dawn theme across all apps
   10. nh for rebuilds (`nh os switch .`)
+  11. Alacritty as sole terminal (no Kitty, no Ghostty)
+  12. Mesa only for GPU (no amdvlk)
+  13. No 1Password — removed entirely
+  14. Zram swap (50%) + 4GB swapfile fallback (not 32GB)
+
+## Review Fixes Applied (vs Previous Version)
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | `nerdfonts` package deprecated | Replaced with `nerd-fonts.caskaydia-mono` |
+| 2 | `home-manager.useGlobalPkgs = true` | Removed — causes overlay/pkg conflicts |
+| 3 | Duplicate `wl-copy` package | Removed; `wl-clipboard` already provides it |
+| 4 | Duplicate firewall config in core.nix and networking.nix | Consolidated to `networking.nix` only |
+| 5 | Duplicate tailscale in sakura/default.nix and networking.nix | Consolidated to `networking.nix` only |
+| 6 | Duplicate networkmanager in core.nix and networking.nix | Consolidated to `networking.nix` only |
+| 7 | `specialArgs` spread didn't properly expose `username`/`hostname` | Fixed to use `_module.args` pattern |
+| 8 | fcitx5 `i18n.inputMethod` in home-manager (NixOS-only option) | Moved to `hosts/common/desktop.nix` |
+| 9 | `fileSystems` options in core.nix conflicting with hardware-configuration | Removed from core.nix; all mount opts in hardware-configuration.nix |
+| 10 | Polkit agent path was Arch-specific `/usr/lib/...` | Fixed to `${pkgs.polkit_gnome}/libexec/...` |
+| 11 | Console font `Lat2-Terminus16` inadequate for HiDPI | Changed to `ter-124n` from `pkgs.terminus_font` |
+| 12 | 32GB swapfile on BTRFS | Reduced to 4GB emergency fallback; zram handles primary swap |
+| 13 | `system.autoUpgrade` flake path issue | Removed entirely; manual `nix flake update && nh os switch .` |
+| 14 | `@` vs `@root` subvolume inconsistency | Standardized on `@root` |
+| 15 | Both mesa and amdvlk listed | Removed amdvlk; mesa only |
+| 16 | Kitty and Ghostty configs included | Removed; Alacritty only |
+| 17 | 1Password references | Removed entirely |
+| 18 | `qemu-guest.nix` import in hardware-configuration example | Removed (physical hardware) |
+| 19 | `$osdclient` shelling out to hyprctl+jq on every keybind | Replaced with direct `swayosd-client` calls |
+| 20 | Empty defaults (`extraModulePackages = []`, etc.) | Removed |
+| 21 | ThinkPad trackpoint and fwupd missing | Added `hardware.trackpoint.enable` and `services.fwupd.enable` |
+| 22 | `nix-index` home-manager integration missing | Added `programs.nix-index.enable = true` |
+| 23 | oh-my-zsh plugins cloned via git in `initExtra` | Replaced with nix-managed `autosuggestion.enable` + `syntaxHighlighting.enable` |
+| 24 | Duplicate packages in home/common.nix (`lazygit` listed twice) | Deduplicated |
 
 ---
 
@@ -149,13 +182,13 @@ ip addr show  # Note the IP
 
 **BTRFS Subvolumes inside LUKS:**
 
-| Subvolume | Mount Point |
-|------------|-------------|
-| `@` | `/` |
-| `@home` | `/home` |
-| `@log` | `/var/log` |
-| `@pkg` | `/var/cache/pacman/pkg` (or `/var/cache` on NixOS) |
-| `@swap` | `/swap` |
+| Subvolume | Mount Point | Notes |
+|------------|-------------|-------|
+| `@root` | `/` | Root filesystem |
+| `@home` | `/home` | Home directories |
+| `@log` | `/var/log` | System logs |
+| `@cache` | `/var/cache` | Package cache |
+| `@swap` | `/swap` | Swapfile (4GB emergency fallback) |
 
 ```bash
 # Wipe the disk and create partitions
@@ -188,7 +221,7 @@ mount /dev/mapper/root /mnt
 btrfs subvolume create /mnt/@root
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@log
-btrfs subvolume create /mnt/@pkg
+btrfs subvolume create /mnt/@cache
 btrfs subvolume create /mnt/@swap
 
 # Unmount to mount with subvolumes
@@ -198,18 +231,18 @@ umount /mnt
 mount -o compress=zstd:3,ssd,noatime,subvol=@root /dev/mapper/root /mnt
 
 # Create mount points and mount subvolumes
-mkdir -p /mnt/{boot,home,var/log,nix,swap}
+mkdir -p /mnt/{boot,home,var/log,var/cache,nix,swap}
 
 mount -o compress=zstd:3,ssd,noatime,subvol=@home /dev/mapper/root /mnt/home
 mount -o compress=zstd:3,ssd,noatime,subvol=@log /dev/mapper/root /mnt/var/log
-mount -o compress=zstd:3,ssd,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache
-mount -o subvol=@swap /dev/mapper/root /mnt/swap
+mount -o compress=zstd:3,ssd,noatime,subvol=@cache /dev/mapper/root /mnt/var/cache
+mount -o nodatacow,subvol=@swap /dev/mapper/root /mnt/swap
 
 # Mount the ESP
 mount /dev/nvme0n1p1 /mnt/boot
 
-# Create swapfile (32GB, matching current setup)
-btrfs filesystem mkswapfile --size 32g /mnt/swap/swapfile
+# Create 4GB swapfile on the @swap subvolume (nodatacow)
+btrfs filesystem mkswapfile --size 4g /mnt/swap/swapfile
 ```
 
 ### Step 1.3: Generate Initial Config
@@ -255,7 +288,10 @@ Edit `/mnt/etc/nixos/configuration.nix` to add minimal boot config before instal
 }
 ```
 
-Check `/mnt/etc/nixos/hardware-configuration.nix` — it should already have the correct UUIDs and mount options. Verify it includes the `neededForBoot` flags for `/var/log` and the LUKS device.
+Check `/mnt/etc/nixos/hardware-configuration.nix` — it should already have the correct UUIDs and mount options. Verify it includes:
+- `neededForBoot = true;` for `/var/log`
+- The LUKS device with `allowDiscards = true;`
+- `nodatacow` option on the `/swap` mount
 
 ### Step 1.4: Install
 
@@ -352,7 +388,7 @@ After reboot, you should be able to log in as `ivokun` at the console.
       nix-index-database.nixosModules.nix-index
     ];
 
-    mkHomeManagerModules = {username, hostname, ...}: [
+    mkHomeManagerModules = {username, ...}: [
       {
         home-manager.users.${username} = {
           imports = [
@@ -376,15 +412,14 @@ After reboot, you should be able to log in as `ivokun` at the console.
     in
       nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = {inherit inputs;} // cfg;
+        specialArgs = {inherit inputs username hostname system;};
         modules =
           sharedModules
           ++ [
             ./hosts/${hostname}
             home-manager.nixosModules.home-manager
             {
-              home-manager.extraSpecialArgs = {inherit inputs;} // cfg;
-              home-manager.useGlobalPkgs = true;
+              home-manager.extraSpecialArgs = {inherit inputs username hostname system;};
               home-manager.useUserPackages = true;
               home-manager.backupFileExtension = "hm-backup";
             }
@@ -427,19 +462,9 @@ kebun/
 │       ├── editors.nix
 │       ├── theme-rose-pine.nix
 │       └── fcitx5.nix
-├── modules/
-│   └── theme.nix
 ├── packages/
 │   └── scripts/
-│       ├── screenshot.sh
-│       ├── volume-toggle.sh
-│       ├── brightness-toggle.sh
-│       └── lock-screen.sh
-├── themes/
-│   └── rose-pine/
-│       ├── colors.nix
-│       ├── waybar.css
-│       └── hyprland.conf
+│       └── default.nix
 └── wallpapers/
 ```
 
@@ -463,9 +488,7 @@ git init
 # Create directory structure
 mkdir -p hosts/{common,sakura}
 mkdir -p home/features
-mkdir -p modules
 mkdir -p packages/scripts
-mkdir -p themes/rose-pine
 mkdir -p wallpapers
 
 # Copy hardware-configuration from the installed system
@@ -507,18 +530,13 @@ sudo nixos-rebuild switch --flake .#sakura
       efi.canTouchEfiVariables = true;
     };
 
-    # LUKS — the device UUID will be in hardware-configuration.nix
-    # but we need to ensure initrd has the right modules
     initrd = {
       availableKernelModules = ["nvme" "xhci_pci" "ahci" "usbhid" "uas" "sd_mod" "btrfs"];
       kernelModules = ["amdgpu" "kvm-amd"];
     };
 
     kernelModules = ["amdgpu" "kvm-amd" "btusb" "thinkpad_acpi"];
-    extraModulePackages = [];
 
-    # Btrfs mount options are set in hardware-configuration.nix subvol mounts
-    # but we ensure the root mount has the right options
     supportedFilesystems = ["btrfs" "vfat" "exfat" "nfs"];
 
     # Kernel parameters for LUKS + BTRFS + AMD
@@ -529,19 +547,6 @@ sudo nixos-rebuild switch --flake .#sakura
     ];
   };
 
-  # ─── LUKS ───
-  # This is generated by nixos-generate-config but we ensure it's correct
-  # The actual config goes in hosts/sakura/hardware-configuration.nix
-
-  # ─── Filesystems ───
-  # Defined in hardware-configuration.nix, but we can set options here
-  fileSystems = {
-    "/".options = ["compress=zstd:3" "noatime" "ssd"];
-    "/home".options = ["compress=zstd:3" "noatime" "ssd"];
-    "/var/cache".options = ["compress=zstd:3" "noatime" "ssd"];
-    "/var/log".options = ["compress=zstd:3" "noatime" "ssd"];
-  };
-
   # ─── Swap ───
   # Primary: zram (compressed in-memory swap)
   zramSwap = {
@@ -549,7 +554,7 @@ sudo nixos-rebuild switch --flake .#sakura
     memoryPercent = 50;
     algorithm = "zstd";
   };
-  # Fallback: swapfile on BTRFS subvolume
+  # Fallback: 4GB swapfile on BTRFS subvolume (nodatacow)
   swapDevices = [{device = "/swap/swapfile";}];
 
   # ─── Locale / Time ───
@@ -571,7 +576,7 @@ sudo nixos-rebuild switch --flake .#sakura
 
   # ─── Console ───
   console = {
-    font = "Lat2-Terminus16";
+    font = "${pkgs.terminus_font}/share/consolefonts/ter-124n.psf.gz";
     keyMap = "us";
   };
 
@@ -597,21 +602,10 @@ sudo nixos-rebuild switch --flake .#sakura
       options = "--delete-older-than 7d";
     };
 
-    # Track the flake registry to the nixpkgs input
     registry.nixpkgs.flake = inputs.nixpkgs;
   };
 
   nixpkgs.config.allowUnfree = true;
-
-  # ─── Networking ───
-  networking = {
-    networkmanager.enable = true;
-    firewall = {
-      enable = true;
-      allowedTCPPorts = [22]; # SSH
-    };
-    # Hostname is set per-host in hosts/sakura/default.nix
-  };
 
   # ─── Sound ───
   services.pipewire = {
@@ -628,12 +622,8 @@ sudo nixos-rebuild switch --flake .#sakura
     interval = "weekly";
   };
 
-  # ─── Auto Upgrade ───
-  system.autoUpgrade = {
-    enable = true;
-    flake = inputs.self.outPath;
-    flags = ["--update-input" "nixpkgs"];
-  };
+  # ─── Firmware Updates ───
+  services.fwupd.enable = true;
 
   # ─── System Packages ───
   environment.systemPackages = with pkgs; [
@@ -645,8 +635,6 @@ sudo nixos-rebuild switch --flake .#sakura
     lm_sensors
   ];
 
-  # This value determines the NixOS release from which the default
-  # settings for stateful data were taken.
   system.stateVersion = "25.05";
 }
 ```
@@ -672,13 +660,11 @@ sudo nixos-rebuild switch --flake .#sakura
       "storage"
     ];
     shell = pkgs.zsh;
-    # Initial password — change after first login with `passwd`
     initialPassword = "changeme";
   };
 
   programs.zsh.enable = true;
 
-  # Elevate wheel group to trusted-users for nix
   nix.settings.trusted-users = ["root" "@wheel"];
 }
 ```
@@ -691,7 +677,6 @@ sudo nixos-rebuild switch --flake .#sakura
   lib,
   pkgs,
   inputs,
-  system,
   hostname,
   username,
   ...
@@ -700,7 +685,7 @@ sudo nixos-rebuild switch --flake .#sakura
     ./hardware-configuration.nix
   ];
 
-  networking.hostName = hostname; # "sakura"
+  networking.hostName = hostname;
 
   # ─── AMD APU (Renoir / Ryzen 5 PRO 4650U) ───
   boot.initrd.kernelModules = ["amdgpu"];
@@ -711,7 +696,6 @@ sudo nixos-rebuild switch --flake .#sakura
       enable = true;
       extraPackages = with pkgs; [
         mesa
-        amdvlk
       ];
     };
 
@@ -724,6 +708,7 @@ sudo nixos-rebuild switch --flake .#sakura
     };
 
     # ThinkPad specific
+    trackpoint.enable = true;
     firmware = [pkgs.linux-firmware];
   };
 
@@ -750,23 +735,11 @@ sudo nixos-rebuild switch --flake .#sakura
     autoPrune.enable = true;
   };
 
-  # ─── Tailscale ───
-  services.tailscale = {
-    enable = true;
-    openFirewall = true;
-  };
-
-  # ─── ExFAT support ───
-  boot.supportedFilesystems = ["exfat"];
-
   # ─── Keyboard ───
   services.xserver.xkb = {
     layout = "us";
     options = "compose:caps";
   };
-
-  # ─── Fingerprint reader (ThinkPad X13 Gen 1 may have one) ───
-  # services.fprintd.enable = true;
 
   system.stateVersion = "25.05";
 }
@@ -776,12 +749,14 @@ sudo nixos-rebuild switch --flake .#sakura
 
 This file is auto-generated by `nixos-generate-config`. After generating, copy it to this path. It will contain:
 
-- The LUKS device mapping (`boot.initrd.luks.devices.cryptroot`)
+- The LUKS device mapping (`boot.initrd.luks.devices.root`)
 - The filesystem UUIDs and mount options
 - The swap device
 - The kernel modules
 
-**Do NOT edit this manually** — it's generated. The only change you might make is adding `neededForBoot = true;` to `/var/log` mount.
+**Do NOT edit this manually** — it's generated. The only changes you might make:
+1. Add `neededForBoot = true;` to `/var/log` mount
+2. Add `nodatacow` option to the `/swap` mount
 
 Example (your UUIDs will differ):
 
@@ -793,12 +768,9 @@ Example (your UUIDs will differ):
   modulesPath,
   ...
 }: {
-  imports = [(modulesPath + "/profiles/qemu-guest.nix")];
-
   boot.initrd.availableKernelModules = ["nvme" "xhci_pci" "ahci" "usbhid" "uas" "sd_mod"];
   boot.initrd.kernelModules = ["dm-snapshot" "amdgpu"];
   boot.kernelModules = ["kvm-amd" "thinkpad_acpi"];
-  boot.extraModulePackages = [];
 
   boot.initrd.luks.devices."root" = {
     device = "/dev/disk/by-uuid/f03e6c37-e0bb-4263-8c9c-2909ac11cceb";
@@ -828,13 +800,13 @@ Example (your UUIDs will differ):
   fileSystems."/var/cache" = {
     device = "/dev/mapper/root";
     fsType = "btrfs";
-    options = ["subvol=@pkg" "compress=zstd:3" "noatime" "ssd"];
+    options = ["subvol=@cache" "compress=zstd:3" "noatime" "ssd"];
   };
 
   fileSystems."/swap" = {
     device = "/dev/mapper/root";
     fsType = "btrfs";
-    options = ["subvol=@swap" "noatime"];
+    options = ["subvol=@swap" "noatime" "nodatacow"];
   };
 
   fileSystems."/boot" = {
@@ -842,7 +814,7 @@ Example (your UUIDs will differ):
     fsType = "vfat";
   };
 
-  swapDevices = [{device = "/swap/swapfile";}];
+  swapDevices = [{device = "/swap/swapfile"; size = 4096;}];
 
   networking.useDHCP = lib.mkDefault true;
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
@@ -868,7 +840,7 @@ Example (your UUIDs will differ):
   programs.hyprland = {
     enable = true;
     package = inputs.hyprland.packages.${pkgs.system}.hyprland;
-    withUWSM = true; # Use UWSM for proper systemd integration
+    withUWSM = true;
   };
 
   # ─── XDG ───
@@ -891,7 +863,7 @@ Example (your UUIDs will differ):
   fonts = {
     enableDefaultPackages = true;
     packages = with pkgs; [
-      (nerdfonts.override {fonts = ["CaskaydiaMono"];})
+      nerd-fonts.caskaydia-mono
       noto-fonts
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif
@@ -907,12 +879,23 @@ Example (your UUIDs will differ):
     };
   };
 
+  # ─── Japanese Input (fcitx5 + Mozc) ───
+  i18n.inputMethod = {
+    enabled = "fcitx5";
+    fcitx5 = {
+      waylandFrontend = true;
+      addons = with pkgs.fcitx5-addons; [
+        mozc
+      ];
+    };
+  };
+
   # ─── Display-related services ───
   services = {
     # SwayOSD (on-screen display for volume/brightness)
     swayosd.enable = true;
 
-    # GVfs for virtual filesystems ( trash, mtp, etc.)
+    # GVfs for virtual filesystems (trash, mtp, etc.)
     gvfs.enable = true;
   };
 
@@ -920,7 +903,6 @@ Example (your UUIDs will differ):
   environment.systemPackages = with pkgs; [
     # Wayland essentials
     wl-clipboard
-    wl-copy
     grim
     slurp
     swappy
@@ -985,9 +967,6 @@ Example (your UUIDs will differ):
 
   # Paths
   wallpaper = "${config.home.homeDirectory}/.config/omarchy/current/background";
-  screenshotScript = pkgs.writeShellScriptBin "screenshot" ''
-    ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-copy}/bin/wl-copy
-  '';
 in {
   # ─── Hyprland Configuration ───
   wayland.windowManager.hyprland = {
@@ -1000,7 +979,6 @@ in {
 
     settings = {
       # ─── Monitors ───
-      # Laptop internal display (ThinkPad X13 Gen 1 eDP-1)
       monitor = [
         "eDP-1,1920x1080@60,0x0,1.5"
         ",preferred,auto,1"
@@ -1021,6 +999,7 @@ in {
         "XDG_CURRENT_DESKTOP,Hyprland"
         "XDG_SESSION_DESKTOP,Hyprland"
         "GDK_SCALE,1"
+        "TERMINAL,alacritty"
 
         # Japanese input method (fcitx5-mozc)
         "GTK_IM_MODULE,fcitx"
@@ -1175,10 +1154,6 @@ in {
         # Fix XWayland dragging issues
         "no_focus on, match:class ^$, match:title ^$, match:xwayland 1, match:float 1, match:fullscreen 0, match:pin 0"
 
-        # 1Password — no screen share, float
-        "no_screen_share on, match:class ^(1[pP]assword)$"
-        "tag +floating-window, match:class ^(1[pP]assword)$"
-
         # Bitwarden — no screen share, float
         "no_screen_share on, match:class ^(Bitwarden)$"
         "tag +floating-window, match:class ^(Bitwarden)$"
@@ -1191,7 +1166,7 @@ in {
         "opacity 1 0.97, match:tag firefox-based-browser"
 
         # Terminal tag
-        "tag +terminal, match:class (Alacritty|kitty|com.mitchellh.ghostty)"
+        "tag +terminal, match:class Alacritty"
 
         # Floating windows
         "float on, match:tag floating-window"
@@ -1219,7 +1194,6 @@ in {
       # ─── Keybindings ───
       "$terminal" = "uwsm app -- $TERMINAL";
       "$browser" = "brave";
-      "$osdclient" = "swayosd-client --monitor \"$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused == true).name')\"";
 
       bindd = [
         # ─── Application Launchers ───
@@ -1230,7 +1204,6 @@ in {
         "SUPER, N, Editor, exec, uwsm app -- nvim"
         "SUPER, D, Docker, exec, uwsm app -- ${pkgs.foot}/bin/foot -e lazydocker"
         "SUPER, O, Obsidian, exec, uwsm app -- obsidian -disable-gpu --enable-wayland-ime"
-        "SUPER, slash, Passwords, exec, uwsm app -- 1password"
 
         # ─── Menus ───
         "SUPER, SPACE, Launch apps, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
@@ -1345,18 +1318,18 @@ in {
         "SUPER, mouse_up, Scroll workspace backward, workspace, e-1"
 
         # ─── Media Keys ───
-        ", XF86AudioRaiseVolume, Volume up, exec, $osdclient --output-volume raise"
-        ", XF86AudioLowerVolume, Volume down, exec, $osdclient --output-volume lower"
-        ", XF86AudioMute, Mute, exec, $osdclient --output-volume mute-toggle"
-        ", XF86AudioMicMute, Mute microphone, exec, $osdclient --input-volume mute-toggle"
-        ", XF86MonBrightnessUp, Brightness up, exec, $osdclient --brightness raise"
-        ", XF86MonBrightnessDown, Brightness down, exec, $osdclient --brightness lower"
+        ", XF86AudioRaiseVolume, Volume up, exec, swayosd-client --output-volume raise"
+        ", XF86AudioLowerVolume, Volume down, exec, swayosd-client --output-volume lower"
+        ", XF86AudioMute, Mute, exec, swayosd-client --output-volume mute-toggle"
+        ", XF86AudioMicMute, Mute microphone, exec, swayosd-client --input-volume mute-toggle"
+        ", XF86MonBrightnessUp, Brightness up, exec, swayosd-client --brightness raise"
+        ", XF86MonBrightnessDown, Brightness down, exec, swayosd-client --brightness lower"
 
         # ─── Precise Media Adjustments ───
-        "ALT, XF86AudioRaiseVolume, Volume up precise, exec, $osdclient --output-volume +1"
-        "ALT, XF86AudioLowerVolume, Volume down precise, exec, $osdclient --output-volume -1"
-        "ALT, XF86MonBrightnessUp, Brightness up precise, exec, $osdclient --brightness +1"
-        "ALT, XF86MonBrightnessDown, Brightness down precise, exec, $osdclient --brightness -1"
+        "ALT, XF86AudioRaiseVolume, Volume up precise, exec, swayosd-client --output-volume +1"
+        "ALT, XF86AudioLowerVolume, Volume down precise, exec, swayosd-client --output-volume -1"
+        "ALT, XF86MonBrightnessUp, Brightness up precise, exec, swayosd-client --brightness +1"
+        "ALT, XF86MonBrightnessDown, Brightness down precise, exec, swayosd-client --brightness -1"
 
         # ─── Media Playback ───
         ", XF86AudioNext, Next track, exec, ${pkgs.playerctl}/bin/playerctl next"
@@ -1412,7 +1385,7 @@ in {
         "uwsm app -- fcitx5"
         "uwsm app -- swaybg -i ${wallpaper} -m fill"
         "uwsm app -- swayosd-server"
-        "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1" # NixOS path differs, see note
+        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
         "systemctl --user import-environment $(env | cut -d'=' -f 1)"
         "dbus-update-activation-environment --systemd --all"
       ];
@@ -1841,112 +1814,6 @@ in {
       };
     };
   };
-
-  # ─── Kitty ───
-  programs.kitty = {
-    enable = true;
-
-    settings = {
-      font_family = "CaskaydiaMono Nerd Font";
-      bold_italic_font = "auto";
-      font_size = 9;
-
-      window_padding_width = 14;
-      window_padding_height = 14;
-      hide_window_decorations = "yes";
-      show_window_resize_notification = "no";
-      confirm_os_window_close = 0;
-
-      single_instance = "yes";
-      allow_remote_control = "yes";
-
-      cursor_shape = "block";
-      enable_audio_bell = "no";
-
-      tab_bar_edge = "bottom";
-      tab_bar_style = "powerline";
-      tab_powerline_style = "slanted";
-      tab_title_template = "{title}{' :{}:'.format(num_windows) if num_windows > 1 else ''}";
-
-      # Rose Pine Dawn colors
-      foreground = "#575279";
-      background = "#faf4ed";
-      selection_foreground = "#575279";
-      selection_background = "#dfdad9";
-      cursor = "#cecacd";
-      cursor_text_color = "#faf4ed";
-      active_border_color = "#56949f";
-      active_tab_background = "#56949f";
-
-      color0 = "#f2e9e1";
-      color1 = "#b4637a";
-      color2 = "#286983";
-      color3 = "#ea9d34";
-      color4 = "#56949f";
-      color5 = "#907aa9";
-      color6 = "#d7827e";
-      color7 = "#575279";
-      color8 = "#9893a5";
-      color9 = "#b4637a";
-      color10 = "#286983";
-      color11 = "#ea9d34";
-      color12 = "#56949f";
-      color13 = "#907aa9";
-      color14 = "#d7827e";
-      color15 = "#575279";
-    };
-
-    keybindings = {
-      "f11" = "toggle_fullscreen";
-      "ctrl+insert" = "copy_to_clipboard";
-      "shift+insert" = "paste_from_clipboard";
-    };
-  };
-
-  # ─── Ghostty ───
-  # Ghostty doesn't have home-manager support yet, use xdg config file
-  xdg.configFile."ghostty/config".text = ''
-    font-family = "CaskaydiaMono Nerd Font"
-    font-style = Regular
-    font-size = 9
-
-    window-padding-x = 14
-    window-padding-y = 14
-    confirm-close-surface = false
-    resize-overlay = never
-
-    cursor-style = block
-    cursor-style-blink = false
-
-    keybind = f11=toggle_fullscreen
-    keybind = shift+insert=paste_from_clipboard
-    keybind = control+insert=copy_to_clipboard
-
-    mouse-scroll-multiplier = 0.95
-
-    background = #faf4ed
-    foreground = #575279
-    cursor-color = #cecacd
-    selection-background = #dfdad9
-    selection-foreground = #575279
-
-    palette = 0=#f2e9e1
-    palette = 1=#b4637a
-    palette = 2=#286983
-    palette = 3=#ea9d34
-    palette = 4=#56949f
-    palette = 5=#907aa9
-    palette = 6=#d7827e
-    palette = 7=#575279
-    palette = 8=#9893a5
-    palette = 9=#b4637a
-    palette = 10=#286983
-    palette = 11=#ea9d34
-    palette = 12=#56949f
-    palette = 13=#907aa9
-    palette = 14=#d7827e
-    palette = 15=#575279
-  '';
 }
 ```
 
@@ -1972,26 +1839,11 @@ in {
       theme = "refined";
       plugins = [
         "git"
-        "you-should-use"
-        "zsh-autosuggestions"
-        "zsh-syntax-highlighting"
       ];
-      custom = "$HOME/.oh-my-zsh/custom";
     };
 
-    initExtra = ''
-      # oh-my-zsh plugin installations (if not found)
-      # zsh-autosuggestions and zsh-syntax-highlighting need to be cloned
-      if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
-        git clone https://github.com/zsh-users/zsh-autosuggestions "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-      fi
-      if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
-        git clone https://github.com/zsh-users/zsh-syntax-highlighting "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
-      fi
-      if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/you-should-use" ]; then
-        git clone https://github.com/MichaelAquilina/zsh-you-should-use "$HOME/.oh-my-zsh/custom/plugins/you-should-use"
-      fi
-    '';
+    autosuggestion.enable = true;
+    syntaxHighlighting.enable = true;
 
     shellAliases = {
       vim = "nvim";
@@ -2102,6 +1954,10 @@ in {
   programs.ripgrep = {
     enable = true;
   };
+
+  programs.nix-index = {
+    enable = true;
+  };
 }
 ```
 
@@ -2152,7 +2008,7 @@ in {
     };
 
     signing = {
-      key = null; # Set up GPG signing later
+      key = null;
       signByDefault = false;
     };
   };
@@ -2217,7 +2073,7 @@ in {
       bind x kill-pane
       bind c new-window -c "#{pane_current_path}"
 
-      # Vim-Tmux Navigator
+      # Vim-Tmux navigator
       is_vim="ps -o state= -o comm= -t '#{pane_tty}' | grep -iqE '^[^TXZ ]+ +(\\S+\\/)?g?(view|n?vim?x?)(diff)?$'"
       bind-key -n C-h if-shell "$is_vim" "send-keys C-h" "select-pane -L"
       bind-key -n C-j if-shell "$is_vim" "send-keys C-j" "select-pane -D"
@@ -2284,27 +2140,17 @@ in {
   pkgs,
   ...
 }: {
-  i18n.inputMethod = {
-    enabled = "fcitx5";
-    fcitx5 = {
-      waylandFrontend = true;
-      addons = with pkgs.fcitx5-addons; [
-        mozc
-        fcitx5-chinese-addons # For CJK support
-      ];
-    };
-  };
+  # Fcitx5 is enabled at the NixOS level in hosts/common/desktop.nix
+  # (i18n.inputMethod is a NixOS module option, not a home-manager option)
+  # This module handles user-level configuration only.
 
-  # Fcitx5 environment variables are already set in Hyprland config
-  # via the env declarations, but let's also set them in home.sessionVariables
-  # for non-Hyprland contexts
   home.sessionVariables = {
     GTK_IM_MODULE = "fcitx";
     QT_IM_MODULE = "fcitx";
     XMODIFIERS = "@im=fcitx";
   };
 
-  # Fcitx5 configuration for Mozc
+  # Fcitx5 profile for Mozc
   xdg.configFile."fcitx5/conf/xcb.conf".text = ''
     Allow Overriding System XKB Settings=False
     Always set layout to the default layout only=False
@@ -2337,7 +2183,9 @@ in {
   inputs,
   username,
   ...
-}: {
+}: let
+  scripts = import ../../packages/scripts {inherit pkgs;};
+in {
   home = {
     username = username;
     homeDirectory = "/home/${username}";
@@ -2346,7 +2194,7 @@ in {
 
   # ─── Packages ───
   home.packages = with pkgs; [
-    # CLI essentials (from current Omarchy setup)
+    # CLI essentials
     eza
     bat
     fd
@@ -2374,7 +2222,6 @@ in {
     tailscale
 
     # Security
-    _1password-gui
     bitwarden
 
     # Productivity
@@ -2393,15 +2240,12 @@ in {
     pamixer
     brightnessctl
 
-    # Dev tools (system-level ones)
-    mise # Language version manager (node, go, python, etc.)
+    # Dev tools
+    mise
 
     # Nix helpers
-    nh # Nix Helper for rebuilds
+    nh
     nix-output-monitor
-
-    # Git
-    lazygit
 
     # File manager
     nautilus
@@ -2416,11 +2260,14 @@ in {
     jq
     file
     which
-  ];
 
-  # ─── Apps that need special handling ───
-  # Discord: use webapp via Brave or flatpak
-  # Brave is available in nixpkgs as `brave`
+    # Custom scripts
+  ] ++ (with scripts; [
+    screenshot
+    volume-toggle
+    brightness-toggle
+    lock-screen
+  ]);
 
   # ─── xdg-mime defaults ───
   xdg.mimeApps = {
@@ -2455,7 +2302,6 @@ in {
     selection-bg = "#dfdad9";
     accent = "#56949f";
 
-    # Normal colors
     black = "#f2e9e1";
     red = "#b4637a";
     green = "#286983";
@@ -2465,7 +2311,6 @@ in {
     cyan = "#d7827e";
     white = "#575279";
 
-    # Bright colors
     bright-black = "#9893a5";
     bright-red = "#b4637a";
     bright-green = "#286983";
@@ -2477,7 +2322,6 @@ in {
   };
 in {
   # ─── GTK Theme ───
-  # Use rose-pine-nix module for GTK
   rose-pine = {
     enable = true;
     flavor = "dawn";
@@ -2541,16 +2385,11 @@ in {
     };
   };
 
-  # ─── Wallpaper ───
-  # Copy your wallpaper to wallpapers/ directory
-  # Then reference it in Hyprland exec-once
-
-  # ─── qt5ct/ qt6ct ───
+  # ─── qt5ct/qt6ct ───
   home.sessionVariables = {
     QT_STYLE_OVERRIDE = "kvantum";
   };
 
-  # Export color variables for other modules to reference
   _rosePineDawn = rose-pine-dawn;
 }
 ```
@@ -2582,7 +2421,7 @@ in {
 | Omarchy Command | NixOS Replacement |
 |---|---|
 | `omarchy-update` | `nh os switch .` (or `sudo nixos-rebuild switch --flake .#sakura`) |
-| `omarchy-restart-waybar` | `systemctl --user restart waybar` (or `pkill waybar`) |
+| `omarchy-restart-waybar` | `systemctl --user restart waybar` |
 | `omarchy-restart-walker` | `systemctl --user restart walker` (or `pkill walker`) |
 | `omarchy-restart-terminal` | Just close and reopen |
 | `omarchy-lock-screen` | `hyprlock` (bound to Super+Ctrl+L) |
@@ -2596,55 +2435,18 @@ in {
 | `omarchy-launch-editor` | `nvim` |
 | `omarchy-launch-tui lazydocker` | `foot -e lazydocker` |
 | `omarchy-launch-or-focus obsidian` | `obsidian -disable-gpu --enable-wayland-ime` |
-| `omarchy-cmd-terminal-cwd` | `zoxide query --interactive || pwd` |
+| `omarchy-cmd-terminal-cwd` | `zoxide query --interactive \|\| pwd` |
 | `omarchy-cmd-audio-switch` | Handled by swayosd |
 | `omarchy-menu system` | `walker` (with system mode) |
 | `omarchy-menu theme` | Edit flake and rebuild |
 | `omarchy-hyprland-window-close-all` | `hyprctl dispatch exit` |
 | `omarchy-toggle-idle` | `hypridle --toggle` |
-| `omarchy-toggle-waybar` | `pkill waybar || waybar &` |
+| `omarchy-toggle-waybar` | `pkill waybar \|\| waybar &` |
 
-### Custom Scripts (packages/scripts/)
-
-**packages/scripts/screenshot.sh:**
-```bash
-#!/usr/bin/env bash
-# Screenshot tool: area selection → clipboard + swappy edit
-grim -g "$(slurp)" - | swappy -f - &
-```
-
-**packages/scripts/volume-toggle.sh:**
-```bash
-#!/usr/bin/env bash
-# Toggle audio output device
-pactl set-default-sink $(pactl list short sinks | grep -v "$(pactl get-default-sink)" | head -1 | awk '{print $2}')
-```
-
-**packages/scripts/brightness-toggle.sh:**
-```bash
-#!/usr/bin/env bash
-# Brightness control (for external monitors if needed)
-if [ "$1" = "up" ]; then
-    brightnessctl set 5%+
-elif [ "$1" = "down" ]; then
-    brightnessctl set 5%-
-fi
-```
-
-**packages/scripts/lock-screen.sh:**
-```bash
-#!/usr/bin/env bash
-# Lock screen and stop 1password integration
-loginctl lock-session
-```
-
-To include these scripts as Nix packages, add a `default.nix` in `packages/scripts/`:
+### Custom Scripts (packages/scripts/default.nix)
 
 ```nix
-# packages/scripts/default.nix
-{ pkgs, ... }:
-
-{
+{pkgs, ...}: {
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
     ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.swappy}/bin/swappy -f -
   '';
@@ -2664,23 +2466,6 @@ To include these scripts as Nix packages, add a `default.nix` in `packages/scrip
   lock-screen = pkgs.writeShellScriptBin "lock-screen" ''
     loginctl lock-session
   '';
-}
-```
-
-Then in `home/common.nix`, add to `home.packages`:
-```nix
-let
-  scripts = import ../../packages/scripts { inherit pkgs; };
-in
-{
-  home.packages = with pkgs; [
-    # ... existing packages ...
-  ] ++ (with scripts; [
-    screenshot
-    volume-toggle
-    brightness-toggle
-    lock-screen
-  ]);
 }
 ```
 
@@ -2704,27 +2489,18 @@ chmod 644 ~/.ssh/id_*.pub
 gpg --import "$BACKUP/gnupg/"*.asc 2>/dev/null || echo "Import GPG keys manually"
 
 # Atuin re-login
-# After starting a shell, Atuin will prompt for registration
-# Or copy the key:
 mkdir -p ~/.local/share/atuin
 cp "$BACKUP/atuin/key" ~/.local/share/atuin/key
 # Then run: atuin login
-
-# Git config (already handled by home-manager)
 
 # Obsidian vaults — move to your preferred location
 cp -a "$BACKUP/obsidian-vault" ~/Documents/
 
 # Browser data — use Brave sync to restore bookmarks/extensions
-# OR manually copy:
-# cp -a "$BACKUP/brave-profile" ~/.config/BraveSoftware/Brave-Browser/
 
 # Neovim config
 cp -a "$BACKUP/nvim" ~/.config/nvim
 # Then inside nvim, run :Lazy restore to download plugins
-
-# Tmux config (already handled by home-manager, but check)
-# Starship config (already handled by home-manager)
 
 # Custom local scripts
 cp -a "$BACKUP/local-bin/"* ~/.local/bin/ 2>/dev/null
@@ -2732,12 +2508,9 @@ cp -a "$BACKUP/local-bin/"* ~/.local/bin/ 2>/dev/null
 
 ### Step 7.2: Applications Not in Nixpkgs
 
-Some applications may not be in nixpkgs or may work better via alternative methods:
-
 | Application | Approach |
 |-------------|----------|
-| Discord | Use Brave webapp (Super+Y → Discord web) or Flatpak |
-| 1Password CLI | Install via `programs._1password` or nixpkgs package |
+| Discord | Use Brave webapp or Flatpak |
 | Obsidian | Available in nixpkgs |
 | Signal | `signal-desktop` package in nixpkgs |
 | Slack | `slack` package in nixpkgs |
@@ -2752,17 +2525,11 @@ services.flatpak.enable = true;
 
 ### Step 7.3: NFS Mount
 
-The tubeinas NFS mount is already configured in `hosts/sakura/default.nix`. Verify it auto-mounts after boot:
+The tubeinas NFS mount is configured in `hosts/sakura/default.nix`. Verify it auto-mounts after boot:
 
 ```bash
-# Ensure NFS service is running
 systemctl status nfs-client.target
-
-# Test mount
 ls /mnt/tubeinas
-
-# If Tailscale is needed first, ensure the mount waits for network
-# The _netdev option in the mount config handles this
 ```
 
 ### Step 7.4: Docker and Dev Environment
@@ -2770,51 +2537,31 @@ ls /mnt/tubeinas
 Docker is enabled in `hosts/sakura/default.nix`. After rebuild:
 
 ```bash
-# Verify Docker
 docker ps
 
-# Mise setup (language version manager)
+# Mise setup
 mise settings set experimental true
 mise install node@lts
 mise install go@latest
 mise install python@latest
-
-# For project-specific dev environments, use direnv + flake.nix per project
-# Example project flake.nix:
-# {
-#   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-#   outputs = {nixpkgs, ...}: {
-#     devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
-#       packages = with nixpkgs.legacyPackages.x86_64-linux; [nodejs go python3];
-#     };
-#   };
-# }
 ```
 
 ### Step 7.5: Verify Everything Works
 
-Run through this checklist after the first successful rebuild:
-
 ```bash
-# 1. Hyprland starts
-# Log in via TTY/manager, Hyprland should start with UWSM
+# 1. Hyprland starts via UWSM
 uwsm start hyprland
 
 # 2. Waybar renders with all modules
-# Check waybar is running and shows workspaces, clock, network, audio
 waybar &
 
 # 3. Japanese input works
-# Press Ctrl+Space or the fcitx5 trigger to toggle input
-fcitx5-diagnose  # Check for issues
+fcitx5-diagnose
 
-# 4. Theme is consistent
-# Check: Alacritty, Kitty, Ghostty, GTK apps all use Rose Pine Dawn
+# 4. Theme is consistent (Rose Pine Dawn everywhere)
 
 # 5. All keybindings work
-# Press Super+Return → terminal opens
-# Press Super+Space → Walker launches
-# Press Super+W → window closes
+# Super+Return → terminal, Super+Space → Walker, Super+W → close
 
 # 6. Docker runs
 docker run hello-world
@@ -2826,11 +2573,9 @@ tailscale status
 cd ~/Documents/dev/kebun
 nh os switch .
 
-# 9. Screenshot key works
-# Press Print → area selection → swappy editor
+# 9. Screenshot key works (Print → area selection → swappy editor)
 
-# 10. Volume/brightness keys work
-# Use media keys, swayosd should show overlay
+# 10. Volume/brightness keys work (swayosd overlay)
 ```
 
 ---
@@ -2844,34 +2589,26 @@ nh os switch .
   pkgs,
   ...
 }: {
-  # Development packages that are best installed system-wide
   environment.systemPackages = with pkgs; [
-    # Core dev tools
     gcc
     gnumake
     cmake
     pkg-config
 
-    # Language runtimes (mise handles per-project, but these are system-level)
     go
     nodejs
     python3
 
-    # Docker tools (docker is enabled in sakura/default.nix)
     docker-compose
 
-    # Nix dev tools
     nixfmt-rfc-style
     alejandra
-    nil # Nix LSP
-    nixd # Nix LSP alternative
+    nil
+    nixd
 
-    # Database clients
     postgresql
     sqlite
   ];
-
-  # Docker daemon (enabled per-host in sakura/default.nix)
 }
 ```
 
@@ -2896,8 +2633,7 @@ nh os switch .
       allowedUDPPorts = [];
     };
 
-    # Enable wireless (users can manage via nmcli or nmtui)
-    wireless.enable = false; # NetworkManager handles this
+    wireless.enable = false;
   };
 
   # Tailscale
@@ -2962,7 +2698,7 @@ nh os switch .
 - [ ] Waybar shows workspaces, clock, network, audio, bluetooth
 - [ ] Rose Pine Dawn theme applied everywhere (terminals, GTK apps, Hyprland borders)
 - [ ] Japanese input (fcitx5 + Mozc) works (Ctrl+Space or fcitx5 trigger)
-- [ ] All terminals (Alacritty, Kitty, Ghostty) look themed
+- [ ] Alacritty looks themed with Rose Pine Dawn colors
 - [ ] Zsh + oh-my-zsh + starship works with all aliases
 - [ ] Docker and dev tools available and working
 - [ ] Tailscale connects on boot
@@ -2970,12 +2706,14 @@ nh os switch .
 - [ ] Screenshot/volume/brightness keys work
 - [ ] NFS mount (tubeinas) auto-mounts when on network
 - [ ] Mako/swayosd notifications display correctly
-- [ ] Hypridle locks screen after 10 minutes
+- [ ] Hypridle locks screen after 5 minutes
 - [ ] Hyprlock lock screen shows Rose Pine Dawn theme
 - [ ] Atuin syncs history to self-hosted server
 - [ ] tmux with all plugins and C-a prefix works
 - [ ] Walker app launcher opens with Super+Space
 - [ ] Monitor setup (eDP-1 1920x1080@60Hz, scale 1.5) is correct
+- [ ] zram swap active (4GB swapfile available as fallback)
+- [ ] Trackpoint working on ThinkPad
 
 ---
 
@@ -3028,7 +2766,7 @@ Ensure `boot.initrd.luks.devices.root` is set correctly in `hardware-configurati
 ### fcitx5 not activating
 1. Run `fcitx5-diagnose` to check configuration
 2. Ensure environment variables are set (check `/etc/environment`)
-3. Add `GTK_IM_MODULE=fcitx`, `QT_IM_MODULE=fcitx`, `XMODIFIERS=@im=fcitx` to `environment.sessionVariables` in `common/desktop.nix`
+3. Verify `i18n.inputMethod` is enabled in `hosts/common/desktop.nix`
 
 ### Waybar not showing modules
 1. Check waybar logs: `waybar 2>&1 | tee /tmp/waybar.log`
@@ -3047,3 +2785,6 @@ Ensure `boot.initrd.luks.devices.root` is set correctly in `hardware-configurati
 2. Run `gsettings set org.gnome.desktop.interface icon-theme 'Yaru-blue'`
 3. Reset qt5ct/qt6ct: `qt5ct` and `qt6ct` apps
 4. If GTK apps don't pick up theme, verify `environment.sessionVariables` for GTK_THEME
+
+### Rebuild fails with "cannot coerce" errors
+Use `nh os switch . -- --show-trace` for detailed error messages. Common causes: missing `username` in `specialArgs`, or referencing packages that don't exist in nixpkgs-unstable.
