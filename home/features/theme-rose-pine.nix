@@ -87,6 +87,4 @@ in {
   home.sessionVariables = {
     QT_STYLE_OVERRIDE = "kvantum";
   };
-
-  _rosePineDawn = rose-pine-dawn;
 }
