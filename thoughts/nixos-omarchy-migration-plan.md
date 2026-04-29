@@ -2,28 +2,28 @@
 
 ## TL;DR
 
-This plan guides you through installing NixOS with Flakes on your AMD Ryzen 5 5600 + RX 9060 XT system, using BTRFS + LUKS encryption, and replicating your current Arch/Omarchy Hyprland desktop using the `kebun` flake repository. The result is a declarative, reproducible system where `nh os switch .` replaces `omarchy-update`, and all desktop configuration—Hyprland, Waybar, terminals, shell, theme, Japanese input—lives in version-controlled Nix code under `hosts/sakura/` and `home/`.
+This plan guides you through installing NixOS with Flakes on your Lenovo ThinkPad X13 Gen 1 (AMD Ryzen 5 PRO 4650U + Renoir integrated graphics), using BTRFS + LUKS encryption, and replicating your current Arch/Omarchy Hyprland desktop using the `kebun` flake repository. The result is a declarative, reproducible system where `nh os switch .` replaces `omarchy-update`, and all desktop configuration—Hyprland, Waybar, terminals, shell, theme, Japanese input—lives in version-controlled Nix code under `hosts/sakura/` and `home/`.
 
 ## Context
 
 - **Original Request**: Install NixOS with Flakes and replicate Omarchy desktop
 - **Hardware**:
-  - CPU: AMD Ryzen 5 5600 (6-core/12-thread)
-  - GPU: AMD RX 9060 XT (Navi 44) — amdgpu driver
+  - Laptop: Lenovo ThinkPad X13 Gen 1 (20UGS2Q500)
+  - CPU: AMD Ryzen 5 PRO 4650U (6-core/12-thread)
+  - GPU: AMD Renoir (Radeon Vega Series / Radeon Vega Mobile Series) — amdgpu driver
   - RAM: 32GB
   - Boot: UEFI
-  - NVMe: 477GB XPG GAMMIX S70 BLADE (OS drive, `/dev/nvme0n1`)
-  - SSD: 931GB MidasForce (`/dev/sda`, ext4, mounted at `/mnt/entertainments`)
-  - SSD2: 477GB ADATA (`/dev/sdb1`, exfat, stickdrive)
-  - Monitor: DP-1, 2560x1440@60Hz (also have DP-2 4K display available)
-  - Network: Wired (enp4s0) + WiFi (wlan0) + Tailscale + Docker
-  - Bluetooth: Yes
+  - NVMe: 238.5GB Samsung MZALQ256HAJD-000L1 (OS drive, `/dev/nvme0n1`)
+  - USB: HP v210w 7.5GB (Omarchy live USB, `/dev/sda`)
+  - Display: eDP-1, 1920x1080@60Hz (scale 1.5, laptop internal)
+  - Network: Wired (enp2s0f0) + WiFi (wlan0, Intel AX200) + Tailscale + Docker
+  - Bluetooth: Intel AX200 (hci0)
 - **Key Decisions**:
   1. Minimal replacement for omarchy scripts (not full 145-command replication)
   2. Multi-machine flake structure (`hosts/sakura/`, extensible)
   3. NixOS unstable channel
   4. zsh + oh-my-zsh (matching current Arch setup)
-  5. BTRFS + LUKS encryption (matching current Arch: `@`, `@home`, `@log`, `@nix`, `@swap`)
+  5. BTRFS + LUKS encryption (matching current Arch: `@root`, `@home`, `@log`, `@pkg`, `@swap`)
   6. Hostname: `sakura` (fits the "kebun" garden theme — kebun = garden, sakura = cherry blossom)
   7. systemd-boot (cleaner for UEFI + BTRFS + LUKS)
   8. Hyprland via UWSM (matching current Arch setup)
@@ -61,9 +61,10 @@ Back up everything you need from the Arch installation before wiping the NVMe dr
 **Commands:**
 
 ```bash
-# Create backup directory on the data SSD (NOT the NVMe we're wiping)
-mkdir -p /mnt/entertainments/arch-backup-$(date +%Y%m%d)
-BACKUP=/mnt/entertainments/arch-backup-$(date +%Y%m%d)
+# Create backup directory on a USB drive or network storage
+# (NOT the NVMe we're wiping)
+mkdir -p /tmp/arch-backup-$(date +%Y%m%d)
+BACKUP=/tmp/arch-backup-$(date +%Y%m%d)
 
 # Dotfiles
 cp -a ~/.ssh "$BACKUP/ssh"
@@ -110,7 +111,7 @@ sudo dd if=nixos-minimal-25.05beta-*.x86_64-linux.iso of=/dev/sdX bs=4M status=p
 1. Boot from USB, select the NixOS installer
 2. Confirm you get a root shell
 3. Test network: `ping google.com`
-4. If WiFi needed: `wpa_supplicant -B -i wlan0 -c <(wpa_passphrase "SSID" "PASSWORD")`
+4. If WiFi needed: `iwctl` then `station wlan0 connect "YOUR_SSID"`
 
 ---
 
@@ -144,7 +145,7 @@ ip addr show  # Note the IP
 | Device | Partition | Size | Type | Mount |
 |--------|-----------|------|------|------|
 | `/dev/nvme0n1` | `p1` (ESP) | 2 GiB | EFI System | `/boot` |
-| `/dev/nvme0n1` | `p2` (LUKS) | ~475 GiB | Linux filesystem | LUKS → BTRFS |
+| `/dev/nvme0n1` | `p2` (LUKS) | ~236 GiB | Linux filesystem | LUKS → BTRFS |
 
 **BTRFS Subvolumes inside LUKS:**
 
@@ -153,7 +154,7 @@ ip addr show  # Note the IP
 | `@` | `/` |
 | `@home` | `/home` |
 | `@log` | `/var/log` |
-| `@nix` | `/nix` |
+| `@pkg` | `/var/cache/pacman/pkg` (or `/var/cache` on NixOS) |
 | `@swap` | `/swap` |
 
 ```bash
@@ -176,39 +177,39 @@ cryptsetup luksFormat /dev/nvme0n1p2
 # Enter your passphrase (choose a strong one — this protects your entire disk)
 
 # Open the LUKS container
-cryptsetup open /dev/nvme0n1p2 cryptroot
+cryptsetup open /dev/nvme0n1p2 root
 
 # Create BTRFS filesystem on the LUKS container
-mkfs.btrfs -L nixos /dev/mapper/cryptroot
+mkfs.btrfs -L nixos /dev/mapper/root
 
 # Create subvolumes
-mount /dev/mapper/cryptroot /mnt
+mount /dev/mapper/root /mnt
 
-btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@root
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@log
-btrfs subvolume create /mnt/@nix
+btrfs subvolume create /mnt/@pkg
 btrfs subvolume create /mnt/@swap
 
 # Unmount to mount with subvolumes
 umount /mnt
 
 # Mount the root subvolume with compression
-mount -o compress=zstd:3,ssd,noatime,subvol=@ /dev/mapper/cryptroot /mnt
+mount -o compress=zstd:3,ssd,noatime,subvol=@root /dev/mapper/root /mnt
 
 # Create mount points and mount subvolumes
 mkdir -p /mnt/{boot,home,var/log,nix,swap}
 
-mount -o compress=zstd:3,ssd,noatime,subvol=@home /dev/mapper/cryptroot /mnt/home
-mount -o compress=zstd:3,ssd,noatime,subvol=@log /dev/mapper/cryptroot /mnt/var/log
-mount -o compress=zstd:3,ssd,noatime,subvol=@nix /dev/mapper/cryptroot /mnt/nix
-mount -o subvol=@swap /dev/mapper/cryptroot /mnt/swap
+mount -o compress=zstd:3,ssd,noatime,subvol=@home /dev/mapper/root /mnt/home
+mount -o compress=zstd:3,ssd,noatime,subvol=@log /dev/mapper/root /mnt/var/log
+mount -o compress=zstd:3,ssd,noatime,subvol=@pkg /dev/mapper/root /mnt/var/cache
+mount -o subvol=@swap /dev/mapper/root /mnt/swap
 
 # Mount the ESP
 mount /dev/nvme0n1p1 /mnt/boot
 
-# Create swapfile (8GB, matching typical RAM/2 for hibernate or 16GB match)
-btrfs filesystem mkswapfile --size 16g /mnt/swap/swapfile
+# Create swapfile (32GB, matching current setup)
+btrfs filesystem mkswapfile --size 32g /mnt/swap/swapfile
 ```
 
 ### Step 1.3: Generate Initial Config
@@ -513,7 +514,7 @@ sudo nixos-rebuild switch --flake .#sakura
       kernelModules = ["amdgpu" "kvm-amd"];
     };
 
-    kernelModules = ["amdgpu" "kvm-amd" "btusb"];
+    kernelModules = ["amdgpu" "kvm-amd" "btusb" "thinkpad_acpi"];
     extraModulePackages = [];
 
     # Btrfs mount options are set in hardware-configuration.nix subvol mounts
@@ -524,6 +525,7 @@ sudo nixos-rebuild switch --flake .#sakura
     kernelParams = [
       "amd_iommu=on"
       "amdgpu.sg_display=0"
+      "rtc_cmos.use_acpi_alarm=1"
     ];
   };
 
@@ -536,11 +538,18 @@ sudo nixos-rebuild switch --flake .#sakura
   fileSystems = {
     "/".options = ["compress=zstd:3" "noatime" "ssd"];
     "/home".options = ["compress=zstd:3" "noatime" "ssd"];
-    "/nix".options = ["compress=zstd:3" "noatime" "ssd"];
+    "/var/cache".options = ["compress=zstd:3" "noatime" "ssd"];
     "/var/log".options = ["compress=zstd:3" "noatime" "ssd"];
   };
 
   # ─── Swap ───
+  # Primary: zram (compressed in-memory swap)
+  zramSwap = {
+    enable = true;
+    memoryPercent = 50;
+    algorithm = "zstd";
+  };
+  # Fallback: swapfile on BTRFS subvolume
   swapDevices = [{device = "/swap/swapfile";}];
 
   # ─── Locale / Time ───
@@ -693,7 +702,7 @@ sudo nixos-rebuild switch --flake .#sakura
 
   networking.hostName = hostname; # "sakura"
 
-  # ─── AMD GPU ───
+  # ─── AMD APU (Renoir / Ryzen 5 PRO 4650U) ───
   boot.initrd.kernelModules = ["amdgpu"];
   services.xserver.videoDrivers = ["amdgpu"];
 
@@ -701,29 +710,33 @@ sudo nixos-rebuild switch --flake .#sakura
     graphics = {
       enable = true;
       extraPackages = with pkgs; [
-        amdvlk
         mesa
+        amdvlk
       ];
     };
 
     enableRedistributableFirmware = true;
 
-    # Bluetooth
+    # Bluetooth (Intel AX200)
     bluetooth = {
       enable = true;
       powerOnBoot = true;
     };
+
+    # ThinkPad specific
+    firmware = [pkgs.linux-firmware];
   };
 
-  # ─── Filesystems (after LUKS) ───
-  # /mnt/entertainments (the 931GB data SSD)
-  fileSystems."/mnt/entertainments" = {
-    device = "/dev/disk/by-uuid/5a56e7ae-9a37-49c2-9a98-728c5500a08d";
-    fsType = "ext4";
-    options = ["defaults" "noatime"];
+  # ─── ThinkPad power management ───
+  services.power-profiles-daemon.enable = true;
+  services.upower.enable = true;
+  services.logind = {
+    lidSwitch = "suspend";
+    lidSwitchExternalPower = "suspend";
+    lidSwitchDocked = "ignore";
   };
 
-  # ─── NFS Mount (tubeinas) ───
+  # ─── NFS Mount (tubeinas via Tailscale) ───
   fileSystems."/mnt/tubeinas" = {
     device = "192.168.100.29:/mnt/tank/ivokun";
     fsType = "nfs";
@@ -734,10 +747,8 @@ sudo nixos-rebuild switch --flake .#sakura
   virtualisation.docker = {
     enable = true;
     enableOnBoot = true;
+    autoPrune.enable = true;
   };
-
-  # Add user to docker group
-  users.users.${username}.extraGroups = ["docker"];
 
   # ─── Tailscale ───
   services.tailscale = {
@@ -745,21 +756,17 @@ sudo nixos-rebuild switch --flake .#sakura
     openFirewall = true;
   };
 
-  # ─── ExFAT support (for stickdrive) ───
+  # ─── ExFAT support ───
   boot.supportedFilesystems = ["exfat"];
 
-  # ─── Keyboard (matching current setup) ───
+  # ─── Keyboard ───
   services.xserver.xkb = {
     layout = "us";
     options = "compose:caps";
   };
 
-  # ─── Power management ───
-  services.upower.enable = true;
-  services.logind.lidSwitch = "suspend";
-
-  # ─── Sunshine/Self-hosted specifics ───
-  # (Add any services specific to sakura here)
+  # ─── Fingerprint reader (ThinkPad X13 Gen 1 may have one) ───
+  # services.fprintd.enable = true;
 
   system.stateVersion = "25.05";
 }
@@ -790,48 +797,48 @@ Example (your UUIDs will differ):
 
   boot.initrd.availableKernelModules = ["nvme" "xhci_pci" "ahci" "usbhid" "uas" "sd_mod"];
   boot.initrd.kernelModules = ["dm-snapshot" "amdgpu"];
-  boot.kernelModules = ["kvm-amd"];
+  boot.kernelModules = ["kvm-amd" "thinkpad_acpi"];
   boot.extraModulePackages = [];
 
-  boot.initrd.luks.devices."cryptroot" = {
-    device = "/dev/disk/by-uuid/XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"; # Your LUKS UUID
+  boot.initrd.luks.devices."root" = {
+    device = "/dev/disk/by-uuid/f03e6c37-e0bb-4263-8c9c-2909ac11cceb";
     allowDiscards = true;
     bypassWorkqueues = true;
   };
 
   fileSystems."/" = {
-    device = "/dev/mapper/cryptroot";
+    device = "/dev/mapper/root";
     fsType = "btrfs";
-    options = ["subvol=@" "compress=zstd:3" "noatime" "ssd"];
+    options = ["subvol=@root" "compress=zstd:3" "noatime" "ssd"];
   };
 
   fileSystems."/home" = {
-    device = "/dev/mapper/cryptroot";
+    device = "/dev/mapper/root";
     fsType = "btrfs";
     options = ["subvol=@home" "compress=zstd:3" "noatime" "ssd"];
   };
 
   fileSystems."/var/log" = {
-    device = "/dev/mapper/cryptroot";
+    device = "/dev/mapper/root";
     fsType = "btrfs";
     options = ["subvol=@log" "compress=zstd:3" "noatime" "ssd"];
     neededForBoot = true;
   };
 
-  fileSystems."/nix" = {
-    device = "/dev/mapper/cryptroot";
+  fileSystems."/var/cache" = {
+    device = "/dev/mapper/root";
     fsType = "btrfs";
-    options = ["subvol=@nix" "compress=zstd:3" "noatime" "ssd"];
+    options = ["subvol=@pkg" "compress=zstd:3" "noatime" "ssd"];
   };
 
   fileSystems."/swap" = {
-    device = "/dev/mapper/cryptroot";
+    device = "/dev/mapper/root";
     fsType = "btrfs";
     options = ["subvol=@swap" "noatime"];
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/XXXX-XXXX"; # Your ESP UUID
+    device = "/dev/disk/by-uuid/3DC9-F5D4";
     fsType = "vfat";
   };
 
@@ -947,6 +954,9 @@ Example (your UUIDs will differ):
 
     # Calculator
     gnome-calculator
+
+    # Laptop power
+    acpi
   ];
 
   # ─── Bluetooth ───
@@ -990,10 +1000,9 @@ in {
 
     settings = {
       # ─── Monitors ───
-      # Primary monitor (matching current: DP-1, 2560x1440@60, 1x scale)
+      # Laptop internal display (ThinkPad X13 Gen 1 eDP-1)
       monitor = [
-        "DP-1,2560x1440@59.95,0x0,1"
-        "DP-2,3840x2160@60.00,2560x0,1.5"
+        "eDP-1,1920x1080@60,0x0,1.5"
         ",preferred,auto,1"
       ];
 
@@ -1036,8 +1045,12 @@ in {
         numlock_by_default = true;
 
         touchpad = {
-          natural_scroll = false;
+          natural_scroll = true;
           scroll_factor = 0.4;
+          disable_while_typing = true;
+          tap-to-click = true;
+          drag_lock = false;
+          middle_button_emulation = true;
         };
       };
 
@@ -1419,13 +1432,17 @@ in {
 
         listener = [
           {
-            timeout = 600;
+            timeout = 300;
             on-timeout = "loginctl lock-session";
           }
           {
-            timeout = 605;
+            timeout = 330;
             on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
             on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on && ${pkgs.brightnessctl}/bin/brightnessctl -r";
+          }
+          {
+            timeout = 900;
+            on-timeout = "systemctl suspend";
           }
         ];
       };
@@ -1537,6 +1554,7 @@ in {
           "bluetooth"
           "network"
           "pulseaudio"
+          "battery"
           "cpu"
         ];
 
@@ -1612,6 +1630,19 @@ in {
           "on-click-right" = "${pkgs.pamixer}/bin/pamixer -t";
         };
 
+        battery = {
+          interval = 30;
+          states = {
+            warning = 30;
+            critical = 15;
+          };
+          format = "{icon}";
+          "format-full" = "󰁹";
+          "format-charging" = "󰂄";
+          "format-icons" = ["󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰂃"];
+          "tooltip-format" = "{capacity}% ({timeTo})";
+        };
+
         "group/tray-expander" = {
           orientation = "inherit";
           drawer = {
@@ -1669,9 +1700,18 @@ in {
 
       #cpu,
       #pulseaudio,
+      #battery,
       #custom-expand-icon {
         min-width: 12px;
         margin: 0 7.5px;
+      }
+
+      #battery.warning {
+        color: #ea9d34;
+      }
+
+      #battery.critical {
+        color: #b4637a;
       }
 
       #tray {
@@ -2652,7 +2692,7 @@ in
 
 ```bash
 # Mount the backup from your data SSD
-BACKUP=/mnt/entertainments/arch-backup-YYYYMMDD
+BACKUP=/tmp/arch-backup-YYYYMMDD
 
 # SSH keys
 cp -a "$BACKUP/ssh" ~/.ssh
@@ -2831,12 +2871,7 @@ nh os switch .
     sqlite
   ];
 
-  # Docker daemon
-  virtualisation.docker = {
-    enable = true;
-    enableOnBoot = true;
-    autoPrune.enable = true;
-  };
+  # Docker daemon (enabled per-host in sakura/default.nix)
 }
 ```
 
@@ -2940,7 +2975,7 @@ nh os switch .
 - [ ] Atuin syncs history to self-hosted server
 - [ ] tmux with all plugins and C-a prefix works
 - [ ] Walker app launcher opens with Super+Space
-- [ ] Monitor setup (DP-1 2560x1440@60) is correct
+- [ ] Monitor setup (eDP-1 1920x1080@60Hz, scale 1.5) is correct
 
 ---
 
@@ -2983,7 +3018,7 @@ nix profile list
 ## Troubleshooting
 
 ### LUKS not prompting for password at boot
-Ensure `boot.initrd.luks.devices.cryptroot` is set correctly in `hardware-configuration.nix`. The UUID must match your partition.
+Ensure `boot.initrd.luks.devices.root` is set correctly in `hardware-configuration.nix`. The UUID must match your partition.
 
 ### Hyprland won't start
 1. Check UWSM is installed: `uwsm check may-start -vv`
@@ -3000,11 +3035,12 @@ Ensure `boot.initrd.luks.devices.cryptroot` is set correctly in `hardware-config
 2. Ensure all required packages are installed (playerctl, pamixer, etc.)
 3. Try restarting: `systemctl --user restart waybar`
 
-### AMD GPU issues (RX 9060 XT)
+### AMD GPU issues (Renoir / Ryzen 5 PRO 4650U)
 1. Ensure `amdgpu` is in `boot.initrd.kernelModules`
 2. Check kernel messages: `dmesg | grep amdgpu`
 3. If screen tearing: add `env = WLR_DRM_NO_ATOMIC,1` to Hyprland env
-4. For RX 9060 XT (Navi 44), you may need kernel 6.12+; check `uname -r`
+4. For Renoir APU, ensure `amdgpu.sg_display=0` kernel param is set (already in config)
+5. If external monitor not detected over USB-C: check `ls /sys/class/drm/`
 
 ### Theme inconsistency
 1. Run `gsettings set org.gnome.desktop.interface gtk-theme 'rose-pine-dawn'`
