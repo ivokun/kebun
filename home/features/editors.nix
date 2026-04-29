@@ -150,7 +150,6 @@
     enable = true;
 
     plugins = with pkgs.tmuxPlugins; [
-      tmux-sensible
       tmux-resurrect
       tmux-continuum
       tmux-battery
