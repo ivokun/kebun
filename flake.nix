@@ -22,7 +22,7 @@
 
     # Walker app launcher
     walker = {
-      url = "github:abenz957/walker";
+      url = "github:abenz1267/walker";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
