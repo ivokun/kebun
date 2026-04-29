@@ -1,0 +1,25 @@
+# Nix build outputs
+result
+result-*
+
+# Nix development shells
+.direnv/
+
+# Disk images
+*.qcow2
+*.img
+*.vmdk
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
