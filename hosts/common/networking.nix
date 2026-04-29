@@ -15,8 +15,6 @@
       allowedTCPPorts = [22 80 443];
       allowedUDPPorts = [];
     };
-
-    wireless.enable = false;
   };
 
   # Tailscale
