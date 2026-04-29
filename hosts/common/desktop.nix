@@ -60,13 +60,8 @@
   };
 
   # ─── Display-related services ───
-  services = {
-    # SwayOSD (on-screen display for volume/brightness)
-    swayosd.enable = true;
-
-    # GVfs for virtual filesystems (trash, mtp, etc.)
-    gvfs.enable = true;
-  };
+  # GVfs for virtual filesystems (trash, mtp, etc.)
+  services.gvfs.enable = true;
 
   # ─── Desktop packages (system-level) ───
   environment.systemPackages = with pkgs; [
@@ -111,6 +106,9 @@
 
     # Laptop power
     acpi
+
+    # On-screen display for volume/brightness
+    swayosd
   ];
 
   # ─── Bluetooth ───
