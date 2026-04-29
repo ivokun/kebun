@@ -25,9 +25,6 @@
     openFirewall = true;
   };
 
-  # NFS client
-  services.nfs.client.enable = true;
-
   # DNS
   services.resolved = {
     enable = true;
