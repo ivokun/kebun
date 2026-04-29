@@ -24,7 +24,6 @@
 
   # ─── Polkit ───
   security.polkit.enable = true;
-  environment.systemPackages = with pkgs; [polkit_gnome];
 
   # ─── Dconf (needed for many GTK apps) ───
   programs.dconf.enable = true;
@@ -92,6 +91,9 @@
 
     # Polkit authentication agent
     polkit_gnome
+
+    # Polkit (already enabled above, but ensure package is available)
+    polkit
 
     # Audio controls
     pamixer
