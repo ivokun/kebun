@@ -30,21 +30,10 @@
     bright-white = "#575279";
   };
 in {
-  # ─── GTK Theme ───
-  rose-pine = {
-    enable = true;
-    flavor = "dawn";
-    gtk.enable = true;
-    gtk.iconTheme = "rose-pine";
-    cursor.enable = true;
-    cursor.package = pkgs.rose-pine-cursor;
-    cursor.name = "rose-pine-dawn-cursor";
-  };
-
-  # ─── Cursor size ───
+  # ─── Cursor ───
   home.pointerCursor = {
-    name = "rose-pine-dawn-cursor";
-    package = pkgs.rose-pine-cursor;
+    name = "rose-pine-hyprcursor";
+    package = pkgs.rose-pine-hyprcursor;
     size = 24;
     gtk.enable = true;
     x11.enable = true;
@@ -56,7 +45,7 @@ in {
       color-scheme = "prefer-light";
       gtk-theme = "rose-pine-dawn";
       icon-theme = "Yaru-blue";
-      cursor-theme = "rose-pine-dawn-cursor";
+      cursor-theme = "rose-pine-hyprcursor";
       cursor-size = 24;
       font-name = "CaskaydiaMono Nerd Font 12";
     };
@@ -74,8 +63,8 @@ in {
       package = pkgs.yaru-theme;
     };
     cursorTheme = {
-      name = "rose-pine-dawn-cursor";
-      package = pkgs.rose-pine-cursor;
+      name = "rose-pine-hyprcursor";
+      package = pkgs.rose-pine-hyprcursor;
       size = 24;
     };
     font = {

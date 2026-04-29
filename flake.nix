@@ -26,12 +26,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Rose Pine theme for Nix
-    rose-pine = {
-      url = "github:rose-pine/nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # Nix-index database for command-not-found
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
@@ -46,7 +40,6 @@
     hyprland,
     nh,
     walker,
-    rose-pine,
     nix-index-database,
     ...
   } @ inputs: let
@@ -80,7 +73,6 @@
             ./home/features/editors.nix
             ./home/features/theme-rose-pine.nix
             ./home/features/fcitx5.nix
-            rose-pine.homeManagerModules.rose-pine
           ];
         };
       }
