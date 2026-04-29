@@ -8,6 +8,8 @@
 }: let
   scripts = import ../packages/scripts {inherit pkgs;};
 in {
+  nixpkgs.config.allowUnfree = true;
+
   home = {
     username = username;
     homeDirectory = "/home/${username}";
