@@ -44,7 +44,7 @@ in {
     tailscale
 
     # Security
-    bitwarden
+    bitwarden-desktop
     age
 
     # Productivity
