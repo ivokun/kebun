@@ -6,7 +6,7 @@
   username,
   ...
 }: let
-  scripts = import ../../packages/scripts {inherit pkgs;};
+  scripts = import ../packages/scripts {inherit pkgs;};
 in {
   home = {
     username = username;
