@@ -62,6 +62,9 @@
 
   # ─── Desktop packages (system-level) ───
   environment.systemPackages = with pkgs; [
+    # UWSM (explicitly ensure uwsm is in PATH for .zprofile)
+    uwsm
+
     # Wayland essentials
     wl-clipboard
     grim

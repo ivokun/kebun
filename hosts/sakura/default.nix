@@ -17,6 +17,29 @@
   boot.initrd.kernelModules = ["amdgpu"];
   services.xserver.videoDrivers = ["amdgpu"];
 
+  # ─── LUKS TPM2 auto-unlock ───
+  # Use systemd initrd so crypttab supports tpm2-device=auto
+  boot.initrd.systemd.enable = true;
+
+  boot.initrd.luks.devices."luks-5525027e-a087-470e-a530-3ab692f4a14c" = {
+    device = "/dev/disk/by-uuid/5525027e-a087-470e-a530-3ab692f4a14c";
+    crypttabExtraOpts = [ "tpm2-device=auto" "tpm2-measure-pcr=yes" ];
+  };
+
+  boot.initrd.luks.devices."luks-e1906a9e-c934-4352-bfea-02620b6abd80" = {
+    device = "/dev/disk/by-uuid/e1906a9e-c934-4352-bfea-02620b6abd80";
+    crypttabExtraOpts = [ "tpm2-device=auto" ];
+  };
+
+  # TPM2 kernel modules for initrd
+  boot.initrd.availableKernelModules = [ "tpm_crb" "tpm_tis" ];
+
+  # TPM2 userspace support
+  security.tpm2 = {
+    enable = true;
+    pkcs11.enable = true;
+  };
+
   hardware = {
     graphics = {
       enable = true;

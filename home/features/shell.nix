@@ -210,6 +210,13 @@
     enable = true;
   };
 
+  # ─── Auto-start Hyprland on TTY login ───
+  home.file.".zprofile".text = ''
+    if [ -z "$WAYLAND_DISPLAY" ] && [ "$XDG_VTNR" = "1" ]; then
+      exec uwsm start hyprland-uwsm.desktop
+    fi
+  '';
+
   # ─── XCompose custom sequences ───
   home.file.".XCompose".text = ''
     # Custom compose sequences
