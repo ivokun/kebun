@@ -17,7 +17,6 @@
   xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [
-      xdg-desktop-portal-hyprland
       xdg-desktop-portal-gtk
     ];
   };
@@ -36,7 +35,7 @@
       noto-fonts
       noto-fonts-cjk-sans
       noto-fonts-cjk-serif
-      noto-fonts-emoji
+      noto-fonts-color-emoji
     ];
 
     fontconfig = {
@@ -50,15 +49,13 @@
 
   # ─── Japanese Input (fcitx5 + Mozc) ───
   i18n.inputMethod = {
-    enabled = "fcitx5";
+    enable = true;
+    type = "fcitx5";
     fcitx5 = {
       waylandFrontend = true;
-      addons = with pkgs.fcitx5-addons; [
-        mozc
-      ];
+      addons = with pkgs; [ fcitx5-mozc ];
     };
   };
-
   # ─── Display-related services ───
   # GVfs for virtual filesystems (trash, mtp, etc.)
   services.gvfs.enable = true;
