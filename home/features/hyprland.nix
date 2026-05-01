@@ -10,8 +10,8 @@
   activeBorderColor = "rgb(56949f)";
   inactiveBorderColor = "rgba(595959aa)";
 
-  # Paths
-  wallpaper = "${config.home.homeDirectory}/.config/omarchy/current/background";
+  # Rose Pine Dawn background color (fallback when no wallpaper image)
+  bgColor = "rgb(250,244,237)";
 in {
   # ─── Hyprland Configuration ───
   wayland.windowManager.hyprland = {
@@ -168,7 +168,6 @@ in {
 
       # ─── Dwindle Layout ───
       dwindle = {
-        pseudotile = true;
         preserve_split = true;
         force_split = 2;
       };
@@ -183,6 +182,7 @@ in {
         focus_on_activate = true;
         anr_missed_pings = 3;
         on_focus_under_fullscreen = 1;
+        background_color = bgColor;
       };
 
       # ─── Cursor ───
@@ -242,7 +242,7 @@ in {
 
       bindd = [
         # ─── Application Launchers ───
-        "SUPER, RETURN, Terminal, exec, $terminal --dir=\"$(${pkgs.zoxide}/bin/zoxide query --interactive || pwd)\""
+        "SUPER, RETURN, Terminal, exec, $terminal --working-directory=\"$(${pkgs.zoxide}/bin/zoxide query --interactive || pwd)\""
         "SUPER SHIFT, F, File manager, exec, uwsm app -- nautilus --new-window"
         "SUPER, B, Browser, exec, $browser"
         "SUPER SHIFT, B, Browser (private), exec, $browser --private"
@@ -260,7 +260,7 @@ in {
 
         # ─── Window Management ───
         "SUPER, W, Close window, killactive,"
-        "SUPER, J, Toggle window split, togglesplit,"
+        "SUPER, J, Toggle window split, layoutmsg, togglesplit"
         "SUPER, P, Pseudo window, pseudo,"
         "SUPER, T, Toggle window floating/tiling, togglefloating,"
         "SUPER, F, Full screen, fullscreen, 0"
@@ -353,9 +353,7 @@ in {
         "SUPER CTRL, RIGHT, Move grouped window focus right, changegroupactive, f"
 
         # ─── Clipboard ───
-        "SUPER, C, Universal copy, sendshortcut, CTRL, Insert,"
-        "SUPER, V, Universal paste, sendshortcut, SHIFT, Insert,"
-        "SUPER, X, Universal cut, sendshortcut, CTRL, X,"
+        
         "SUPER CTRL, V, Clipboard manager, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker -m clipboard"
 
         # ─── Mouse Bindings ───
@@ -417,18 +415,24 @@ in {
         "SUPER CTRL, T, Activity, exec, uwsm app -- ${pkgs.alacritty}/bin/alacritty -e btop"
       ];
 
+      bind = [
+        "SUPER, C, sendshortcut, CTRL Insert"
+        "SUPER, V, sendshortcut, SHIFT Insert"
+        "SUPER, X, sendshortcut, CTRL X"
+      ];
+
       bindm = [
-        "SUPER, mouse:272, Move window, movewindow"
-        "SUPER, mouse:273, Resize window, resizewindow"
+        "SUPER, mouse:272, movewindow"
+        "SUPER, mouse:273, resizewindow"
       ];
 
       # ─── Exec-once (Autostart) ───
       exec-once = [
-        "uwsm app -- hypridle"
+        "uwsm app -- mako"
         "uwsm app -- mako"
         "uwsm app -- waybar"
         "uwsm app -- fcitx5"
-        "uwsm app -- swaybg -i ${wallpaper} -m fill"
+        "uwsm app -- swaybg -c '#faf4ed' -m solid_color"
         "uwsm app -- swayosd-server"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
         "systemctl --user import-environment $(env | cut -d'=' -f 1)"
@@ -477,7 +481,6 @@ in {
       background = {
         monitor = "";
         color = "rgba(250,244,237, 1.0)";
-        path = wallpaper;
         blur_passes = 3;
       };
 
