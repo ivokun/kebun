@@ -7,7 +7,7 @@
 }: {
   # ─── Neovim ───
   # LazyVim is best managed outside home-manager since it manages its own plugins.
-  # Just ensure nvim is installed and the config directory is linked.
+  # We source the full LazyVim starter + custom configs from the repo.
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -15,33 +15,10 @@
     viAlias = true;
   };
 
-  # ─── IMPORTANT: Neovim memory watchdog ───
-  # The current Arch setup has critical memory watchdog autocmds that prevent
-  # nvim from consuming 6-21GB RAM and crashing the system.
-  # After copying your LazyVim config from backup, add this to:
-  #   ~/.config/nvim/lua/config/autocmds.lua
-  #
-  # -- Memory watchdog
-  # vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
-  #   callback = function()
-  #     local mem = collectgarbage("count") / 1024
-  #     if mem > 2000 then
-  #       -- Disable treesitter on large files / JSON
-  #       vim.cmd("TSDisable highlight")
-  #       vim.cmd("TSDisable indent")
-  #       collectgarbage("collect")
-  #     elseif mem > 1000 then
-  #       vim.notify("Memory warning: " .. math.floor(mem) .. "MB", vim.log.levels.WARN)
-  #     end
-  #   end,
-  # })
-  #
-  # -- Force GC on buffer delete
-  # vim.api.nvim_create_autocmd("BufDelete", {
-  #   callback = function()
-  #     collectgarbage("collect")
-  #   end,
-  # })
+  home.file.".config/nvim" = {
+    source = ../nvim;
+    recursive = true;
+  };
 
   # ─── btop Rose Pine Dawn theme ───
   # After installing, run: btop --config
@@ -153,6 +130,9 @@
       resurrect
       continuum
       rose-pine
+      yank
+      battery
+      vim-tmux-navigator
     ];
 
     extraConfig = ''
@@ -249,7 +229,7 @@
       set-option -g status-left-length 80
       set-option -g status-right-length 80
       set-option -g status-left "#[bg=colour241,fg=colour248] #S #[bg=#EFE9E2,fg=colour241]"
-      set-option -g status-right "#[bg=#EFE9E2,fg=colour239]#[bg=colour239,fg=colour246] %Y-%m-%d  %H:%M "
+      set-option -g status-right "#[bg=#EFE9E2,fg=colour239]#[bg=colour239,fg=colour246] %Y-%m-%d  %H:%M #{battery_color_fg}#[bg=colour239]#{battery_color_bg}#[fg=colour223] #{battery_percentage} "
     '';
   };
 }

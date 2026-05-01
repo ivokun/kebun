@@ -13,6 +13,7 @@
       theme = "refined";
       plugins = [
         "git"
+        "you-should-use"
       ];
     };
 
@@ -115,6 +116,11 @@
       cd() {
         builtin cd "$@" && echo "📍 $(pwd)"
       }
+
+      # Activate mise
+      if command -v mise &> /dev/null; then
+        eval "$(mise activate zsh)"
+      fi
     '';
   };
 
@@ -227,5 +233,22 @@
 
     # Email
     <Multi_key> <space> <e> : "salahuddin.mi@gmail.com"
+  '';
+
+  # ─── Oh-my-zsh custom plugins ───
+  home.file.".oh-my-zsh/custom/plugins/you-should-use".source = "${pkgs.zsh-you-should-use}/share/zsh-you-should-use";
+
+  # ─── mise config ───
+  home.file.".config/mise/config.toml".text = ''
+    [tools]
+    aws = "latest"
+    bun = "latest"
+    go = "latest"
+    node = "latest"
+    pnpm = "9.5.0"
+    uv = "latest"
+
+    [settings]
+    idiomatic_version_file_enable_tools = ["python"]
   '';
 }
