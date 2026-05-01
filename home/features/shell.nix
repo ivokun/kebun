@@ -13,7 +13,6 @@
       theme = "refined";
       plugins = [
         "git"
-        "you-should-use"
       ];
     };
 
@@ -121,6 +120,9 @@
       if command -v mise &> /dev/null; then
         eval "$(mise activate zsh)"
       fi
+
+      # Source you-should-use plugin
+      source ${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use/you-should-use.plugin.zsh
     '';
   };
 
@@ -234,9 +236,6 @@
     # Email
     <Multi_key> <space> <e> : "salahuddin.mi@gmail.com"
   '';
-
-  # ─── Oh-my-zsh custom plugins ───
-  home.file.".oh-my-zsh/custom/plugins/you-should-use".source = "${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use";
 
   # ─── mise config ───
   home.file.".config/mise/config.toml".text = ''
