@@ -266,6 +266,8 @@ in {
         "SUPER, F, Full screen, fullscreen, 0"
         "SUPER CTRL, F, Tiled full screen, fullscreenstate, 0 2"
         "SUPER ALT, F, Full width, fullscreen, 1"
+        "SUPER, O, Pop window, exec, window-pop"
+        "SUPER, L, Toggle workspace layout, exec, ${pkgs.hyprland}/bin/hyprctl dispatch layoutmsg, orientationnext"
 
         # ─── Focus Movement ───
         "SUPER, LEFT, Move window focus left, movefocus, l"

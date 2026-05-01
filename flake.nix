@@ -73,6 +73,10 @@
             ./home/features/editors.nix
             ./home/features/theme-rose-pine.nix
             ./home/features/fcitx5.nix
+            ./home/features/btop.nix
+            ./home/features/fastfetch.nix
+            ./home/features/ghostty.nix
+            ./home/features/kitty.nix
           ];
         };
       }

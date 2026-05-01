@@ -20,6 +20,9 @@
         modules-left = ["hyprland/workspaces"];
         modules-center = ["clock"];
         modules-right = [
+          "custom/screenrecording"
+          "custom/idle"
+          "custom/notification-silencing"
           "group/tray-expander"
           "bluetooth"
           "network"
@@ -131,6 +134,48 @@
           "icon-size" = 12;
           spacing = 12;
         };
+
+        "custom/screenrecording" = {
+          exec = "echo ''";
+          interval = 2;
+          return-type = "json";
+          format = "{}";
+          exec-if = "pgrep -x wl-screenrec";
+          format-icons = {
+            "recording" = " ";
+          };
+          tooltip = true;
+          "tooltip-format" = "Screen recording active";
+          class = "screenrecording";
+        };
+
+        "custom/idle" = {
+          exec = "echo ''";
+          interval = 2;
+          return-type = "json";
+          format = "{}";
+          exec-if = "test -f /tmp/hypridle-disabled";
+          format-icons = {
+            "disabled" = "󰈈 ";
+          };
+          tooltip = true;
+          "tooltip-format" = "Idle lock disabled";
+          class = "idle-disabled";
+        };
+
+        "custom/notification-silencing" = {
+          exec = "echo ''";
+          interval = 2;
+          return-type = "json";
+          format = "{}";
+          exec-if = "makoctl mode | grep -q do-not-disturb";
+          format-icons = {
+            "dnd" = "󰂛 ";
+          };
+          tooltip = true;
+          "tooltip-format" = "Do not disturb";
+          class = "dnd";
+        };
       };
     };
 
@@ -202,6 +247,21 @@
 
       #clock {
         margin-left: 5px;
+      }
+
+      #custom-screenrecording {
+        color: #b4637a;
+        margin-right: 10px;
+      }
+
+      #custom-idle {
+        color: #ea9d34;
+        margin-right: 10px;
+      }
+
+      #custom-notification-silencing {
+        color: #907aa9;
+        margin-right: 10px;
       }
 
       .hidden {

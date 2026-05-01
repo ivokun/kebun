@@ -95,15 +95,60 @@ in {
     file
     which
 
+    # Image/media tools
+    imagemagick
+    ffmpegthumbnailer
+    satty
+    pinta
+    mpv
+
+    # Office/productivity
+    libreoffice-fresh
+    evince
+
+    # System utilities
+    gnome-keyring
+    libsecret
+    plocate
+    socat
+    xmlstarlet
+    exfatprogs
+    dosfstools
+
+    # Security
+    _1password-gui
+    _1password-cli
+
     # Custom scripts
   ] ++ (with scripts; [
     screenshot
+    screenshot-clipboard
     volume-toggle
     brightness-toggle
     lock-screen
     toggle-waybar
     toggle-nightlight
+    restart-waybar
+    restart-walker
+    color-picker
+    window-pop
+    check-updates
+    screenrecord
+    audio-switch
   ]);
+
+  # ─── Browser flags for Wayland ───
+  home.file."config/brave-flags.conf".text = ''
+    --ozone-platform=wayland
+    --enable-features=WaylandWindowDecorations
+    --enable-wayland-ime
+  '';
+
+  home.file."config/chromium-flags.conf".text = ''
+    --ozone-platform=wayland
+    --enable-features=WaylandWindowDecorations
+    --enable-wayland-ime
+  '';
 
   # ─── xdg-mime defaults ───
   xdg.mimeApps = {
