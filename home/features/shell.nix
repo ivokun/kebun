@@ -236,7 +236,7 @@
   '';
 
   # ─── Oh-my-zsh custom plugins ───
-  home.file.".oh-my-zsh/custom/plugins/you-should-use".source = "${pkgs.zsh-you-should-use}/share/zsh-you-should-use";
+  home.file.".oh-my-zsh/custom/plugins/you-should-use".source = "${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use";
 
   # ─── mise config ───
   home.file.".config/mise/config.toml".text = ''
