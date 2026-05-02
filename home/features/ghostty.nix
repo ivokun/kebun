@@ -45,8 +45,8 @@
       window-padding-y = 14;
 
       # Shell
-      shell-integration = "zsh";
-      command = "${pkgs.zsh}/bin/zsh -l";
+      shell-integration = "fish";
+      command = "${pkgs.fish}/bin/fish -l";
 
       # Misc
       confirm-close-surface = false;

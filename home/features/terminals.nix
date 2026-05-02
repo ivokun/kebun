@@ -12,21 +12,43 @@
       env.TERM = "xterm-256color";
 
       font = {
-        normal = {family = "CaskaydiaMono Nerd Font"; style = "Regular";};        bold = {family = "CaskaydiaMono Nerd Font"; style = "Bold";};        italic = {family = "CaskaydiaMono Nerd Font"; style = "Italic";};        size = 12.5;
+        normal = {
+          family = "CaskaydiaMono Nerd Font";
+          style = "Regular";
+        };
+        bold = {
+          family = "CaskaydiaMono Nerd Font";
+          style = "Bold";
+        };
+        italic = {
+          family = "CaskaydiaMono Nerd Font";
+          style = "Italic";
+        };
+        size = 12.5;
       };
 
       window = {
-        padding = {x = 5; y = 5;};
+        padding = {
+          x = 5;
+          y = 5;
+        };
         decorations = "None";
       };
 
       keyboard.bindings = [
-        {key = "F11"; action = "ToggleFullscreen";}
-        {key = "Return"; mods = "Shift"; chars = "\u001b[13;2u";}
+        {
+          key = "F11";
+          action = "ToggleFullscreen";
+        }
+        {
+          key = "Return";
+          mods = "Shift";
+          chars = "\u001b[13;2u";
+        }
       ];
 
       terminal.shell = {
-        program = "${pkgs.zsh}/bin/zsh";
+        program = "${pkgs.fish}/bin/fish";
         args = ["-l"];
       };
 

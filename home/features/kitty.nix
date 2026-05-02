@@ -48,7 +48,7 @@
       background_opacity = "0.97";
 
       # Shell
-      shell = "${pkgs.zsh}/bin/zsh -l";
+      shell = "${pkgs.fish}/bin/fish -l";
 
       # Scrollback
       scrollback_lines = 100000;

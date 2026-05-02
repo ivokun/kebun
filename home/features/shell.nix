@@ -10,7 +10,7 @@
 
     oh-my-zsh = {
       enable = true;
-      theme = "";  # Starship handles the prompt
+      theme = ""; # Starship handles the prompt
       plugins = [
         "git"
       ];
@@ -129,6 +129,7 @@
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
+    enableFishIntegration = true;
 
     settings = {
       add_newline = true;
@@ -157,6 +158,7 @@
   programs.atuin = {
     enable = true;
     enableZshIntegration = true;
+    enableFishIntegration = true;
     settings = {
       auto_sync = true;
       sync_address = "https://nuc01.tetra-banded.ts.net/atuin/";
@@ -169,17 +171,20 @@
   programs.zoxide = {
     enable = true;
     enableZshIntegration = true;
+    enableFishIntegration = true;
   };
 
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
+    enableFishIntegration = true;
     nix-direnv.enable = true;
   };
 
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
+    enableFishIntegration = true;
   };
 
   programs.eza = {

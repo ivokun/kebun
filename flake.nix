@@ -70,6 +70,7 @@
             ./home/features/waybar.nix
             ./home/features/terminals.nix
             ./home/features/shell.nix
+            ./home/features/fish.nix
             ./home/features/editors.nix
             ./home/features/theme-rose-pine.nix
             ./home/features/fcitx5.nix
@@ -100,9 +101,12 @@
               nixpkgs.overlays = [
                 (final: prev: {
                   deno = prev.deno.overrideAttrs (old: {
-                    checkFlags = (old.checkFlags or []) ++ [
-                      "--skip" "uv_compat::tests::tty_reset_mode_restores_termios"
-                    ];
+                    checkFlags =
+                      (old.checkFlags or [])
+                      ++ [
+                        "--skip"
+                        "uv_compat::tests::tty_reset_mode_restores_termios"
+                      ];
                   });
                 })
               ];

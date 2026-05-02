@@ -78,7 +78,7 @@
       set -g @resurrect-strategy-nvim session
 
       # General Settings
-      set-option -g default-shell ${pkgs.zsh}/bin/zsh
+      set-option -g default-shell ${pkgs.fish}/bin/fish
       set -g default-terminal "tmux-256color"
       set -ag terminal-overrides ",*:RGB"
       set -g history-limit 50000
