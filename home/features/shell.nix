@@ -133,11 +133,11 @@
     settings = {
       add_newline = true;
       command_timeout = 200;
-      format = "$directory$git_branch$character";
+      format = "[$directory$git_branch](bold cyan)\n$character";
 
       character = {
-        error_symbol = "> ";
-        success_symbol = "> ";
+        error_symbol = "[>](bold cyan) ";
+        success_symbol = "[>](bold cyan) ";
       };
 
       directory = {
@@ -150,7 +150,6 @@
 
       git_branch = {
         format = "git:[$branch]($style) ";
-        style = "bold cyan";
       };
     };
   };
