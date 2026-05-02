@@ -80,7 +80,45 @@ local plugins = {
 
   {
     "nvim-treesitter/nvim-treesitter",
+    init = function()
+      -- Force compilation from source on NixOS (prebuilt binaries
+      -- are linked for generic Linux and fail with stub-ld).
+      require("nvim-treesitter.install").prefer_git = true
+    end,
     opts = { ensure_installed = { "git_config", "gitcommit", "git_rebase", "gitignore", "gitattributes" } },
+  },
+
+  {
+    "rose-pine/neovim",
+    name = "rose-pine",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      vim.o.background = "light"
+      vim.cmd("colorscheme rose-pine-dawn")
+    end,
+  },
+
+  {
+    "folke/snacks.nvim",
+    opts = function(_, opts)
+      local hostname = vim.fn.hostname()
+      local header = hostname
+
+      -- Try figlet for ASCII art (falls back to plain text if missing)
+      local handle = io.popen("figlet -f slant " .. hostname .. " 2>/dev/null")
+      if handle then
+        local result = handle:read("*a")
+        handle:close()
+        if result and result:match("%S") then
+          header = result
+        end
+      end
+
+      opts.dashboard = opts.dashboard or {}
+      opts.dashboard.preset = opts.dashboard.preset or {}
+      opts.dashboard.preset.header = header
+    end,
   },
 }
 

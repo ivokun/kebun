@@ -9,6 +9,8 @@
     gnumake
     cmake
     pkg-config
+    tree-sitter
+    figlet
 
     go
     nodejs
