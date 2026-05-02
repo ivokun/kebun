@@ -10,7 +10,7 @@
 
     oh-my-zsh = {
       enable = true;
-      theme = "refined";
+      theme = "";  # Starship handles the prompt
       plugins = [
         "git"
       ];
@@ -133,23 +133,23 @@
     settings = {
       add_newline = true;
       command_timeout = 200;
-      format = "[$directory$git_branch](bold cyan)\n[$character](bold cyan)";
+      format = "$directory$git_branch\n$character";
 
       character = {
-        error_symbol = "> ";
-        success_symbol = "> ";
+        error_symbol = "[>](bold red) ";
+        success_symbol = "[>](bold cyan) ";
       };
 
       directory = {
         truncation_length = 2;
         truncation_symbol = "…/";
         repo_root_style = "bold cyan";
-        repo_root_format = "[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style)";
-        format = "[$path]($style)";
+        repo_root_format = "[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) ";
+        format = "[$path](bold cyan) ";
       };
 
       git_branch = {
-        format = " git:[$branch]($style)";
+        format = "([$branch](bold cyan)) ";
       };
     };
   };
