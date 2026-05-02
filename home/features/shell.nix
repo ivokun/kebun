@@ -133,23 +133,23 @@
     settings = {
       add_newline = true;
       command_timeout = 200;
-      format = "[$directory$git_branch](bold cyan)\n$character";
+      format = "[$directory$git_branch](bold cyan)\n[$character](bold cyan)";
 
       character = {
-        error_symbol = "[>](bold cyan) ";
-        success_symbol = "[>](bold cyan) ";
+        error_symbol = "> ";
+        success_symbol = "> ";
       };
 
       directory = {
         truncation_length = 2;
         truncation_symbol = "…/";
         repo_root_style = "bold cyan";
-        repo_root_format = "[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) ";
-        format = "[$path]($style) ";
+        repo_root_format = "[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style)";
+        format = "[$path]($style)";
       };
 
       git_branch = {
-        format = "git:[$branch]($style) ";
+        format = " git:[$branch]($style)";
       };
     };
   };
