@@ -97,6 +97,15 @@
               home-manager.extraSpecialArgs = {inherit inputs username hostname system;};
               home-manager.useUserPackages = true;
               home-manager.backupFileExtension = "hm-backup";
+              nixpkgs.overlays = [
+                (final: prev: {
+                  deno = prev.deno.overrideAttrs (old: {
+                    checkFlags = (old.checkFlags or []) ++ [
+                      "--skip" "uv_compat::tests::tty_reset_mode_restores_termios"
+                    ];
+                  });
+                })
+              ];
             }
           ]
           ++ mkHomeManagerModules cfg;
