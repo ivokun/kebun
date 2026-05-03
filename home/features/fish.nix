@@ -90,7 +90,7 @@
         set desktop_file $desktop_dir/$name.desktop
         echo "[Desktop Entry]" > $desktop_file
         echo "Name=$name" >> $desktop_file
-        echo "Exec=brave --app=$url" >> $desktop_file
+        echo "Exec=chromium --app=$url" >> $desktop_file
         echo "Type=Application" >> $desktop_file
         echo "Categories=Network;WebBrowser;" >> $desktop_file
         if test -n "$icon"

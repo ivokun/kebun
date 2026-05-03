@@ -59,6 +59,7 @@ in {
 
     # Browser
     brave
+    chromium
 
     # Multimedia
     playerctl
@@ -145,19 +146,23 @@ in {
 
   home.file."config/chromium-flags.conf".text = ''
     --ozone-platform=wayland
-    --enable-features=WaylandWindowDecorations
+    --ozone-platform-hint=wayland
+    --enable-features=WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation
     --enable-wayland-ime
+    --oauth2-client-id=77185425430.apps.googleusercontent.com
+    --oauth2-client-secret=OTJgUOQcT7lO7GsGZq2G4IlT
+    --disable-features=WaylandWpColorManagerV1
   '';
 
   # ─── xdg-mime defaults ───
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
-      "text/html" = "brave-browser.desktop";
+      "text/html" = "chromium-browser.desktop";
       "text/plain" = "nvim.desktop";
-      "x-scheme-handler/http" = "brave-browser.desktop";
-      "x-scheme-handler/https" = "brave-browser.desktop";
-      "x-scheme-handler/mailto" = "brave-browser.desktop";
+      "x-scheme-handler/http" = "chromium-browser.desktop";
+      "x-scheme-handler/https" = "chromium-browser.desktop";
+      "x-scheme-handler/mailto" = "chromium-browser.desktop";
     };
   };
 

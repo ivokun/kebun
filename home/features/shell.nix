@@ -87,7 +87,7 @@
         cat > ~/.local/share/applications/"$name".desktop << EOF
       [Desktop Entry]
       Name=$name
-      Exec=brave --app="$url"
+      Exec=chromium --app="$url"
       Type=Application
       Icon=$icon
       Categories=Network;WebBrowser;
