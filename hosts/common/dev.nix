@@ -24,5 +24,7 @@
 
     postgresql
     sqlite
+
+    opencode
   ];
 }
