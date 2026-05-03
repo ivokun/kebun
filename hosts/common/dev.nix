@@ -26,5 +26,9 @@
     sqlite
 
     opencode
+    awscli2
+    bun
+    pnpm_9
+    uv
   ];
 }

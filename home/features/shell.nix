@@ -116,11 +116,6 @@
         builtin cd "$@" && echo "📍 $(pwd)"
       }
 
-      # Activate mise
-      if command -v mise &> /dev/null; then
-        eval "$(mise activate zsh)"
-      fi
-
       # Source you-should-use plugin
       source ${pkgs.zsh-you-should-use}/share/zsh/plugins/you-should-use/you-should-use.plugin.zsh
     '';
@@ -226,17 +221,4 @@
     <Multi_key> <space> <e> : "salahuddin.mi@gmail.com"
   '';
 
-  # ─── mise config ───
-  home.file.".config/mise/config.toml".text = ''
-    [tools]
-    aws = "latest"
-    bun = "latest"
-    go = "latest"
-    node = "latest"
-    pnpm = "9.5.0"
-    uv = "latest"
-
-    [settings]
-    idiomatic_version_file_enable_tools = ["python"]
-  '';
 }

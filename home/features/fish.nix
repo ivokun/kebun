@@ -26,7 +26,6 @@
     '';
 
     interactiveShellInit = ''
-      mise activate fish | source
       set -g fish_greeting
     '';
 

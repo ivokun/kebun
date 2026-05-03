@@ -67,7 +67,6 @@ in {
     imv
 
     # Dev tools
-    mise
     gum
     tree
 
