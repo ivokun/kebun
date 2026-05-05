@@ -69,7 +69,7 @@
     ${pkgs.hyprland}/bin/hyprctl dispatch centerwindow
   '';
 
-  # Check for flake updates
+  # Check for flake updates (interactive)
   check-updates = pkgs.writeShellScriptBin "check-updates" ''
     echo "Checking flake inputs for updates..."
     cd ~/Documents/dev/kebun
@@ -81,6 +81,48 @@
     '
     echo ""
     echo "To update: nix flake update"
+  '';
+
+  # Waybar module: show icon when flake inputs have updates
+  check-waybar-updates = pkgs.writeShellScriptBin "check-waybar-updates" ''
+    set -euo pipefail
+
+    FLAKE_DIR="$HOME/Documents/dev/kebun"
+    if [ ! -d "$FLAKE_DIR" ]; then
+      echo '{"text":"","class":"","alt":""}'
+      exit 0
+    fi
+
+    cd "$FLAKE_DIR"
+
+    # Check if any input is outdated by comparing locked rev with latest
+    # nix flake metadata --json shows locked refs; if they differ from remote, updates exist
+    OUTDATED=$(${pkgs.nix}/bin/nix flake metadata --json 2>/dev/null | ${pkgs.jq}/bin/jq -r '
+      .locks.nodes.root.inputs[] as $input |
+      .locks.nodes[$input] |
+      select(.locked) |
+      select(.locked.type == "github" or .locked.type == "gitlab" or .locked.type == "sourcehut") |
+      .locked.owner + "/" + .locked.repo + ":" + (.locked.rev // "")
+    ' | while read -r line; do
+      owner_repo="''${line%:*}"
+      locked_rev="''${line#*:}"
+      [ -z "$locked_rev" ] && continue
+
+      # Fetch latest rev from GitHub API (default branch)
+      latest_rev=$(${pkgs.curl}/bin/curl -s "https://api.github.com/repos/$owner_repo/commits/HEAD" | ${pkgs.jq}/bin/jq -r '.sha // empty')
+      [ -z "$latest_rev" ] && continue
+
+      if [ "$locked_rev" != "$latest_rev" ]; then
+        echo "outdated"
+        break
+      fi
+    done)
+
+    if [ "$OUTDATED" = "outdated" ]; then
+      echo '{"text":"󰏗 ","class":"updates","alt":"updates"}'
+    else
+      echo '{"text":"","class":"","alt":""}'
+    fi
   '';
 
   # Screen recording with wl-screenrec

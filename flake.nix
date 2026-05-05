@@ -57,6 +57,7 @@
       ./hosts/common/dev.nix
       ./hosts/common/networking.nix
       ./hosts/common/users.nix
+      ./hosts/common/printing.nix
       nix-index-database.nixosModules.nix-index
     ];
 

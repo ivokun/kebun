@@ -20,6 +20,7 @@
         modules-left = ["hyprland/workspaces"];
         modules-center = ["clock"];
         modules-right = [
+          "custom/updates"
           "custom/screenrecording"
           "custom/idle"
           "custom/notification-silencing"
@@ -176,6 +177,20 @@
           "tooltip-format" = "Do not disturb";
           class = "dnd";
         };
+
+        "custom/updates" = {
+          exec = "check-waybar-updates";
+          interval = 3600;
+          return-type = "json";
+          format = "{}";
+          format-icons = {
+            "updates" = "󰏗 ";
+          };
+          tooltip = true;
+          "tooltip-format" = "NixOS flake updates available";
+          "on-click" = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e check-updates";
+          class = "updates";
+        };
       };
     };
 
@@ -261,6 +276,11 @@
 
       #custom-notification-silencing {
         color: #907aa9;
+        margin-right: 10px;
+      }
+
+      #custom-updates {
+        color: #286983;
         margin-right: 10px;
       }
 
