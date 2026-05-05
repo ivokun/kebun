@@ -62,23 +62,35 @@
     enable = true;
 
     plugins = with pkgs.tmuxPlugins; [
-      resurrect
-      continuum
-      rose-pine
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          set -g @resurrect-capture-pane-contents on
+          set -g @resurrect-strategy-nvim session
+        '';
+      }
+      {
+        plugin = continuum;
+        extraConfig = ''
+          set -g @continuum-restore on
+          set -g @continuum-save-interval 10
+        '';
+      }
+      {
+        plugin = rose-pine;
+        extraConfig = ''
+          set -g @rose_pine_variant 'dawn'
+          set -g @rose_pine_date_time "%Y-%m-%d %H:%M"
+          set -g @rose_pine_status_right_append_section " #{battery_percentage}"
+        '';
+      }
       yank
       battery
       vim-tmux-navigator
     ];
 
     extraConfig = ''
-      # Continuum & Resurrect settings
-      set -g @continuum-restore on
-      set -g @continuum-save-interval 10
-      set -g @resurrect-capture-pane-contents on
-      set -g @resurrect-strategy-nvim session
-
       # General Settings
-      set-option -g default-shell ${pkgs.fish}/bin/fish
       set -g default-terminal "tmux-256color"
       set -ag terminal-overrides ",*:RGB"
       set -g history-limit 50000
@@ -93,10 +105,8 @@
       setw -g aggressive-resize on
       set -g extended-keys on
 
-      # Copy mode (Vi style)
+      # Copy mode (Vi style) — yank plugin handles clipboard integration
       setw -g mode-keys vi
-      bind -T copy-mode-vi v send -X begin-selection
-      bind -T copy-mode-vi y send -X copy-selection-and-cancel
 
       # Prefix (C-a)
       unbind C-b
@@ -153,18 +163,6 @@
 
       # Fix Shift+Enter
       bind-key -n S-Enter send-keys Escape "[13;2u"
-
-      # Rose Pine Dawn theme for tmux status bar
-      set-option -g status-style bg=#EFE9E2,fg=colour241
-      set-window-option -g window-status-current-style bg=#EFE9E2,fg=colour223
-      set-window-option -g window-status-separator ""
-      set-window-option -g window-status-format "#[bg=colour239,fg=colour246] #I  #W #[bg=#EFE9E2,fg=colour239]"
-      set-window-option -g window-status-current-format "#[bg=colour208,fg=colour235] #I  #W #[bg=#EFE9E2,fg=colour208]"
-      set-option -g pane-active-border-style fg=colour24,bg=#EFE9E2
-      set-option -g status-left-length 80
-      set-option -g status-right-length 80
-      set-option -g status-left "#[bg=colour241,fg=colour248] #S #[bg=#EFE9E2,fg=colour241]"
-      set-option -g status-right "#[bg=#EFE9E2,fg=colour239]#[bg=colour239,fg=colour246] %Y-%m-%d  %H:%M #{battery_color_fg}#[bg=colour239]#{battery_color_bg}#[fg=colour223] #{battery_percentage} "
     '';
   };
 }
