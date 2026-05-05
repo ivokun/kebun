@@ -40,6 +40,9 @@
     pkcs11.enable = true;
   };
 
+  # SD card reader (Realtek RTS525A)
+  boot.kernelModules = [ "rtsx_pci" ];
+
   hardware = {
     graphics = {
       enable = true;
@@ -54,11 +57,27 @@
     bluetooth = {
       enable = true;
       powerOnBoot = true;
+      settings = {
+        General = {
+          Enable = "Source,Sink,Media,Socket";
+          Experimental = true;
+        };
+      };
     };
 
     # ThinkPad specific
     trackpoint.enable = true;
-    firmware = [pkgs.linux-firmware];
+    firmware = with pkgs; [ linux-firmware sof-firmware wireless-regdb ];
+
+    # Ambient light sensor (if present)
+    sensor.iio.enable = true;
+  };
+
+  # ─── BTRFS maintenance ───
+  services.btrfs.autoScrub = {
+    enable = true;
+    interval = "weekly";
+    fileSystems = [ "/" ];
   };
 
   # ─── ThinkPad power management ───
