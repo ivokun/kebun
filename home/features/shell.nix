@@ -132,8 +132,8 @@
       format = "$directory$git_branch\n$character";
 
       character = {
-        error_symbol = "[>](bold red) ";
-        success_symbol = "[>](bold cyan) ";
+        error_symbol = "[❯](bold red) ";
+        success_symbol = "[❯](bold cyan) ";
       };
 
       directory = {
