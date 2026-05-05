@@ -435,7 +435,7 @@ in {
         "uwsm app -- waybar"
         "uwsm app -- fcitx5"
         "uwsm app -- swaybg -c '#faf4ed' -m solid_color"
-        "uwsm app -- swayosd-server"
+        "uwsm app -- swayosd-server --style ${config.home.homeDirectory}/.config/swayosd/style.css"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
         "systemctl --user import-environment $(env | cut -d'=' -f 1)"
         "dbus-update-activation-environment --systemd --all"
@@ -550,4 +550,69 @@ in {
       background-color=#faf4ed
     '';
   };
+
+  # ─── SwayOSD Rose Pine Dawn theme ───
+  xdg.configFile."swayosd/style.css".text = ''
+    window {
+      background: transparent;
+    }
+
+    .widget,
+    .osd-window,
+    #osd-window {
+      background: #faf4ed;
+      color: #575279;
+      border: 3px solid #56949f;
+      border-radius: 0;
+      padding: 20px 28px;
+      min-width: 420px;
+    }
+
+    .widget image,
+    .osd-window image,
+    #osd-window image {
+      color: #56949f;
+      -gtk-icon-size: 48px;
+      margin-right: 16px;
+    }
+
+    .widget progressbar trough,
+    .osd-window progressbar trough,
+    #osd-window progressbar trough {
+      background: #f2e9e1;
+      min-height: 16px;
+      border-radius: 0;
+    }
+
+    .widget progressbar progress,
+    .osd-window progressbar progress,
+    #osd-window progressbar progress {
+      background: #56949f;
+      min-height: 16px;
+      border-radius: 0;
+    }
+
+    .widget scale trough,
+    .osd-window scale trough,
+    #osd-window scale trough {
+      background: #f2e9e1;
+      min-height: 16px;
+      border-radius: 0;
+    }
+
+    .widget scale highlight,
+    .osd-window scale highlight,
+    #osd-window scale highlight {
+      background: #56949f;
+      border-radius: 0;
+    }
+
+    .widget label,
+    .osd-window label,
+    #osd-window label {
+      font-family: 'CaskaydiaMono Nerd Font';
+      font-size: 16px;
+      font-weight: bold;
+    }
+  '';
 }

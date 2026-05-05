@@ -118,40 +118,6 @@
   # ─── D-Bus ───
   services.dbus.enable = true;
 
-  # ─── SwayOSD Rose Pine Dawn theme ───
-  environment.etc."swayosd/style.css".text = ''
-    window {
-      background: transparent;
-    }
-    
-    .widget {
-      background-color: #faf4ed;
-      color: #575279;
-      border: 2px solid #56949f;
-      border-radius: 0;
-      padding: 12px 20px;
-    }
-    
-    .widget image {
-      color: #56949f;
-    }
-    
-    .widget progressbar trough {
-      background-color: #f2e9e1;
-      border-radius: 0;
-    }
-    
-    .widget progressbar progress {
-      background-color: #56949f;
-      border-radius: 0;
-    }
-    
-    .widget label {
-      font-family: 'CaskaydiaMono Nerd Font';
-      font-size: 14px;
-    }
-  '';
-
   # ─── Walker configuration ───
   environment.etc."walker/config.toml".text = ''
     # Walker app launcher configuration
