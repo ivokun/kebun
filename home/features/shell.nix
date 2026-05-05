@@ -87,7 +87,7 @@
         cat > ~/.local/share/applications/"$name".desktop << EOF
       [Desktop Entry]
       Name=$name
-      Exec=chromium --app="$url"
+      Exec=google-chrome --app="$url"
       Type=Application
       Icon=$icon
       Categories=Network;WebBrowser;

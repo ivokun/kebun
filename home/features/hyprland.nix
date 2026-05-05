@@ -238,7 +238,7 @@ in {
 
       # ─── Keybindings ───
       "$terminal" = "uwsm app -- $TERMINAL";
-      "$browser" = "chromium";
+      "$browser" = "google-chrome";
 
       bindd = [
         # ─── Application Launchers ───
