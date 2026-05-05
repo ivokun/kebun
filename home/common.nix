@@ -132,7 +132,7 @@ in {
       bluetui
       thermald
       iwd
-      kvantum
+      kdePackages.qtstyleplugin-kvantum
 
       # Security
       _1password-gui
