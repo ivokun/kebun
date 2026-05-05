@@ -79,6 +79,7 @@
             ./home/features/fastfetch.nix
             ./home/features/ghostty.nix
             ./home/features/kitty.nix
+            ./home/features/opencode.nix
           ];
         };
       }
