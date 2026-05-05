@@ -59,7 +59,6 @@ in {
 
     # Browser
     brave
-    chromium
 
     # Multimedia
     playerctl
@@ -144,15 +143,18 @@ in {
     --enable-wayland-ime
   '';
 
-  home.file."config/chromium-flags.conf".text = ''
-    --ozone-platform=wayland
-    --ozone-platform-hint=wayland
-    --enable-features=WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation
-    --enable-wayland-ime
-    --oauth2-client-id=77185425430.apps.googleusercontent.com
-    --oauth2-client-secret=OTJgUOQcT7lO7GsGZq2G4IlT
-    --disable-features=WaylandWpColorManagerV1
-  '';
+  programs.chromium = {
+    enable = true;
+    commandLineArgs = [
+      "--ozone-platform=wayland"
+      "--ozone-platform-hint=wayland"
+      "--enable-features=WaylandWindowDecorations,TouchpadOverscrollHistoryNavigation"
+      "--enable-wayland-ime"
+      "--oauth2-client-id=77185425430.apps.googleusercontent.com"
+      "--oauth2-client-secret=OTJgUOQcT7lO7GsGZq2G4IlT"
+      "--disable-features=WaylandWpColorManagerV1"
+    ];
+  };
 
   # ─── xdg-mime defaults ───
   xdg.mimeApps = {
