@@ -73,7 +73,7 @@ in {
       imv
       spotify
       obs-studio
-      kdenlive
+      kdePackages.kdenlive
 
       # Dev tools
       gum
