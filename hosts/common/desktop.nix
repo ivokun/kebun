@@ -99,6 +99,19 @@ in {
   services.displayManager.sddm = {
     enable = true;
     wayland.enable = true;
+
+    # Minimal, clean theme that matches a modern Wayland desktop
+    theme = "where-is-my-sddm-theme";
+    themePackages = with pkgs; [ where-is-my-sddm-theme ];
+
+    # Auto-login for single-user setup: skip greeter on boot, but still
+    # show it when logging out (so both experiences look the same).
+    settings = {
+      Autologin = {
+        User = username;
+        Session = "hyprland";
+      };
+    };
   };
 
   # Default to Hyprland UWSM session in SDDM
