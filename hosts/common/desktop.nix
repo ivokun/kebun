@@ -101,8 +101,7 @@ in {
     wayland.enable = true;
 
     # Minimal, clean theme that matches a modern Wayland desktop
-    theme = "where-is-my-sddm-theme";
-    themePackages = with pkgs; [ where-is-my-sddm-theme ];
+    theme = "where_is_my_sddm_theme";
 
     # Auto-login for single-user setup: skip greeter on boot, but still
     # show it when logging out (so both experiences look the same).
@@ -137,6 +136,9 @@ in {
 
   # ─── Desktop packages (system-level) ───
   environment.systemPackages = with pkgs; [
+    # SDDM theme (must be in systemPackages for /run/current-system/sw/share/sddm/themes)
+    where-is-my-sddm-theme
+
     # UWSM (explicitly ensure uwsm is in PATH for .zprofile)
     uwsm
 
