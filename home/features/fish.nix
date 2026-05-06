@@ -19,12 +19,6 @@
       set -gx SUDO_EDITOR $EDITOR
     '';
 
-    loginShellInit = ''
-      if test -z "$WAYLAND_DISPLAY"; and test "$XDG_VTNR" = "1"
-        exec uwsm start hyprland-uwsm.desktop
-      end
-    '';
-
     interactiveShellInit = ''
       set -g fish_greeting
     '';
