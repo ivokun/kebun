@@ -27,6 +27,15 @@
       "amdgpu.sg_display=0"
       "rtc_cmos.use_acpi_alarm=1"
     ];
+
+    # ─── Plymouth boot splash ───
+    # Replaces text boot messages with a graphical splash.
+    # When TPM2 auto-unlock fails, Plymouth shows a styled password prompt
+    # instead of dropping to a raw TTY. Purely cosmetic but matches Omarchy.
+    plymouth = {
+      enable = true;
+      theme = "spinner";
+    };
   };
 
   # ─── Swap ───

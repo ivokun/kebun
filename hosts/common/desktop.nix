@@ -94,18 +94,21 @@ in {
   services.gvfs.enable = true;
 
   # ─── Display Manager ───
-  services.xserver.displayManager.gdm = {
+  # Using SDDM (like Omarchy) instead of GDM for a cleaner Wayland experience.
+  # Wayland support is enabled so the greeter runs natively on Wayland.
+  services.displayManager.sddm = {
     enable = true;
-    wayland = true;
+    wayland.enable = true;
   };
 
-  # Default to Hyprland session in GDM
+  # Default to Hyprland UWSM session in SDDM
   services.displayManager.defaultSession = "hyprland";
 
   # ─── PAM LUKS Integration ───
   # Unlock LUKS devices on login using the provided password.
   # Works as a fallback when TPM2 auto-unlock is unavailable.
-  security.pam.services.gdm-password.rules.auth.luksUnlock = {
+  # Configured for both SDDM and TTY (login) sessions.
+  security.pam.services.sddm.rules.auth.luksUnlock = {
     order = 1100;
     control = "optional";
     modulePath = "${pkgs.pam}/lib/security/pam_exec.so";
