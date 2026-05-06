@@ -242,7 +242,7 @@ in {
 
       bindd = [
         # ─── Application Launchers ───
-        "SUPER, RETURN, Terminal, exec, $terminal --working-directory=\"$(${pkgs.zoxide}/bin/zoxide query --interactive || pwd)\""
+        "SUPER, RETURN, Terminal, exec, $terminal --working-directory=\"$(pwd)\""
         "SUPER SHIFT, F, File manager, exec, uwsm app -- nautilus --new-window"
         "SUPER, B, Browser, exec, $browser"
         "SUPER SHIFT, B, Browser (private), exec, $browser --private"
