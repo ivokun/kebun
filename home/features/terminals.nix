@@ -40,11 +40,6 @@
           key = "F11";
           action = "ToggleFullscreen";
         }
-        {
-          key = "Return";
-          mods = "Shift";
-          chars = "\u001b[13;2u";
-        }
       ];
 
       terminal.shell = {

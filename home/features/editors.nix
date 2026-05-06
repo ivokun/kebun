@@ -161,8 +161,7 @@
       bind P switch-client -p
       bind N switch-client -n
 
-      # Fix Shift+Enter
-      bind-key -n S-Enter send-keys Escape "[13;2u"
+
     '';
   };
 }
