@@ -155,6 +155,16 @@ in {
       check-waybar-updates
       screenrecord
       audio-switch
+      battery-status
+      battery-capacity
+      battery-remaining
+      battery-remaining-time
+      battery-monitor
+      mic-mute
+      toggle-gaps
+      toggle-layout
+      toggle-power-profile
+      screenshot-ocr
     ]);
 
   # ─── Browser flags for Wayland ───
