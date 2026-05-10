@@ -124,6 +124,12 @@ in {
       # Audio mixer
       wiremix
 
+      # Wi-Fi TUI
+      impala
+
+      # Music player TUI
+      cliamp
+
       # Office/productivity
       libreoffice-fresh
       evince

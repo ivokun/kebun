@@ -82,6 +82,7 @@
           "tooltip-format-disconnected" = "Disconnected";
           interval = 3;
           spacing = 1;
+          on-click = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e impala";
         };
 
         bluetooth = {
@@ -91,6 +92,7 @@
           "format-connected" = "󰂱";
           "format-no-controller" = "";
           "tooltip-format" = "Devices connected: {num_connections}";
+          on-click = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e bluetui";
         };
 
         pulseaudio = {

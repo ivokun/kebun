@@ -385,6 +385,9 @@ in {
         # ─── Audio Output Switch ───
         "SUPER, XF86AudioMute, Switch audio output, exec, ${pkgs.pamixer}/bin/pamixer --default-source toggle"
 
+        # ─── Music Player ───
+        "SUPER SHIFT ALT, M, Launch cliamp, exec, uwsm app -- ${pkgs.alacritty}/bin/alacritty -e cliamp"
+
         # ─── Aesthetics ───
         "SUPER SHIFT, SPACE, Toggle top bar, exec, toggle-waybar"
         "SUPER, BACKSPACE, Toggle window transparency, exec, ${pkgs.hyprland}/bin/hyprctl dispatch setprop \"address:$(${pkgs.hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.address')\" opaque toggle"
