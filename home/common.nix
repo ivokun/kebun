@@ -114,7 +114,15 @@ in {
       ffmpegthumbnailer
       satty
       pinta
-      mpv
+
+      # OCR
+      tesseract
+
+      # Calculator
+      bc
+
+      # Audio mixer
+      wiremix
 
       # Office/productivity
       libreoffice-fresh

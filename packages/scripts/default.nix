@@ -152,4 +152,152 @@
       fi
     done
   '';
+
+  # Battery status
+  battery-status = pkgs.writeShellScriptBin "battery-status" ''
+    set -euo pipefail
+    STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
+    echo "$STATUS"
+  '';
+
+  # Battery capacity percentage
+  battery-capacity = pkgs.writeShellScriptBin "battery-capacity" ''
+    set -euo pipefail
+    ${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "100"
+  '';
+
+  # Battery remaining with icon
+  battery-remaining = pkgs.writeShellScriptBin "battery-remaining" ''
+    set -euo pipefail
+    CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "100")
+    CAP="''${CAP:-100}"
+    STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
+    if [ "$STATUS" = "Charging" ]; then
+      ICON="󰂄"
+    elif [ "$CAP" -ge 80 ]; then
+      ICON="󰁹"
+    elif [ "$CAP" -ge 60 ]; then
+      ICON="󰂂"
+    elif [ "$CAP" -ge 40 ]; then
+      ICON="󰂀"
+    elif [ "$CAP" -ge 20 ]; then
+      ICON="󰁾"
+    else
+      ICON="󰁺"
+    fi
+    echo "$ICON $CAP%"
+  '';
+
+  # Battery remaining time estimate
+  battery-remaining-time = pkgs.writeShellScriptBin "battery-remaining-time" ''
+    set -euo pipefail
+    NOW=/sys/class/power_supply/BAT0/energy_now
+    PWR=/sys/class/power_supply/BAT0/power_now
+    if [ -f "$NOW" ] && [ -f "$PWR" ]; then
+      N=$(${pkgs.coreutils}/bin/cat "$NOW")
+      P=$(${pkgs.coreutils}/bin/cat "$PWR")
+      if [ "$P" -gt 0 ] 2>/dev/null; then
+        MINUTES=$(echo "scale=0; ($N * 60) / $P" | ${pkgs.bc}/bin/bc)
+        HOURS=$(echo "scale=1; $MINUTES / 60" | ${pkgs.bc}/bin/bc)
+        echo "$HOURS hours"
+      else
+        echo "Charging"
+      fi
+    else
+      echo "N/A"
+    fi
+  '';
+
+  # Background low-battery warning
+  battery-monitor = pkgs.writeShellScriptBin "battery-monitor" ''
+    set -euo pipefail
+    LOCKFILE="$XDG_RUNTIME_DIR/battery-monitor.lock"
+    if [ -f "$LOCKFILE" ] && kill -0 "$("${pkgs.coreutils}/bin/cat" "$LOCKFILE")" 2>/dev/null; then
+      exit 0
+    fi
+    echo $$ > "$LOCKFILE"
+    trap '"${pkgs.coreutils}/bin/rm" -f "$LOCKFILE"' EXIT
+    while true; do
+      CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "100")
+      STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
+      if [ "$STATUS" = "Discharging" ] && [ "$CAP" -le 15 ]; then
+        ${pkgs.libnotify}/bin/notify-send -u critical "Battery Low" "Battery at $CAP% — connect charger!"
+      elif [ "$STATUS" = "Discharging" ] && [ "$CAP" -le 25 ]; then
+        ${pkgs.libnotify}/bin/notify-send -u normal "Battery" "Battery at $CAP%"
+      fi
+      ${pkgs.coreutils}/bin/sleep 120
+    done
+  '';
+
+  # Mic mute toggle with notification
+  mic-mute = pkgs.writeShellScriptBin "mic-mute" ''
+    set -euo pipefail
+    ${pkgs.pulseaudio}/bin/pactl set-source-mute @DEFAULT_SOURCE@ toggle
+    MUTE=$(${pkgs.pulseaudio}/bin/pactl get-source-mute @DEFAULT_SOURCE@ | ${pkgs.gnugrep}/bin/grep -oP '(?<=Mute: )\w+')
+    if [ "$MUTE" = "yes" ]; then
+      ${pkgs.libnotify}/bin/notify-send "Microphone" "Muted" --icon=audio-input-microphone-muted
+    else
+      ${pkgs.libnotify}/bin/notify-send "Microphone" "Unmuted" --icon=audio-input-microphone
+    fi
+  '';
+
+  # Toggle window gaps
+  toggle-gaps = pkgs.writeShellScriptBin "toggle-gaps" ''
+    set -euo pipefail
+    STATE_FILE="$XDG_RUNTIME_DIR/hypr-gaps-state"
+    if [ -f "$STATE_FILE" ]; then
+      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_in 5
+      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_out 10
+      rm -f "$STATE_FILE"
+      ${pkgs.libnotify}/bin/notify-send "Gaps" "Normal spacing"
+    else
+      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_in 0
+      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_out 0
+      touch "$STATE_FILE"
+      ${pkgs.libnotify}/bin/notify-send "Gaps" "No gaps"
+    fi
+  '';
+
+  # Toggle layout (dwindle/master)
+  toggle-layout = pkgs.writeShellScriptBin "toggle-layout" ''
+    set -euo pipefail
+    CURRENT=$(${pkgs.hyprland}/bin/hyprctl getoption general:layout | ${pkgs.gawk}/bin/awk -F '= ' '{print $2}')
+    if [ "$CURRENT" = "dwindle" ]; then
+      ${pkgs.hyprland}/bin/hyprctl keyword general:layout master
+      ${pkgs.libnotify}/bin/notify-send "Layout" "Master layout"
+    else
+      ${pkgs.hyprland}/bin/hyprctl keyword general:layout dwindle
+      ${pkgs.libnotify}/bin/notify-send "Layout" "Dwindle layout"
+    fi
+  '';
+
+  # Toggle power profile
+  toggle-power-profile = pkgs.writeShellScriptBin "toggle-power-profile" ''
+    set -euo pipefail
+    if ! CURRENT=$(${pkgs.power-profiles-daemon}/bin/powerprofilesctl get 2>/dev/null); then
+      ${pkgs.libnotify}/bin/notify-send -u critical "Power Profile" "Failed to read current profile"
+      exit 1
+    fi
+    if [ "$CURRENT" = "power-saver" ]; then
+      ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced
+      ${pkgs.libnotify}/bin/notify-send "Power Profile" "Balanced"
+    elif [ "$CURRENT" = "balanced" ]; then
+      ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set performance
+      ${pkgs.libnotify}/bin/notify-send "Power Profile" "Performance"
+    else
+      ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set power-saver
+      ${pkgs.libnotify}/bin/notify-send "Power Profile" "Power Saver"
+    fi
+  '';
+
+  # Screenshot OCR
+  screenshot-ocr = pkgs.writeShellScriptBin "screenshot-ocr" ''
+    set -euo pipefail
+    TMPDIR="''${XDG_RUNTIME_DIR:-/tmp}"
+    TMPFILE=$(${pkgs.coreutils}/bin/mktemp -p "$TMPDIR" ocr-XXXXXX.png)
+    trap '${pkgs.coreutils}/bin/rm -f "$TMPFILE"' EXIT
+    ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" "$TMPFILE"
+    ${pkgs.tesseract}/bin/tesseract "$TMPFILE" stdout | ${pkgs.wl-clipboard}/bin/wl-copy
+    ${pkgs.libnotify}/bin/notify-send "OCR" "Text copied to clipboard — may persist in clipboard history"
+  '';
 }
