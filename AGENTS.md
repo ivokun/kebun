@@ -71,14 +71,19 @@ packages/scripts/      # Custom scripts packaged as Nix derivations
 | Dev tools (gcc, go, node, postgres, etc.) | `hosts/common/dev.nix` |
 | Hyprland keybindings, hypridle, hyprlock, mako | `home/features/hyprland.nix` |
 | Waybar style & modules | `home/features/waybar.nix` |
-| Custom scripts (screenshot, toggle-waybar, etc.) | `packages/scripts/default.nix` |
-| Shell (zsh, starship, atuin, etc.) | `home/features/shell.nix` |
+| Custom scripts (screenshot, toggle-waybar, battery, OCR, etc.) | `packages/scripts/default.nix` |
+| Shell (zsh, atuin, direnv, etc.) | `home/features/shell.nix` |
+| Prompt (starship) | `home/features/starship.nix` |
 | Terminals (alacritty, ghostty, kitty) | `home/features/terminals.nix`, `ghostty.nix`, `kitty.nix` |
-| Editors (neovim) | `home/features/editors.nix` |
+| Editors (neovim, helix) | `home/features/editors.nix`, `home/features/helix.nix` |
 | Theme (Rose Pine Dawn) | `home/features/theme-rose-pine.nix` |
+| System monitor (btop) | `home/features/btop.nix` |
+| Media player (mpv) | `home/features/mpv.nix` |
+| Btrfs snapshots | `hosts/common/snapper.nix` |
 
 ## Docs
 
 - `INSTALL.md` — Full NixOS installation guide (LUKS + BTRFS + flakes)
 - `OMARCHY_DISCREPANCY_REPORT.md` — Analysis of what was ported from Omarchy (Arch) to NixOS
 - `docs/adr/` — Architecture decision records
+- `thoughts/drafts/kebun-detailed-implementation-plan.md` — Implementation roadmap and feature checklist
