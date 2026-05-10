@@ -71,6 +71,7 @@
             ./home/features/waybar.nix
             ./home/features/terminals.nix
             ./home/features/shell.nix
+            ./home/features/starship.nix
             ./home/features/fish.nix
             ./home/features/editors.nix
             ./home/features/theme-rose-pine.nix

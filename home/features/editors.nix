@@ -55,6 +55,20 @@
   # ─── Lazygit ───
   programs.lazygit = {
     enable = true;
+    settings = {
+      gui.theme = {
+        activeBorderColor         = [ "#56949f" "bold" ];
+        inactiveBorderColor       = [ "#797593" ];
+        optionsTextColor           = [ "#907aa9" ];
+        selectedLineBgColor        = [ "#f2e9e1" ];
+        selectedRangeBgColor       = [ "#f2e9e1" ];
+        cherryPickedCommitBgColor  = [ "#56949f" ];
+        cherryPickedCommitFgColor  = [ "#faf4ed" ];
+        unstagedChangesColor       = [ "#b4637a" ];
+        defaultFgColor             = [ "#575279" ];
+        searchingActiveBorderColor = [ "#ea9d34" ];
+      };
+    };
   };
 
   # ─── tmux ───

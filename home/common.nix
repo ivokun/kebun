@@ -29,7 +29,6 @@ in {
       fastfetch
       lazygit
       lazydocker
-      starship
       atuin
       zoxide
       direnv

@@ -10,7 +10,7 @@
     settings = {
       logo = {
         source = "nixos";
-        color = "blue";
+        color = "#286983";
         padding = {
           right = 2;
         };
@@ -18,8 +18,8 @@
 
       display = {
         color = {
-          keys = "magenta";
-          title = "cyan";
+          keys = "#907aa9";
+          title = "#56949f";
         };
         separator = "  ";
       };
@@ -28,8 +28,8 @@
         {
           type = "title";
           color = {
-            user = "cyan";
-            host = "blue";
+            user = "#56949f";
+            host = "#907aa9";
           };
         }
         "break"
@@ -40,57 +40,57 @@
         {
           type = "os";
           key = "  OS";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "kernel";
           key = "  Kernel";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "uptime";
           key = "  Uptime";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "packages";
           key = "  Packages";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "shell";
           key = "  Shell";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "de";
           key = "  DE";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "wm";
           key = "  WM";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "theme";
           key = "  Theme";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "icons";
           key = "  Icons";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "terminal";
           key = "  Terminal";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         {
           type = "font";
           key = "  Font";
-          keyColor = "green";
+          keyColor = "#56949f";
         }
         "break"
         {
@@ -100,43 +100,43 @@
         {
           type = "host";
           key = "  Host";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         {
           type = "cpu";
           key = "  CPU";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         {
           type = "gpu";
           key = "  GPU";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         {
           type = "memory";
           key = "  Memory";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         {
           type = "swap";
           key = "  Swap";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         {
           type = "disk";
           key = "  Disk";
-          keyColor = "blue";
+          keyColor = "#286983";
           folders = "/";
         }
         {
           type = "battery";
           key = "  Battery";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         {
           type = "display";
           key = "  Display";
-          keyColor = "blue";
+          keyColor = "#286983";
         }
         "break"
         {
