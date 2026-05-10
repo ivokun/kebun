@@ -104,6 +104,7 @@
           };
           "tooltip-format" = "Playing at {volume}%";
           "scroll-step" = 5;
+          "on-click" = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e wiremix";
           "on-click-right" = "${pkgs.pamixer}/bin/pamixer -t";
         };
 
