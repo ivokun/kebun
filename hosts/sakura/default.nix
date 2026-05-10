@@ -110,5 +110,28 @@
     options = "compose:caps";
   };
 
+  # ─── Btrfs Snapshots (home only) ───
+  services.snapper.configs = {
+    home = {
+      SUBVOLUME = "/home";
+      ALLOW_USERS = [ "ivokun" ];
+      TIMELINE_CREATE = true;
+      TIMELINE_CLEANUP = true;
+      TIMELINE_LIMIT_HOURLY = 10;
+      TIMELINE_LIMIT_DAILY = 7;
+      TIMELINE_LIMIT_WEEKLY = 4;
+      TIMELINE_LIMIT_MONTHLY = 12;
+    };
+  };
+
+  # ─── Btrfs Snapshots (home only) ───
+  # NOTE: /home/.snapshots must be a BTRFS subvolume, not a regular directory.
+  # Create it manually before first rebuild:
+  #   sudo btrfs subvolume create /home/.snapshots
+  # This tmpfiles rule only ensures permissions after the subvolume exists.
+  systemd.tmpfiles.rules = [
+    "d /home/.snapshots 0750 ivokun users -"
+  ];
+
   system.stateVersion = "25.05";
 }

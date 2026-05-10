@@ -128,4 +128,25 @@
   ];
 
   system.stateVersion = "25.05";
+
+  # ─── File Descriptor Limits ───
+  boot.kernel.sysctl = {
+    "fs.file-max" = 2097152;
+    "fs.inotify.max_user_watches" = 524288;
+  };
+
+  security.pam.loginLimits = [
+    {
+      domain = "@users";
+      type = "soft";
+      item = "nofile";
+      value = "524288";
+    }
+    {
+      domain = "@users";
+      type = "hard";
+      item = "nofile";
+      value = "2097152";
+    }
+  ];
 }

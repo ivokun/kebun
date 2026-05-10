@@ -58,6 +58,7 @@
       ./hosts/common/networking.nix
       ./hosts/common/users.nix
       ./hosts/common/printing.nix
+      ./hosts/common/snapper.nix
       nix-index-database.nixosModules.nix-index
     ];
 
