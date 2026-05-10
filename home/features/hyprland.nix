@@ -249,6 +249,7 @@ in {
         "SUPER, N, Editor, exec, uwsm app -- nvim"
         "SUPER, D, Docker, exec, uwsm app -- ${pkgs.alacritty}/bin/alacritty -e lazydocker"
         "SUPER, O, Obsidian, exec, uwsm app -- obsidian -disable-gpu --enable-wayland-ime"
+        "SUPER SHIFT, O, Pop window, exec, window-pop"
 
         # ─── Menus ───
         "SUPER, SPACE, Launch apps, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
@@ -266,8 +267,7 @@ in {
         "SUPER, F, Full screen, fullscreen, 0"
         "SUPER CTRL, F, Tiled full screen, fullscreenstate, 0 2"
         "SUPER ALT, F, Full width, fullscreen, 1"
-        "SUPER, O, Pop window, exec, window-pop"
-        "SUPER, L, Toggle workspace layout, exec, ${pkgs.hyprland}/bin/hyprctl dispatch layoutmsg, orientationnext"
+        "SUPER, L, Toggle workspace layout, exec, ${pkgs.hyprland}/bin/hyprctl dispatch layoutmsg orientationnext"
 
         # ─── Focus Movement ───
         "SUPER, LEFT, Move window focus left, movefocus, l"
@@ -407,6 +407,18 @@ in {
         "SHIFT, PRINT, Screenshot to clipboard, exec, ${pkgs.grim}/bin/grim -g \"$(${pkgs.slurp}/bin/slurp)\" - | ${pkgs.wl-clipboard}/bin/wl-copy"
         "SUPER, PRINT, Color picker, exec, ${pkgs.procps}/bin/pkill hyprpicker || ${pkgs.hyprpicker}/bin/hyprpicker -a"
 
+        # ─── Battery ───
+        "SUPER SHIFT, Y, Show battery status, exec, ${pkgs.libnotify}/bin/notify-send \"Battery\" \"$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo 'N/A')% ($(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo 'Unknown'))\""
+
+        # ─── Window Gaps ───
+        "SUPER ALT, Z, Toggle window gaps, exec, toggle-gaps"
+
+        # ─── Layout Toggle ───
+        "SUPER CTRL, M, Toggle layout dwindle/master, exec, toggle-layout"
+
+        # ─── Screenshot OCR ───
+        "SUPER CTRL, PRINT, Screenshot OCR, exec, screenshot-ocr"
+
         # ─── Lock Screen ───
         "SUPER CTRL, L, Lock system, exec, ${pkgs.hyprlock}/bin/hyprlock"
 
@@ -430,7 +442,6 @@ in {
 
       # ─── Exec-once (Autostart) ───
       exec-once = [
-        "uwsm app -- mako"
         "uwsm app -- mako"
         "uwsm app -- waybar"
         "uwsm app -- fcitx5"

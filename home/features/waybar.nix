@@ -29,6 +29,7 @@
           "network"
           "pulseaudio"
           "battery"
+          "custom/power"
           "cpu"
         ];
 
@@ -191,6 +192,14 @@
           "on-click" = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e check-updates";
           class = "updates";
         };
+
+        "custom/power" = {
+          format = "{}";
+          exec = "powerprofilesctl get 2>/dev/null || echo 'unknown'";
+          interval = 5;
+          tooltip = true;
+          on-click = "toggle-power-profile";
+        };
       };
     };
 
@@ -282,6 +291,11 @@
       #custom-updates {
         color: #286983;
         margin-right: 10px;
+      }
+
+      #custom-power {
+        min-width: 12px;
+        margin: 0 7.5px;
       }
 
       .hidden {
