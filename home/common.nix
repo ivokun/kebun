@@ -151,6 +151,18 @@ in {
       _1password-gui
       _1password-cli
 
+      # Dictation
+      hyprwhspr-rs
+
+      # Cursor zoom
+      hyprmagnifier
+
+      # Transcoding
+      ffmpeg
+
+      # Settings
+      gnome-control-center
+
       # Custom scripts
     ]
     ++ (with scripts; [
@@ -179,6 +191,58 @@ in {
       toggle-layout
       toggle-power-profile
       screenshot-ocr
+      launch-or-focus
+      launch-tui
+      launch-audio
+      launch-wifi
+      launch-bluetooth
+      launch-activity
+      launch-floating-terminal
+
+      # Menus
+      menu-keybindings
+      menu-capture
+      menu-toggle
+      menu-hardware
+      menu-omarchy
+      menu-background
+      menu-theme
+
+      # Window & monitor management
+      close-all-windows
+      cycle-monitors
+      cycle-monitor-scaling
+      move-waybar
+      file-manager-cwd
+
+      # Toggles
+      toggle-single-window-square
+      toggle-laptop-display
+      toggle-mirror-display
+
+      # Media & capture
+      screenrecord-menu
+      localsend-share
+      transcode
+
+      # Info displays
+      show-time
+      show-weather
+      show-battery
+
+      # Reminders
+      reminder-set
+      reminder-show
+      reminder-clear
+
+      # Dictation
+      dictation-toggle
+      dictation-ptt
+      dictation-ptt-release
+
+      # Cursor zoom
+      cursor-zoom
+      cursor-zoom-reset
     ]);
 
   # ─── Browser flags for Wayland ───
