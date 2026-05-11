@@ -62,7 +62,7 @@
         cpu = {
           interval = 5;
           format = "󰍛";
-          on-click = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e btop";
+          on-click = "launch-activity";
         };
 
         clock = {
@@ -82,7 +82,7 @@
           "tooltip-format-disconnected" = "Disconnected";
           interval = 3;
           spacing = 1;
-          on-click = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e impala";
+          on-click = "launch-wifi";
         };
 
         bluetooth = {
@@ -92,7 +92,7 @@
           "format-connected" = "󰂱";
           "format-no-controller" = "";
           "tooltip-format" = "Devices connected: {num_connections}";
-          on-click = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e bluetui";
+          on-click = "launch-bluetooth";
         };
 
         pulseaudio = {
@@ -104,7 +104,7 @@
           };
           "tooltip-format" = "Playing at {volume}%";
           "scroll-step" = 5;
-          "on-click" = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e wiremix";
+          "on-click" = "launch-audio";
           "on-click-right" = "${pkgs.pamixer}/bin/pamixer -t";
         };
 
@@ -192,7 +192,7 @@
           };
           tooltip = true;
           "tooltip-format" = "NixOS flake updates available";
-          "on-click" = "uwsm app -- ${pkgs.alacritty}/bin/alacritty -e check-updates";
+          "on-click" = "launch-tui check-updates";
           class = "updates";
         };
 

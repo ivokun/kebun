@@ -213,6 +213,12 @@ in {
         # Terminal tag
         "tag +terminal, match:class Alacritty"
 
+        # TUI launchers — float, center, and size (inspired by Omarchy)
+        "tag +kebun-tui, match:class ^org\\.kebun\\..*$"
+        "float on, match:tag kebun-tui"
+        "center on, match:tag kebun-tui"
+        "size 875 600, match:tag kebun-tui"
+
         # Floating windows
         "float on, match:tag floating-window"
         "center on, match:tag floating-window"
@@ -257,7 +263,7 @@ in {
         "SUPER CTRL, SPACE, System menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
         "SUPER, ESCAPE, System menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
         ", XF86PowerOff, Power menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
-        "SUPER, K, Show keybindings, exec, ${pkgs.hyprland}/bin/hyprctl bindlist"
+        "SUPER, K, Show keybindings, exec, menu-keybindings"
 
         # ─── Window Management ───
         "SUPER, W, Close window, killactive,"
@@ -337,10 +343,18 @@ in {
         "ALT SHIFT, TAB, Cycle to prev window, cyclenext, prev"
 
         # ─── Resize ───
-        "SUPER, code:20, Expand window left, resizeactive, -100 0"
-        "SUPER, code:21, Shrink window left, resizeactive, 100 0"
-        "SUPER SHIFT, code:20, Shrink window up, resizeactive, 0 -100"
-        "SUPER SHIFT, code:21, Expand window down, resizeactive, 0 100"
+        "SUPER, code:20, Shrink window width, resizeactive, -100 0"
+        "SUPER, code:21, Expand window width, resizeactive, 100 0"
+        "SUPER SHIFT, code:20, Shrink window height, resizeactive, 0 -100"
+        "SUPER SHIFT, code:21, Expand window height, resizeactive, 0 100"
+        "SUPER ALT, code:20, Shrink window width (fine), resizeactive, -25 0"
+        "SUPER ALT, code:21, Expand window width (fine), resizeactive, 25 0"
+        "SUPER ALT SHIFT, code:20, Shrink window height (fine), resizeactive, 0 -25"
+        "SUPER ALT SHIFT, code:21, Expand window height (fine), resizeactive, 0 25"
+        "SUPER CTRL, code:20, Shrink window width (coarse), resizeactive, -300 0"
+        "SUPER CTRL, code:21, Expand window width (coarse), resizeactive, 300 0"
+        "SUPER CTRL SHIFT, code:20, Shrink window height (coarse), resizeactive, 0 -300"
+        "SUPER CTRL SHIFT, code:21, Expand window height (coarse), resizeactive, 0 300"
 
         # ─── Groups ───
         "SUPER, G, Toggle window grouping, togglegroup,"
@@ -355,7 +369,7 @@ in {
         "SUPER CTRL, RIGHT, Move grouped window focus right, changegroupactive, f"
 
         # ─── Clipboard ───
-        
+
         "SUPER CTRL, V, Clipboard manager, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker -m clipboard"
 
         # ─── Mouse Bindings ───
@@ -430,14 +444,80 @@ in {
         "SUPER CTRL, B, Bluetooth controls, exec, uwsm app -- ${pkgs.blueman}/bin/blueman-manager"
         "SUPER CTRL, W, Wifi controls, exec, uwsm app -- ${pkgs.networkmanagerapplet}/bin/nm-connection-editor"
         "SUPER CTRL, T, Activity, exec, uwsm app -- ${pkgs.alacritty}/bin/alacritty -e btop"
+
+        # ─── Additional App Launchers ───
+        "SUPER SHIFT, RETURN, Browser, exec, $browser"
+        "SUPER ALT SHIFT, F, File manager (current directory), exec, file-manager-cwd"
+
+        # ─── Window Management (extended) ───
+        "CTRL ALT, DELETE, Close all windows, exec, close-all-windows"
+        "CTRL ALT, TAB, Cycle monitors, exec, cycle-monitors"
+        "SUPER, slash, Cycle monitor scaling, exec, cycle-monitor-scaling"
+
+        # ─── Menus (extended) ───
+        "SUPER CTRL, C, Capture menu, exec, menu-capture"
+        "SUPER CTRL, O, Toggle menu, exec, menu-toggle"
+        "SUPER CTRL, H, Hardware menu, exec, menu-hardware"
+        "SUPER ALT, SPACE, Kebun menu, exec, menu-omarchy"
+        "SUPER CTRL, SPACE, Background menu, exec, menu-background"
+        "SUPER SHIFT CTRL, SPACE, Theme menu, exec, menu-theme"
+        ", XF86Calculator, Calculator, exec, uwsm app -- gnome-calculator"
+
+        # ─── Aesthetics (extended) ───
+        "SUPER SHIFT CTRL, LEFT, Move Waybar left, exec, move-waybar left"
+        "SUPER SHIFT CTRL, RIGHT, Move Waybar right, exec, move-waybar right"
+        "SUPER SHIFT CTRL, UP, Move Waybar up, exec, move-waybar up"
+        "SUPER SHIFT CTRL, DOWN, Move Waybar down, exec, move-waybar down"
+        "SUPER SHIFT, BACKSPACE, Toggle window gaps, exec, toggle-gaps"
+        "SUPER CTRL, BACKSPACE, Toggle single-window square, exec, toggle-single-window-square"
+
+        # ─── Toggles (extended) ───
+        "SUPER CTRL, DELETE, Toggle laptop display, exec, toggle-laptop-display"
+        "SUPER CTRL ALT, DELETE, Toggle display mirroring, exec, toggle-mirror-display"
+
+        # ─── Captures (extended) ───
+        "ALT, PRINT, Screen recording menu, exec, screenrecord-menu"
+
+        # ─── Sharing ───
+        "SUPER CTRL, S, Share (LocalSend), exec, localsend-share"
+        "SUPER CTRL, period, Transcode, exec, transcode"
+
+        # ─── Reminders ───
+        "SUPER CTRL, R, Set reminder, exec, reminder-set"
+        "SUPER CTRL ALT, R, Show reminders, exec, reminder-show"
+        "SUPER SHIFT CTRL, R, Clear reminders, exec, reminder-clear"
+
+        # ─── Info Displays ───
+        "SUPER CTRL ALT, T, Show time, exec, show-time"
+        "SUPER CTRL ALT, B, Show battery, exec, show-battery"
+        "SUPER CTRL ALT, W, Show weather, exec, show-weather"
+
+        # ─── Dictation ───
+        "SUPER CTRL, X, Toggle dictation, exec, dictation-toggle"
+
+        # ─── Cursor Zoom ───
+        "SUPER CTRL, Z, Zoom cursor in, exec, cursor-zoom"
+        "SUPER CTRL ALT, Z, Reset cursor zoom, exec, cursor-zoom-reset"
       ];
 
       bind = [
         "SUPER, C, sendshortcut, CTRL Insert"
         "SUPER, V, sendshortcut, SHIFT Insert"
         "SUPER, X, sendshortcut, CTRL X"
+        ", F9, exec, dictation-ptt"
       ];
 
+      bindr = [
+        ", F9, exec, dictation-ptt-release"
+      ];
+
+      # ─── Lid Switch ───
+      bindl = [
+        ", switch:on:Lid Switch, exec, toggle-laptop-display"
+        ", switch:off:Lid Switch, exec, toggle-laptop-display"
+      ];
+
+      # ─── Mouse Bindings ───
       bindm = [
         "SUPER, mouse:272, movewindow"
         "SUPER, mouse:273, resizewindow"
@@ -459,33 +539,33 @@ in {
 
   # ─── Hypridle ───
   services.hypridle = {
-      enable = true;
+    enable = true;
 
-      settings = {
-        general = {
-          lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
-          before_sleep_cmd = "loginctl lock-session";
-          after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
-          inhibit_sleep = 3;
-        };
-
-        listener = [
-          {
-            timeout = 600;
-            on-timeout = "loginctl lock-session";
-          }
-          {
-            timeout = 605;
-            on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-            on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on && ${pkgs.brightnessctl}/bin/brightnessctl -r";
-          }
-          {
-            timeout = 900;
-            on-timeout = "systemctl suspend";
-          }
-        ];
+    settings = {
+      general = {
+        lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+        before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+        inhibit_sleep = 3;
       };
+
+      listener = [
+        {
+          timeout = 600;
+          on-timeout = "loginctl lock-session";
+        }
+        {
+          timeout = 605;
+          on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
+          on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on && ${pkgs.brightnessctl}/bin/brightnessctl -r";
+        }
+        {
+          timeout = 900;
+          on-timeout = "systemctl suspend";
+        }
+      ];
     };
+  };
 
   # ─── Hyprlock ───
   programs.hyprlock = {
