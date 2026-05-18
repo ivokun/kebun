@@ -460,14 +460,10 @@ in {
         "SUPER CTRL, H, Hardware menu, exec, menu-hardware"
         "SUPER ALT, SPACE, Kebun menu, exec, menu-omarchy"
         "SUPER CTRL, SPACE, Background menu, exec, menu-background"
-        "SUPER SHIFT CTRL, SPACE, Theme menu, exec, menu-theme"
+
         ", XF86Calculator, Calculator, exec, uwsm app -- gnome-calculator"
 
         # ─── Aesthetics (extended) ───
-        "SUPER SHIFT CTRL, LEFT, Move Waybar left, exec, move-waybar left"
-        "SUPER SHIFT CTRL, RIGHT, Move Waybar right, exec, move-waybar right"
-        "SUPER SHIFT CTRL, UP, Move Waybar up, exec, move-waybar up"
-        "SUPER SHIFT CTRL, DOWN, Move Waybar down, exec, move-waybar down"
         "SUPER SHIFT, BACKSPACE, Toggle window gaps, exec, toggle-gaps"
         "SUPER CTRL, BACKSPACE, Toggle single-window square, exec, toggle-single-window-square"
 
@@ -513,8 +509,8 @@ in {
 
       # ─── Lid Switch ───
       bindl = [
-        ", switch:on:Lid Switch, exec, toggle-laptop-display"
-        ", switch:off:Lid Switch, exec, toggle-laptop-display"
+        ", switch:on:Lid Switch, exec, toggle-laptop-display off"
+        ", switch:off:Lid Switch, exec, toggle-laptop-display on"
       ];
 
       # ─── Mouse Bindings ───

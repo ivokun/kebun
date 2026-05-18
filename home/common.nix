@@ -158,10 +158,7 @@ in {
       hyprmagnifier
 
       # Transcoding
-      ffmpeg
-
-      # Settings
-      gnome-control-center
+      ffmpeg-headless
 
       # Custom scripts
     ]
@@ -206,13 +203,11 @@ in {
       menu-hardware
       menu-omarchy
       menu-background
-      menu-theme
 
       # Window & monitor management
       close-all-windows
       cycle-monitors
       cycle-monitor-scaling
-      move-waybar
       file-manager-cwd
 
       # Toggles

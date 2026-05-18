@@ -106,6 +106,7 @@
               home-manager.backupFileExtension = "hm-backup";
               nixpkgs.overlays = [
                 (final: prev: {
+                  walker = inputs.walker.packages.${prev.system}.walker;
                   deno = prev.deno.overrideAttrs (old: {
                     checkFlags =
                       (old.checkFlags or [])

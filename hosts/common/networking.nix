@@ -10,8 +10,6 @@
       wifi.backend = "iwd";
     };
 
-    wireless.iwd.enable = true;
-
     firewall = {
       enable = true;
       allowedTCPPorts = [22 80 443];
