@@ -262,8 +262,9 @@ After reboot:
 ```bash
 # If wired, should work automatically
 # If WiFi:
-nmcli device wifi list
-nmcli device wifi connect "YOUR_SSID" password "YOUR_PASSWORD"
+iwctl station wlan0 scan
+iwctl station wlan0 get-networks
+iwctl station wlan0 connect "YOUR_SSID"
 
 # Verify
 ping -c 3 google.com
@@ -520,15 +521,15 @@ sudo nix-collect-garbage -d
 ### Network Issues
 
 ```bash
-# Check NetworkManager
-nmcli device status
+# Check iwd status
+iwctl station list
 
-# Restart
-sudo systemctl restart NetworkManager
+# Restart iwd
+sudo systemctl restart iwd
 
 # WiFi specifically
-nmcli radio wifi
-nmcli device wifi rescan
+iwctl station wlan0 scan
+iwctl station wlan0 get-networks
 ```
 
 ---

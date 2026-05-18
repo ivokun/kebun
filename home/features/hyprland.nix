@@ -442,7 +442,7 @@ in {
         # ─── Control Panels ───
         "SUPER CTRL, A, Audio controls, exec, uwsm app -- ${pkgs.pavucontrol}/bin/pavucontrol"
         "SUPER CTRL, B, Bluetooth controls, exec, uwsm app -- ${pkgs.blueman}/bin/blueman-manager"
-        "SUPER CTRL, W, Wifi controls, exec, uwsm app -- ${pkgs.networkmanagerapplet}/bin/nm-connection-editor"
+        "SUPER CTRL, W, Wifi controls, exec, launch-wifi"
         "SUPER CTRL, T, Activity, exec, uwsm app -- ${pkgs.alacritty}/bin/alacritty -e btop"
 
         # ─── Additional App Launchers ───

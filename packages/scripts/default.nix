@@ -422,7 +422,7 @@
     case "$CHOICE" in
       "Audio controls") uwsm app -- ${pkgs.pavucontrol}/bin/pavucontrol ;;
       "Bluetooth controls") uwsm app -- ${pkgs.blueman}/bin/blueman-manager ;;
-      "WiFi controls") uwsm app -- ${pkgs.networkmanagerapplet}/bin/nm-connection-editor ;;
+      "WiFi controls") launch-wifi ;;
       "Battery status")
         CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "N/A")
         STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
