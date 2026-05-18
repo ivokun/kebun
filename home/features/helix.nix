@@ -1,4 +1,8 @@
-{ config, pkgs, ... }: {
+{
+  config,
+  pkgs,
+  ...
+}: {
   programs.helix = {
     enable = true;
     defaultEditor = false; # Neovim remains default editor
@@ -26,7 +30,7 @@
         space.q = ":q";
         space.f = "file_picker";
         space.b = "buffer_picker";
-        "C-f" = ":fmt";  # format on Ctrl-f
+        "C-f" = ":fmt"; # format on Ctrl-f
       };
     };
   };

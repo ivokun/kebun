@@ -191,5 +191,4 @@
     # Email
     <Multi_key> <space> <e> : "salahuddin.mi@gmail.com"
   '';
-
 }

@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{pkgs, ...}: {
   services.snapper = {
     cleanupInterval = "1d";
     filters = ''

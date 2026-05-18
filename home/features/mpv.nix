@@ -1,4 +1,8 @@
-{ config, pkgs, ... }: {
+{
+  config,
+  pkgs,
+  ...
+}: {
   programs.mpv = {
     enable = true;
 
@@ -17,8 +21,8 @@
     };
 
     scripts = with pkgs.mpvScripts; [
-      uosc        # Modern customizable UI
-      thumbfast   # Thumbnail preview on seek bar
+      uosc # Modern customizable UI
+      thumbfast # Thumbnail preview on seek bar
     ];
 
     # uosc theme configuration (Rose Pine Dawn inspired)

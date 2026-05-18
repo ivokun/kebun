@@ -5,9 +5,7 @@
   inputs,
   username,
   ...
-}:
-
-let
+}: let
   # Script to unlock LUKS devices using the password provided by PAM.
   #
   # IMPORTANT: You must first add your login password as a LUKS key
@@ -86,7 +84,7 @@ in {
     type = "fcitx5";
     fcitx5 = {
       waylandFrontend = true;
-      addons = with pkgs; [ fcitx5-mozc ];
+      addons = with pkgs; [fcitx5-mozc];
     };
   };
   # ─── Display-related services ───
@@ -124,14 +122,14 @@ in {
     order = 1100;
     control = "optional";
     modulePath = "${pkgs.pam}/lib/security/pam_exec.so";
-    args = [ "expose_authtok" "${unlockLuksOnLogin}" ];
+    args = ["expose_authtok" "${unlockLuksOnLogin}"];
   };
 
   security.pam.services.login.rules.auth.luksUnlock = {
     order = 1100;
     control = "optional";
     modulePath = "${pkgs.pam}/lib/security/pam_exec.so";
-    args = [ "expose_authtok" "${unlockLuksOnLogin}" ];
+    args = ["expose_authtok" "${unlockLuksOnLogin}"];
   };
 
   # ─── Desktop packages (system-level) ───
@@ -200,29 +198,29 @@ in {
     # Walker app launcher configuration
     force_keyboard_focus = true
     selection_wrap = true
-    
+
     [list]
     max_entries = 50
-    
+
     [[providers]]
     name = "applications"
     weight = 5
-    
+
     [[providers]]
     name = "websearch"
     prefix = "?"
     weight = 3
-    
+
     [[providers]]
     name = "files"
     prefix = "~"
     weight = 2
-    
+
     [[providers]]
     name = "symbols"
     prefix = ">"
     weight = 1
-    
+
     [[providers]]
     name = "clipboard"
     prefix = "c"

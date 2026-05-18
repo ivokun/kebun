@@ -23,16 +23,16 @@
 
   boot.initrd.luks.devices."luks-5525027e-a087-470e-a530-3ab692f4a14c" = {
     device = "/dev/disk/by-uuid/5525027e-a087-470e-a530-3ab692f4a14c";
-    crypttabExtraOpts = [ "tpm2-device=auto" "tpm2-measure-pcr=yes" ];
+    crypttabExtraOpts = ["tpm2-device=auto" "tpm2-measure-pcr=yes"];
   };
 
   boot.initrd.luks.devices."luks-e1906a9e-c934-4352-bfea-02620b6abd80" = {
     device = "/dev/disk/by-uuid/e1906a9e-c934-4352-bfea-02620b6abd80";
-    crypttabExtraOpts = [ "tpm2-device=auto" ];
+    crypttabExtraOpts = ["tpm2-device=auto"];
   };
 
   # TPM2 kernel modules for initrd
-  boot.initrd.availableKernelModules = [ "tpm_crb" "tpm_tis" ];
+  boot.initrd.availableKernelModules = ["tpm_crb" "tpm_tis"];
 
   # TPM2 userspace support
   security.tpm2 = {
@@ -41,7 +41,7 @@
   };
 
   # SD card reader (Realtek RTS525A)
-  boot.kernelModules = [ "rtsx_pci" ];
+  boot.kernelModules = ["rtsx_pci"];
 
   hardware = {
     graphics = {
@@ -67,7 +67,7 @@
 
     # ThinkPad specific
     trackpoint.enable = true;
-    firmware = with pkgs; [ linux-firmware sof-firmware wireless-regdb ];
+    firmware = with pkgs; [linux-firmware sof-firmware wireless-regdb];
 
     # Ambient light sensor (if present)
     sensor.iio.enable = true;
@@ -77,7 +77,7 @@
   services.btrfs.autoScrub = {
     enable = true;
     interval = "weekly";
-    fileSystems = [ "/" ];
+    fileSystems = ["/"];
   };
 
   # ─── ThinkPad power management ───
@@ -114,7 +114,7 @@
   services.snapper.configs = {
     home = {
       SUBVOLUME = "/home";
-      ALLOW_USERS = [ "ivokun" ];
+      ALLOW_USERS = ["ivokun"];
       TIMELINE_CREATE = true;
       TIMELINE_CLEANUP = true;
       TIMELINE_LIMIT_HOURLY = 10;
