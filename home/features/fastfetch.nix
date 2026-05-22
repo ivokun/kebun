@@ -10,7 +10,6 @@
     settings = {
       logo = {
         source = "nixos";
-        color = "#286983";
         padding = {
           right = 2;
         };
