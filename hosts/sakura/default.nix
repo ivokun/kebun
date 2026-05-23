@@ -81,12 +81,15 @@
   };
 
   # ─── ThinkPad power management ───
+  powerManagement.enable = true;
   services.power-profiles-daemon.enable = true;
   services.upower.enable = true;
   services.logind = {
     lidSwitch = "suspend";
     lidSwitchExternalPower = "suspend";
     lidSwitchDocked = "ignore";
+    powerKey = "suspend";
+    powerKeyLongPress = "poweroff";
   };
 
   # ─── NFS Mount (tubeinas via Tailscale) ───

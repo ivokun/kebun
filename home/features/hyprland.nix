@@ -540,8 +540,8 @@ in {
     settings = {
       general = {
         lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
-        before_sleep_cmd = "loginctl lock-session";
-        after_sleep_cmd = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+        before_sleep_cmd = "loginctl lock-session && ${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
+        after_sleep_cmd = "${pkgs.coreutils}/bin/sleep 2 && ${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
         inhibit_sleep = 3;
       };
 
