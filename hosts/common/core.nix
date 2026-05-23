@@ -29,12 +29,13 @@
     ];
 
     # ─── Plymouth boot splash ───
-    # Replaces text boot messages with a graphical splash.
+    # Custom kebun theme with ivokun branding (cyan bg + yellow accents).
     # When TPM2 auto-unlock fails, Plymouth shows a styled password prompt
-    # instead of dropping to a raw TTY. Purely cosmetic but matches Omarchy.
+    # instead of dropping to a raw TTY.
     plymouth = {
       enable = true;
-      theme = "spinner";
+      theme = "kebun";
+      themePackages = [(pkgs.callPackage ../../packages/plymouth-theme-kebun {})];
     };
   };
 
