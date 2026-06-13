@@ -363,16 +363,17 @@
 
     ${pkgs.hyprland}/bin/hyprctl -j binds | ${pkgs.jq}/bin/jq -r '
       def decode_modmask:
-        [. as $mod |
-          (if ($mod / 64 | floor) % 2 >= 1 then "SUPER" else empty end),
-          (if ($mod % 2) >= 1 then "SHIFT" else empty end),
-          (if ($mod / 4 | floor) % 2 >= 1 then "CTRL" else empty end),
-          (if ($mod / 8 | floor) % 2 >= 1 then "ALT" else empty end)
+        . as $mod |
+        [(if ($mod / 64 | floor) % 2 >= 1 then "SUPER" else empty end),
+         (if ($mod % 2) >= 1 then "SHIFT" else empty end),
+         (if ($mod / 4 | floor) % 2 >= 1 then "CTRL" else empty end),
+         (if ($mod / 8 | floor) % 2 >= 1 then "ALT" else empty end)
         ] | if length > 0 then join(" + ") + " + " else "" end;
 
       .[] |
+      select(.description != "") |
       (.modmask | tonumber) as $mod |
-      "\(decode_modmask)\(.key | ascii_upcase)  →  \(.description)"
+      "\($mod | decode_modmask)\(.key | ascii_upcase)  →  \(.description)"
     ' | sort -u | ${pkgs.walker}/bin/walker --dmenu -p "Keybindings"
   '';
 
