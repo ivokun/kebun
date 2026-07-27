@@ -20,10 +20,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Elephant backend for Walker
+    elephant = {
+      url = "github:abenz1267/elephant";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Walker app launcher
     walker = {
       url = "github:abenz1267/walker";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.elephant.follows = "elephant";
     };
 
     # Nix-index database for command-not-found
@@ -39,6 +46,7 @@
     home-manager,
     hyprland,
     nh,
+    elephant,
     walker,
     nix-index-database,
     ...

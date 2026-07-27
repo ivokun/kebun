@@ -36,20 +36,16 @@
     "elephant": {
       "inputs": {
         "nixpkgs": [
-          "walker",
           "nixpkgs"
         ],
-        "systems": [
-          "walker",
-          "systems"
-        ]
+        "systems": "systems"
       },
       "locked": {
-        "lastModified": 1775706155,
-        "narHash": "sha256-h7Rw0vlb0n0Jsk21WJPm7H+1T1bG+PEuxE5cJ2TZl8A=",
+        "lastModified": 1784365424,
+        "narHash": "sha256-kJO1Tww/GkvLq5amrV4BKidYGr5YumM+cH/xYALAiw4=",
         "owner": "abenz1267",
         "repo": "elephant",
-        "rev": "376ee71c66db38683daabd57350bf3f6f086eaf8",
+        "rev": "23f37238367355cf46843015ad5e94706200176a",
         "type": "github"
       },
       "original": {
@@ -190,7 +186,7 @@
           "nixpkgs"
         ],
         "pre-commit-hooks": "pre-commit-hooks",
-        "systems": "systems",
+        "systems": "systems_2",
         "xdph": "xdph"
       },
       "locked": {
@@ -519,6 +515,7 @@
     },
     "root": {
       "inputs": {
+        "elephant": "elephant",
         "home-manager": "home-manager",
         "hyprland": "hyprland",
         "nh": "nh",
@@ -557,13 +554,30 @@
         "type": "github"
       }
     },
+    "systems_3": {
+      "locked": {
+        "lastModified": 1689347949,
+        "narHash": "sha256-12tWmuL2zgBgZkdoB6qXZsgJEH9LR3oUgpaQq2RbI80=",
+        "owner": "nix-systems",
+        "repo": "default-linux",
+        "rev": "31732fcf5e8fea42e59c2488ad31a0e651500f68",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default-linux",
+        "type": "github"
+      }
+    },
     "walker": {
       "inputs": {
-        "elephant": "elephant",
+        "elephant": [
+          "elephant"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
-        "systems": "systems_2"
+        "systems": "systems_3"
       },
       "locked": {
         "lastModified": 1777299395,
