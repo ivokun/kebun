@@ -113,9 +113,15 @@
   # override manually; the next plug/unplug re-applies the automatic choice.)
   systemd.services.power-profile-auto = {
     description = "Select power profile based on AC/battery state";
-    wantedBy = ["multi-user.target"];
+    # Hang this off the daemon, not off a target. power-profiles-daemon.service
+    # ships `After=multi-user.target`, and a target is implicitly ordered after
+    # everything in its Wants= — so `wantedBy = ["multi-user.target"]` here plus
+    # `after = ppd` closes an ordering cycle and switch-to-configuration aborts
+    # with status 4. Services get no such implicit ordering, so binding to the
+    # daemon is safe and also runs the selector every time the daemon restarts.
+    wantedBy = ["power-profiles-daemon.service"];
+    partOf = ["power-profiles-daemon.service"];
     after = ["power-profiles-daemon.service"];
-    wants = ["power-profiles-daemon.service"];
     serviceConfig = {
       Type = "oneshot";
       ExecStart = pkgs.writeShellScript "power-profile-auto" ''
