@@ -143,7 +143,6 @@ in {
       exfatprogs
       dosfstools
       bluetui
-      thermald
       iwd
       kdePackages.qtstyleplugin-kvantum
 

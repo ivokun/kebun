@@ -106,6 +106,42 @@
     powerKeyLongPress = "poweroff";
   };
 
+  # ─── Battery-aware power profiles ───
+  # Auto-select a power profile based on AC/battery state — at boot and on
+  # every plug/unplug. Mirrors Omarchy's powerprofiles-init: balanced on AC,
+  # power-saver on battery. (The `toggle-power-profile` script still lets you
+  # override manually; the next plug/unplug re-applies the automatic choice.)
+  systemd.services.power-profile-auto = {
+    description = "Select power profile based on AC/battery state";
+    wantedBy = ["multi-user.target"];
+    after = ["power-profiles-daemon.service"];
+    wants = ["power-profiles-daemon.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "power-profile-auto" ''
+        set -euo pipefail
+        on_ac=0
+        for dir in /sys/class/power_supply/*; do
+          [ -r "$dir/type" ] || continue
+          [ "$(cat "$dir/type")" = "Mains" ] || continue
+          [ -r "$dir/online" ] || continue
+          [ "$(cat "$dir/online")" = "1" ] && on_ac=1
+        done
+        if [ "$on_ac" = "1" ]; then
+          ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced || true
+        else
+          ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set power-saver || true
+        fi
+      '';
+    };
+  };
+
+  # Re-run the selector whenever the AC adapter changes state. Filtering on
+  # type=Mains avoids firing on the battery's frequent capacity uevents.
+  services.udev.extraRules = ''
+    ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", RUN+="${pkgs.systemd}/bin/systemctl start --no-block power-profile-auto.service"
+  '';
+
   # ─── NFS Mount (tubeinas via Tailscale) ───
   # Using automount to avoid boot hang when not on the Tailscale network
   fileSystems."/mnt/tubeinas" = {
