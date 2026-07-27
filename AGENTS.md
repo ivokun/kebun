@@ -49,7 +49,7 @@ packages/scripts/      # Custom scripts packaged as Nix derivations
 
 - AMD Renoir APU (`amdgpu`)
 - LUKS2 with TPM2 auto-unlock (`crypttabExtraOpts` has `tpm2-device=auto`)
-- zram swap primary (50%, zstd), fallback swapfile in BTRFS `@swap`
+- zram swap primary (50%, zstd); persistent swap is a dedicated LUKS-encrypted partition (`luks-e1906…`, `swapDevices` in `hardware-configuration.nix`), also the hibernation resume target (`boot.resumeDevice` in `hosts/sakura/default.nix`)
 - Multi-monitor layout defined in `home/sakura.nix` (HDMI-A-1, DP-2)
 - NFS automount to `192.168.100.29:/mnt/tank/ivokun` via Tailscale
 
