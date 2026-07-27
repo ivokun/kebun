@@ -1,344 +1,189 @@
 # Omarchy → NixOS (Kebun) Discrepancy Analysis
 
+**Last updated:** 2026-07-27
+**Sources:** live `basecamp/omarchy` (branches `master` = v3.8.4 stable, `quattro` = v4.0.0.alpha) and the research briefs in `docs/omarchy/` (`omarchy_porting.md`, `omarchy_repo.md`, `omarchy_manual.md`, `omarchy-features-guide.md`), cross-checked against the current kebun flake.
+
 ## Executive Summary
 
-Kebun successfully ports ~73% of Omarchy's surface area to NixOS. The core Hyprland desktop experience is replicated, and recent additions have closed major gaps in: **application configs** (btop, fastfetch, lazygit, starship all themed), **utility scripts** (14 custom scripts for battery, toggles, OCR, etc.), **system integration** (snapper, file descriptor limits, power profiles), and **TUIs** (impala, cliamp, bluetui, wiremix). The remaining ~27% is largely **dynamic theming** (incompatible with NixOS's declarative model) and **Arch-specific tooling** (AUR helpers, pacman wrappers).
+**Kebun mirrors the Omarchy v3.8.x stable stack and now reaches ~85% parity on features relevant to a single ThinkPad.** The remaining gap is dominated by **multiple/dynamic theming** (1 theme vs 19–22) plus a handful of small conveniences. Everything else that is missing is either Arch-specific plumbing (AUR, pacman), replaced by a NixOS idiom (declarative firewall, generations), or hardware/gaming features for machines and use-cases the user doesn't have.
+
+> **Critical new context (this is the headline change since the May 2026 report):**
+> Omarchy has **forked into two divergent lines**:
+> - **`master` = v3.8.4 (stable, what the ISO installs today)** — the classic stack: **waybar + walker/elephant + mako + hypridle + hyprlock + swayosd**, Alacritty default, **iwd + impala**, satty. **Kebun is aligned with this line.**
+> - **`quattro` = v4.0.0.alpha (default branch, in development)** — a ground-up rewrite: **Hyprland configured entirely in Lua** (`hl.*` API), a single **Quickshell** instance (`omarchy-shell`) absorbing bar/launcher/notifications/OSD/lock/clipboard/emoji, **Foot** default terminal, **NetworkManager**, **tensaku** (replaces satty), new in-house tools (`omawrite`, `omacut`, `pi` AI agent), and a **plugin system**.
+>
+> **Decision kebun must make explicitly:** keep tracking v3.8.x semantics (recommended for now — it's stable and already ported), while designing module boundaries so the v4 Quickshell/Lua stack can be swapped in later. `walker`, `elephant`, and `quickshell` are **all now in nixpkgs**, so a future v4 port is feasible.
 
 ---
 
 ## 1. Architecture Differences
 
 ### Omarchy (Arch-based)
-- **Dynamic shell scripts**: 234 `omarchy-*` commands
-- **Mutable configs**: Live theme switching, toggle system
-- **AUR packages**: Access to Arch User Repository
-- **Rolling release**: Latest packages always
-- **git-managed**: Updates via `omarchy-update` (git pull)
+- **Imperative shell scripts**: ~283 `omarchy-*` commands on v3.8 (~380 on quattro)
+- **Mutable configs**: live theme switching, runtime toggles, `omarchy-reinstall-configs`
+- **AUR + `yay`**: access to the Arch User Repository
+- **Rolling release**: newest Hyprland (0.55+), Lua config migration underway
+- **git-managed updates**: `omarchy-update` (git pull + migrations)
 
 ### Kebun (NixOS)
-- **Declarative Nix expressions**: ~20 Nix files
-- **Immutable configs**: Rebuild to change anything
-- **nixpkgs only**: No AUR equivalent (must package manually)
-- **Pinned inputs**: Flake.lock controls versions
-- **Reproducible**: Same config = same system
+- **Declarative Nix expressions**: ~20 Nix modules
+- **Immutable configs**: rebuild to change anything (generations = rollback)
+- **nixpkgs only**: no AUR; custom derivations for the handful of Omarchy-specific tools
+- **Pinned inputs**: `flake.lock` controls versions
+- **Reproducible**: same config = same system
 
 ---
 
 ## 2. Component-by-Component Comparison
 
-### 2.1 Theme System
+### 2.1 Desktop Shell Stack
+
+| Component | Omarchy v3.8 | Omarchy v4 (quattro) | Kebun | Status vs v3.8 |
+|-----------|--------------|----------------------|-------|----------------|
+| Compositor | Hyprland (`.conf`) | Hyprland (**Lua** `hl.*`) | Hyprland (`.conf` via HM) | **PORTED** |
+| Bar | waybar | Quickshell | waybar | **PORTED** |
+| Launcher | walker + elephant | Quickshell | walker | **PORTED** |
+| Notifications | mako | Quickshell | mako | **PORTED** |
+| Idle / lock | hypridle + hyprlock | Quickshell | hypridle + hyprlock | **PORTED** |
+| OSD | swayosd | Quickshell | swayosd | **PORTED** |
+| Session | uwsm | uwsm | uwsm | **PORTED** |
+
+**Verdict:** Kebun's shell stack matches v3.8 stable exactly. The v4 Quickshell consolidation is a future consideration, not a current gap. `quickshell` + HM `programs.quickshell` already exist in nixpkgs if kebun tracks v4 later.
+
+### 2.2 Theme System — the primary gap
 
 | Feature | Omarchy | Kebun | Status |
 |---------|---------|-------|--------|
-| Built-in themes | 23 themes | 1 (Rose Pine Dawn) | **PARTIAL** |
-| Dynamic switching | `omarchy-theme-set` | Edit flake + rebuild | **NOT PORTED** |
-| Theme scope | GTK, Hyprland, Waybar, Alacritty, btop, fastfetch, mako, tmux, walker, swayosd, starship, plymouth, sddm | GTK, Hyprland, Waybar, Alacritty, btop, fastfetch, mako, SwayOSD, tmux, starship, Ghostty, Kitty | **PARTIAL** |
-| Per-app theme files | Symlinked from `~/.config/omarchy/current/theme/` | Hardcoded in Nix | **NOT PORTED** |
-| Wallpaper management | `omarchy-theme-bg-next/set/install` | Static swaybg solid color | **NOT PORTED** |
-| Keyboard LED theming | `omarchy-theme-set-keyboard-*` | Not present | **NOT PORTED** |
+| Built-in themes | 19 (v3.8) / 22 (v4) | 1 (Rose Pine Dawn) | **PARTIAL** |
+| Dynamic switching | `omarchy-theme-set` (renders `default/themed/*.tpl` from `colors.toml`) | Edit Nix + rebuild | **NOT PORTED** |
+| Theme scope | GTK, Hyprland, waybar, all 4 terminals, btop, mako, swayosd, starship, tmux, obsidian, vscode, plymouth, sddm, keyboard LED | GTK, Hyprland, waybar, alacritty/ghostty/kitty, btop, mako, swayosd, starship, tmux, lazygit, helix, mpv | **PARTIAL** |
+| Font switching | `omarchy-font-set` / `-list` / `-current` | Hardcoded CaskaydiaMono | **NOT PORTED** |
+| Wallpaper management | per-theme `backgrounds/`, `theme-bg-next` | `menu-background` (solid colors) + swaybg | **PARTIAL** |
 
-**Verdict**: Dynamic theming is fundamentally incompatible with NixOS's declarative model. A NixOS theme module could approximate this by generating all theme variants and switching via symlink or home-manager activation.
+**Verdict — reassessed:** This is no longer "fundamentally incompatible with NixOS." `docs/omarchy/omarchy_porting.md §4.3` documents **two concrete, verified strategies**:
+- **A. Declarative** — parse each `colors.toml` with `builtins.fromTOML`, a `mkTheme` function renders per-app configs, active theme = `kebun.theme = "tokyo-night"` option, switch via `home-manager switch`.
+- **B. Runtime-faithful** — build all themes into the store, keep a mutable `current` symlink, a `kebun-theme-set` script flips it and reloads apps (`hyprctl reload`, `systemctl --user restart waybar`, `makoctl reload`). Preserves Omarchy's instant no-rebuild UX at the cost of one impure inode.
 
-### 2.2 Hyprland Configuration
+Still the largest single porting effort, but it is a design choice, not a wall.
 
-| Feature | Omarchy | Kebun | Status |
-|---------|---------|-------|--------|
-| Window rules | Comprehensive (browsers, terminals, media, floating apps) | Comprehensive (similar coverage) | **PORTED** |
-| Keybindings | Extensive with omarchy-* commands | Extensive with direct exec | **PARTIAL** |
-| Window pop | `SUPER+O` float + pin | `SUPER+SHIFT+O` | **PORTED** |
-| Workspace layout toggle | `SUPER+L` cycle layouts | `SUPER+L` | **PORTED** |
-| Monitor hotplug | `omarchy-hyprland-monitor-watch` | Not present | **NOT PORTED** |
-| Dynamic toggles | `~/.local/state/omarchy/toggles/` | Not present | **NOT PORTED** |
-| First-run setup | `omarchy-first-run` | Not present | **NOT PORTED** |
-| Power profiles | `omarchy-powerprofiles-init` | `toggle-power-profile` script + daemon | **PORTED** |
-| Window grouping | Full group navigation | Full group navigation | **PORTED** |
-| Transparency toggle | `SUPER+BACKSPACE` | `SUPER+BACKSPACE` | **PORTED** |
+### 2.3 Scripts / Commands
 
-**Verdict**: Core window management is ported. Missing dynamic features (toggles, monitor watch) that could be replicated with systemd user services.
+| Category | Omarchy v3.8 | Kebun | Notes |
+|----------|--------------|-------|-------|
+| Total `omarchy-*` | ~283 | ~60 | Raw count misleading — see below |
+| UX helpers (screenshot, audio, brightness, battery, toggles, menus, launchers) | high | **high — near parity** | Ported 1:1 as `writeShellScriptBin` |
+| `install-*` / `remove-*` (apps, gaming, services) | ~50 | 0 | **Replaced by NixOS idiom**: an "install" is a module option + rebuild |
+| `pkg-*` (pacman/AUR) | 9 | 0 | No Nix meaning |
+| `update-*` / `migrate` / `reinstall-*` / `refresh-*` | ~35 | `check-updates` | Replaced by `nh os switch` + generations |
+| `hw-*` (per-vendor detection) | 26 | 0 | Only ThinkPad relevant; handled declaratively |
+| `theme-*` / `font-*` | ~24 | 0 | See §2.2 |
 
-### 2.3 Waybar Configuration
+**Functional user-facing script parity is high** — kebun ports the meaningful UX helpers (see §2.4) and correctly *declines* the Arch-plumbing scripts because NixOS replaces them structurally. The ~283→~60 drop is mostly install/update/pkg/hw/theme scripts that are idiom swaps, not missing features.
 
-| Feature | Omarchy | Kebun | Status |
-|---------|---------|-------|--------|
-| Basic modules | Workspaces, clock, tray, CPU, network, BT, audio, battery | Same | **PORTED** |
-| Omarchy logo | Custom font icon module | Not present | **NOT PORTED** |
-| Update indicator | Shows pending updates | `check-waybar-updates` | **PORTED** |
-| Voxtype indicator | Dictation status | Not present | **NOT PORTED** |
-| Screen recording indicator | Shows active recording | `custom/screenrecording` | **PORTED** |
-| Idle indicator | Lock status | `custom/idle` | **PORTED** |
-| Notification silencing | DND status | `custom/notification-silencing` | **PORTED** |
-| Power profile | Shows current profile | `custom/power` | **PORTED** |
-| Dynamic theming | Imports from theme dir | Hardcoded CSS | **NOT PORTED** |
+### 2.4 Kebun scripts covering Omarchy behaviors (ported)
 
-**Verdict**: Basic bar is functional. Custom indicators require additional services/scripts.
+Window/desktop: `window-pop`, `toggle-gaps`, `toggle-layout`, `toggle-single-window-square`, `toggle-waybar`, `toggle-nightlight`, `close-all-windows`, `cycle-monitors`, `cycle-monitor-scaling`, `toggle-laptop-display`, `toggle-mirror-display`, `color-picker`, `restart-waybar`, `restart-walker`.
+Hardware/power: `brightness-toggle`, `volume-toggle`, `audio-switch`, `mic-mute`, `toggle-power-profile`, full `battery-*` family + `battery-monitor` daemon.
+Capture/media: `screenshot`, `screenshot-clipboard`, `screenshot-ocr`, `screenrecord(-menu)`, `transcode`.
+Launch/menus: `launch-or-focus`, `launch-tui`, `launch-{audio,wifi,bluetooth,activity,floating-terminal}`, `menu-{keybindings,capture,toggle,hardware,omarchy,background}`, `file-manager-cwd`.
+Info/utility: `show-{time,battery,weather}`, `check-updates`, `localsend-share`, `reminder-{set,show,clear}`.
+Dictation/a11y: `dictation-{toggle,ptt,ptt-release}` (matches Omarchy voxtype), `cursor-zoom(-reset)`.
 
-### 2.4 Scripts / Commands
+### 2.5 Application Configs
 
-| Category | Omarchy | Kebun | Ported |
-|----------|---------|-------|--------|
-| Total commands | 234 | 14 | 6% |
-| Refresh commands | 16 | 0 | 0% |
-| Restart commands | 17 | 0 | 0% |
-| Toggle commands | 9 | 0 | 0% |
-| Theme commands | 19 | 0 | 0% |
-| Install commands | 12 | 0 | 0% |
-| Launch commands | 14 | 0 | 0% |
-| Update commands | 15 | 0 | 0% |
-| Hardware commands | ~25 | 0 | 0% |
-| Audio commands | 4 | 0 | 0% |
-| Screenshot commands | 2 | 3 | 100% |
-| Utility scripts | ~101 | 11 | 11% |
-
-**Key missing scripts that CAN be ported:**
-
-1. **omarchy-lock-screen** → `hyprlock` (already bound to SUPER+CTRL+L)
-2. **omarchy-cmd-screenshot** → Already have `screenshot` script
-3. **omarchy-toggle-nightlight** → Could wrap `hyprsunset` toggle
-4. **omarchy-restart-waybar** → `systemctl --user restart waybar`
-5. **omarchy-toggle-waybar** → Could be a simple script
-6. **omarchy-menu-keybindings** → `hyprctl bindlist` (already bound)
-7. **omarchy-cmd-terminal-cwd** → Uses `zoxide query --interactive`
-8. **omarchy-capture-screenshot** / **omarchy-capture-screenrecording** → Can use `grim` + `slurp` + `wl-screenrec`
-
-**Key scripts that CANNOT be ported (Arch-specific):**
-
-1. **omarchy-update** → Replaced by `nh os switch .`
-2. **omarchy-pkg-*** → Replaced by `nix-env` / `home-manager`
-3. **omarchy-install-dev-env** → Use `nix develop` or `mise`
-4. **omarchy-theme-*** → Dynamic theming incompatible with NixOS
-5. **omarchy-refresh-*** → Configs managed by home-manager
-
-### 2.5 Application Configurations
-
-| Application | Omarchy Config | Kebun Config | Status |
-|-------------|----------------|--------------|--------|
-| Alacritty | Themed, JetBrainsMono 9pt, 14px padding | Themed, CaskaydiaMono 12.5pt, 5px padding | **PARTIAL** |
-| Ghostty | Configured | Themed (Rose Pine Dawn) | **PORTED** |
-| Kitty | Configured | Themed (Rose Pine Dawn) | **PORTED** |
-| btop | Custom themed config | Rose Pine Dawn theme | **PORTED** |
-| fastfetch | Custom branded with omarchy-version | Rose Pine Dawn themed | **PORTED** |
-| tmux | Configured with plugins | Configured with plugins (different set) | **PARTIAL** |
-| lazygit | Configured | Rose Pine Dawn themed | **PORTED** |
-| starship | Configured (minimal) | Rose Pine Dawn themed with transience | **PORTED** |
-| git | Configured | Configured (different aliases) | **PARTIAL** |
-| fcitx5 | Configured | Configured | **PORTED** |
-| walker | Custom themed | Basic config | **PARTIAL** |
-| mako | Themed | Themed | **PORTED** |
-| swayosd | Themed | Themed | **PORTED** |
-| brave-flags.conf | Wayland flags | Wayland flags | **PORTED** |
-| chromium-flags.conf | Wayland flags | Wayland flags | **PORTED** |
+| App | Omarchy v3.8 | Kebun | Status |
+|-----|--------------|-------|--------|
+| Terminals | Alacritty (default) + Ghostty + Kitty + **Foot** | Alacritty (default) + Ghostty + Kitty | **PARTIAL** (no Foot) |
+| btop / fastfetch / lazygit / starship / tmux | themed | themed (Rose Pine Dawn) | **PORTED** |
+| Chromium/Brave flags | Wayland ozone flags | Wayland ozone flags | **PORTED** |
+| fcitx5 (IME) | mozc/Japanese | mozc/Japanese | **PORTED** |
+| opencode | configured | configured (+ MCP, skills) | **PORTED** |
+| Helix / mpv | (helix optional) | themed | **PORTED / ENHANCED** |
+| Obsidian / xournalpp / imv | configured | obsidian ✓; xournalpp/imv via pkg | **PARTIAL** |
 
 ### 2.6 System-Level Features
 
 | Feature | Omarchy | Kebun | Status |
 |---------|---------|-------|--------|
-| Boot loader | Limine | systemd-boot | **DIFFERENT** |
-| Boot splash | Plymouth | Plymouth themed | **PORTED** |
-| Display manager | SDDM | SDDM with auto-login | **PORTED** |
-| Filesystem snapshots | Snapper | Snapper for /home | **PORTED** |
-| ZRAM | zram-generator | zramswap (NixOS module) | **PORTED** |
-| LUKS | LUKS1/2 | LUKS2 + TPM2 | **ENHANCED** |
-| Firewall | ufw | nftables (NixOS default) | **DIFFERENT** |
-| Printing | CUPS | CUPS enabled | **PORTED** |
-| Plymouth themes | Themed per theme | Not present | **NOT PORTED** |
+| Boot loader | Limine (+ snapper-sync) | systemd-boot | **DIFFERENT (intentional)** — generations give native rollback |
+| Boot splash | Plymouth (themed) | Plymouth (custom kebun theme) | **PORTED** |
+| Display manager | SDDM | SDDM + auto-login | **PORTED** |
+| Snapshots | Snapper (btrfs) | Snapper (`/home` only) | **PORTED** |
+| ZRAM | zram-generator | `zramSwap` (NixOS) | **PORTED** |
+| Encryption | LUKS + FIDO2/fingerprint setup | LUKS2 + TPM2 + fingerprint | **ENHANCED / PARTIAL** (no FIDO2 sudo/polkit) |
+| Wi-Fi | iwd + impala (v3.8) | iwd + impala | **PORTED** |
+| Firewall | ufw | nftables (declarative) | **DIFFERENT (idiom swap)** |
+| Printing | CUPS | CUPS + gutenprint/hplip + avahi | **PORTED** |
+| Hibernation | `omarchy-hibernation-setup` | Suspend only (no hibernate) | **NOT PORTED** |
+| Docker | enabled | enabled + autoprune | **PORTED** |
 
 ### 2.7 Hardware Support
 
+Only ThinkPad X13 (user's machine) is relevant. Omarchy's ~26 `hw-*` scripts and the ASUS/Dell/Framework/Surface/Apple-T2/Intel-PTL/NVIDIA driver stacks are **irrelevant** for this host. Kebun covers AMD Renoir (amdgpu), TPM2, fingerprint, s0ix resume quirks, and lid/power behavior declaratively. **Effective parity for this hardware: 100%.**
+
+### 2.8 AI / Modern additions
+
 | Feature | Omarchy | Kebun | Status |
 |---------|---------|-------|--------|
-| ThinkPad fingerprint | Supported | Supported in hyprlock | **PORTED** |
-| ASUS ROG | Specialized scripts | Not present | **NOT PORTED** |
-| Dell XPS OLED | Specialized scripts | Not present | **NOT PORTED** |
-| Framework 16 | Specialized scripts | Not present | **NOT PORTED** |
-| MacBook T2 | linux-t2 kernel | Not present | **NOT PORTED** |
-| Surface | Specialized scripts | Not present | **NOT PORTED** |
-| Intel PTL | Custom kernel | Not present | **NOT PORTED** |
-| Hybrid GPU | Toggle scripts | Not present | **NOT PORTED** |
-| Haptic touchpad | Specialized config | Not present | **NOT PORTED** |
-
-**Verdict**: Only ThinkPad (user's hardware) is covered. Other hardware-specific scripts are irrelevant for this machine.
-
-### 2.8 Packages Comparison
-
-**Packages in Omarchy but NOT in Kebun:**
-
-| Package | Type | Can Port? | Notes |
-|---------|------|-----------|-------|
-| 1password / 1password-cli | Security | Yes | Available in nixpkgs |
-| gnome-keyring | Security | Yes | May need for secrets |
-| ufw / ufw-docker | Firewall | No | Use NixOS firewall instead |
-| obsidian | Productivity | Yes | Already in Kebun |
-| hyprland-guiutils | Hyprland | Maybe | Check nixpkgs |
-| hyprland-preview-share-picker | Hyprland | Maybe | Check nixpkgs |
-| xdg-terminal-exec | Utility | Yes | Available |
-| plymouth | Boot | Yes | **PORTED** |
-| sddm | DM | Yes | **PORTED** |
-| ghostty | Terminal | Yes | **PORTED** |
-| kitty | Terminal | Yes | **PORTED** |
-| gum | CLI | Yes | Available in nixpkgs |
-| tldr | Docs | Yes | Available in nixpkgs |
-| tree-sitter-cli | Dev | Yes | Available in nixpkgs |
-| github-cli | Dev | Yes | Already in Kebun (implied) |
-| usage | CLI | Yes | Available in nixpkgs |
-| claude-code | AI | Yes | Can use claude-code package |
-| omarchy-nvim | Editor | No | Custom Arch package |
-| clang / llvm | Dev | Yes | Available in nixpkgs |
-| rust | Dev | Yes | Available in nixpkgs |
-| ruby | Dev | Yes | Available in nixpkgs |
-| dotnet-runtime-9.0 | Dev | Yes | Available in nixpkgs |
-| luarocks | Dev | Yes | Available in nixpkgs |
-| python-gobject | Dev | Yes | Available in nixpkgs |
-| libyaml | Dev | Yes | Available in nixpkgs |
-| libqalculate | Math | Yes | Available in nixpkgs |
-| aether | Browser? | Unknown | Unknown package |
-| gvfs-mtp / gvfs-smb | Storage | Yes | gvfs already enabled |
-| expac | Pacman | No | Arch-specific |
-| exfatprogs / dosfstools | FS | Yes | Available in nixpkgs |
-| plocate | Search | Yes | Available in nixpkgs |
-| imagemagick | Image | Yes | Available in nixpkgs |
-| imv | Image viewer | Yes | Available in nixpkgs |
-| ffmpegthumbnailer | Video | Yes | Available in nixpkgs |
-| ttf-ia-writer | Font | Yes | Available in nixpkgs |
-| ttf-jetbrains-mono-nerd | Font | Yes | Available in nixpkgs |
-| satty | Screenshot | Yes | Available in nixpkgs |
-| pinta | Image editor | Yes | Available in nixpkgs |
-| xournalpp | Notes | Yes | Available in nixpkgs |
-| mpv | Media | Yes | Available in nixpkgs |
-| spotify | Media | Yes | Available in nixpkgs |
-| obs-studio | Recording | Yes | Available in nixpkgs |
-| kdenlive | Video | Yes | Available in nixpkgs |
-| gpu-screen-recorder | Recording | Yes | Available in nixpkgs |
-| evince | PDF | Yes | Available in nixpkgs |
-| typora | Markdown | Yes | Available in nixpkgs |
-| localsend | Sharing | Yes | Available in nixpkgs |
-| sushi | Preview | Yes | Available in nixpkgs |
-| bluetui | Bluetooth | Yes | Available in nixpkgs |
-| wiremix | Audio | Maybe | Check nixpkgs |
-| cups / cups-* | Printing | Yes | NixOS module |
-| man-db | Docs | Yes | Available in nixpkgs |
-| mariadb-libs | DB | Yes | Available in nixpkgs |
-| postgresql-libs | DB | Yes | Available in nixpkgs |
-| socat | Network | Yes | Available in nixpkgs |
-| xmlstarlet | XML | Yes | Available in nixpkgs |
-| yay | AUR | No | Arch-specific |
-| inxi | System info | Yes | Available in nixpkgs |
-| iwd | WiFi | Yes | NixOS module |
-| wireless-regdb | WiFi | Yes | Available in nixpkgs |
-| kernel-modules-hook | System | No | Arch-specific |
-| kvantum-qt5 | Qt theme | Yes | Available in nixpkgs |
-| libreoffice-fresh | Office | Yes | Available in nixpkgs |
-| tzupdate | Time | Yes | Available in nixpkgs |
-| tobi-try | Unknown | Unknown | Unknown |
-| impala | Wi-Fi TUI | Yes | **PORTED** |
-| fastfetch | System info | Yes | Already in Kebun |
-| thermald | Thermal | Yes | NixOS module |
+| Voice dictation | voxtype | hyprwhspr-rs + `dictation-*` scripts | **PORTED (equivalent)** |
+| Coding agents | claude-code, opencode | claude-code, opencode | **PORTED** |
+| `pi` AI agent (v4) | quattro only | — | N/A (v4) |
+| Japanese proofreading | tensaku (v4) | — | **NOT PORTED** (relevant: user runs fcitx5-mozc) |
+| Web apps as first-class | curated PWA `.desktop` set + `launch-or-focus-webapp` | `web2app` fish helper only | **PARTIAL** |
+| Plugin system | quattro only | — | N/A (v4) |
 
 ---
 
-## 3. Recommendations for Porting
+## 3. Remaining Gaps, Ranked
 
-### 3.1 High Priority (Easy Wins)
+### Real, portable, worth doing
+1. **Multiple themes + switching** — biggest effort; two concrete strategies in `docs/omarchy/omarchy_porting.md §4.3`. Start with 3–4 palettes via strategy A (declarative `mkTheme`).
+2. **Web-app PWA system** — curated launchers (HEY/ChatGPT/etc.) via HM `xdg.desktopEntries` + a `launch-or-focus-webapp` script. Trivially declarative; real daily value.
+3. **Font switching** (`omarchy-font-set` equivalent) — small; needs the theme-module machinery from #1 to be worthwhile.
+4. **Hibernation** — `omarchy-hibernation-*` behavior via NixOS `boot.resumeDevice` + swapfile resume. Verify current suspend-only setup is intentional.
 
-1. ~~Ghostty terminal config~~ ✅ Done
+### Intentional / irrelevant — do NOT chase
+- Gaming suite (Steam/Lutris/Heroic/RetroArch/etc.) — absent by choice
+- Per-vendor `hw-*` (ASUS/Dell/Framework/Surface/Apple/Intel-PTL) — wrong hardware
+- Limine bootloader — systemd-boot + generations is the deliberate NixOS choice
+- `foot` terminal — three terminals already configured
+- AUR/`pkg-*`/`update-*`/`refresh-*`/`reinstall-*` scripts — replaced by `nh os switch` + generations
 
-2. ~~Kitty terminal config~~ ✅ Done
-
-3. ~~btop config~~ ✅ Done
-
-4. ~~fastfetch branding~~ ✅ Done
-
-5. ~~brave-flags.conf / chromium-flags.conf~~ ✅ Done
-
-6. ~~Additional packages~~ ✅ Mostly done — remaining:
-   - hyprland-guiutils, hyprland-preview-share-picker (check nixpkgs)
-   - xournalpp (if needed)
-
-### 3.2 Medium Priority (Useful Scripts)
-
-1. ~~omarchy-toggle-waybar~~ ✅ Done (`toggle-waybar` script)
-
-2. ~~omarchy-toggle-nightlight~~ ✅ Done (`toggle-nightlight` script)
-
-3. ~~omarchy-restart-waybar~~ ✅ Done (`restart-waybar` script)
-
-4. ~~Screen recording~~ ✅ Done (`screenrecord` script + waybar indicator)
-
-5. ~~Update indicator~~ ✅ Done (`check-waybar-updates` + waybar module)
-
-6. **Remaining scripts to port:**
-   - Battery monitoring (`battery-monitor` daemon — needs autostart)
-   - Additional Omarchy utility scripts (low priority)
-
-### 3.3 Low Priority / Complex
-
-1. **Dynamic theming**
-   - Could be approximated with a NixOS module that generates all themes
-   - Switch by rebuilding with `--override-input theme`
-   - Significant effort, questionable value on NixOS
-
-2. ~~**Snapper integration**~~ ✅ Done
-   - Btrfs snapshots for /home configured
-   - NixOS generations handle system snapshots
-
-3. ~~**Plymouth boot splash**~~ ✅ Done
-   - Themed Plymouth with NixOS module
-
-4. ~~**SDDM**~~ ✅ Done
-   - SDDM with auto-login for single user
+### Future (only if kebun decides to track Omarchy 4)
+- Quickshell shell (replaces waybar+walker+mako+swayosd+hypridle+hyprlock) — `quickshell` in nixpkgs
+- Lua Hyprland config — HM supports Lua config since 26.05
+- NetworkManager (from iwd), Foot default, tensaku, omawrite/omacut, plugin system
 
 ---
 
-## 4. Files to Create / Modify
+## 4. Missing-from-nixpkgs (need custom derivation or idiom swap)
 
-### New Files
-
-```
-home/features/
-  ├── ghostty.nix          # Ghostty terminal config
-  ├── kitty.nix            # Kitty terminal config
-  ├── btop.nix             # btop config with theme
-  ├── fastfetch.nix        # Custom fastfetch branding
-  └── scripts.nix          # All custom scripts consolidated
-
-packages/scripts/
-  ├── toggle-waybar
-  ├── toggle-nightlight
-  ├── restart-waybar
-  ├── screenrecord
-  └── check-updates
-
-hosts/common/
-  └── printing.nix         # CUPS configuration (optional)
-```
-
-### Modified Files
-
-```
-flake.nix                  # Add new home modules
-home/common.nix            # Add new packages
-home/features/waybar.nix   # Add custom modules
-home/features/hyprland.nix # Add missing keybindings
-```
+Per `docs/omarchy/omarchy_porting.md §2.8`: `tensaku`, `omawrite`, `omacut` (v4 tools), `aether`, `asdcontrol`, `hyprland-guiutils`, `hyprland-preview-share-picker`, `tobi-try`, `elephant-1password` (and other elephant providers). Idiom swaps (no package needed): `ufw`→`networking.firewall`, `system-config-printer`→CUPS web UI, `omarchy-chromium`→`chromium` + flags, `omarchy-nvim`→own nvim config, `ttf-ia-writer`→`ia-writer-*` attrs. Everything user-facing in the v3.8 stack (incl. `walker` 2.17, `elephant` 2.22, `quickshell`) is already in nixpkgs.
 
 ---
 
-## 5. Summary Statistics
+## 5. Prior Art (reusable)
 
-| Category | Ported | Partial | Not Ported | Portability % |
-|----------|--------|---------|------------|---------------|
-| Core desktop | 6 | 0 | 0 | 100% |
-| Theme system | 1 | 1 | 2 | 33% |
-| Scripts | 14 | 0 | 220 | 6% |
-| App configs | 11 | 2 | 3 | 69% |
-| System features | 6 | 0 | 1 | 86% |
-| Hardware support | 1 | 0 | 8 | 11% |
-| Packages | ~120 | 0 | ~20 | 86% |
-| **OVERALL** | **159** | **3** | **254** | **~38%** |
+- **henrysipp/omarchy-nix** (729★, unmaintained) — full NixOS+HM module reimplementation; best skeleton for a `kebun.omarchy { theme; ... }` option set.
+- **Jylhis/marchyo** (active) — feature-flag module architecture.
+- **richardgill/nix** — "thin Nix layer over plain config files" philosophy (good for tracking upstream conf).
+- Omarchy Discussion #987 — running HM on top of Arch Omarchy (hybrid escape hatch).
 
-**Note**: Many "not ported" items are either:
-- Arch-specific (cannot port): AUR helper, pacman tools, Arch kernel modules
-- Dynamic features incompatible with NixOS: live theme switching, 234 omarchy commands
-- Hardware-specific for machines user doesn't own
-- Niche packages not relevant to the user's workflow
+Full list with URLs in `docs/omarchy/omarchy_porting.md §3`.
 
-**Effective porting coverage for usable features: ~73%**
+---
+
+## 6. Summary Statistics (vs v3.8 stable)
+
+| Category | Assessment |
+|----------|------------|
+| Desktop shell stack | **100%** (matches v3.8 exactly) |
+| Theme system | **~20%** (1 theme, no switching/font-set) — primary gap |
+| UX scripts | **~90%** of meaningful helpers; Arch-plumbing scripts correctly declined |
+| App configs | **~85%** (missing Foot; xournalpp/imv unthemed) |
+| System features | **~90%** (missing hibernation; Limine/firewall are intentional swaps) |
+| Hardware (this ThinkPad) | **100%** |
+| AI / modern | **~80%** (dictation + agents ported; web-apps partial; tensaku absent) |
+| **Overall (relevant features)** | **~85%** |
+
+**Bottom line:** Kebun is a faithful, stable-aligned port of Omarchy v3.8. Close the theme gap (§3 #1) and the web-app gap (§3 #2) and it reaches near-complete parity for this machine. Treat Omarchy 4 (Quickshell + Lua) as a deliberate future migration, not a backlog of missing features.
