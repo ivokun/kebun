@@ -84,6 +84,7 @@
             ./home/features/opencode.nix
             ./home/features/helix.nix
             ./home/features/mpv.nix
+            ./home/features/webapps.nix
           ];
         };
       }

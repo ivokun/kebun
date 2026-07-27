@@ -264,6 +264,7 @@ in {
         "SUPER, ESCAPE, System menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
         ", XF86PowerOff, Power menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
         "SUPER, K, Show keybindings, exec, menu-keybindings"
+        "SUPER, A, Web apps, exec, menu-webapp"
 
         # ─── Window Management ───
         "SUPER, W, Close window, killactive,"
