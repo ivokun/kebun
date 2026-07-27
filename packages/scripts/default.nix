@@ -751,8 +751,8 @@
   # ─── Cursor Zoom ───
   cursor-zoom = pkgs.writeShellScriptBin "cursor-zoom" ''
     set -euo pipefail
-    if ! ${pkgs.procps}/bin/pgrep -x hyprmagnifier > /dev/null; then
-      uwsm app -- ${pkgs.hyprmagnifier}/bin/hyprmagnifier
+    if ! ${pkgs.procps}/bin/pgrep -x hyprmag > /dev/null; then
+      uwsm app -- ${pkgs.hyprmag}/bin/hyprmag
       ${pkgs.libnotify}/bin/notify-send "Cursor Zoom" "Magnifier enabled"
     else
       ${pkgs.libnotify}/bin/notify-send "Cursor Zoom" "Magnifier already running"
@@ -761,8 +761,8 @@
 
   cursor-zoom-reset = pkgs.writeShellScriptBin "cursor-zoom-reset" ''
     set -euo pipefail
-    if ${pkgs.procps}/bin/pgrep -x hyprmagnifier > /dev/null; then
-      ${pkgs.procps}/bin/pkill -x hyprmagnifier
+    if ${pkgs.procps}/bin/pgrep -x hyprmag > /dev/null; then
+      ${pkgs.procps}/bin/pkill -x hyprmag
       ${pkgs.libnotify}/bin/notify-send "Cursor Zoom" "Magnifier disabled"
     fi
   '';

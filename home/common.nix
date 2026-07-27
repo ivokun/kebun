@@ -154,7 +154,7 @@ in {
       hyprwhspr-rs
 
       # Cursor zoom
-      hyprmagnifier
+      hyprmag
 
       # Transcoding
       ffmpeg-headless

@@ -28,7 +28,7 @@
     opencode
     awscli2
     bun
-    pnpm_9
+    pnpm_10
     uv
   ];
 }
