@@ -27,9 +27,9 @@
       "amdgpu.sg_display=0"
       "rtc_cmos.use_acpi_alarm=1"
       # s0ix resume fixes for AMD Renoir (ThinkPad X13 Gen 1)
-      "amdgpu.dcdebugmask=0x10"       # Disable PSR — prevents black screen on resume
-      "acpi_sleep=nonvs"              # Prevent ACPI NVS corruption during s0ix
-      "processor.max_cstate=5"        # Limit C-states to prevent s0ix resume failures
+      "amdgpu.dcdebugmask=0x10" # Disable PSR — prevents black screen on resume
+      "acpi_sleep=nonvs" # Prevent ACPI NVS corruption during s0ix
+      "processor.max_cstate=5" # Limit C-states to prevent s0ix resume failures
     ];
 
     # ─── Plymouth boot splash ───
@@ -50,8 +50,10 @@
     memoryPercent = 50;
     algorithm = "zstd";
   };
-  # NOTE: Fallback swapfile is defined in hardware-configuration.nix
-  # to avoid merge conflicts. Do NOT add swapDevices here.
+  # NOTE: The persistent swap device (a dedicated LUKS-encrypted partition,
+  # also the hibernation resume target — see hosts/sakura/default.nix) is
+  # defined in hardware-configuration.nix to avoid merge conflicts.
+  # Do NOT add swapDevices here.
 
   # ─── Locale / Time ───
   time.timeZone = "Asia/Tokyo";

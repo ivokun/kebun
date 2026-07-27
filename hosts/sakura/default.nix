@@ -34,6 +34,20 @@
   # TPM2 kernel modules for initrd
   boot.initrd.availableKernelModules = ["tpm_crb" "tpm_tis"];
 
+  # ─── Hibernation ───
+  # Resume from the dedicated LUKS-encrypted swap partition (luks-e1906…),
+  # which systemd-initrd unlocks via TPM2 *before* resume. This is a raw swap
+  # partition (not a btrfs swapfile), so no resume_offset is required.
+  #
+  # PREREQUISITES before hibernation actually works:
+  #   1. Reboot into this config so the LUKS swap partition — not the legacy
+  #      /swap/swapfile from the old generation — is the active swap device.
+  #   2. Swap must be >= RAM (31 GB). Verify: `swapon --show` and `lsblk`.
+  #      If the partition is smaller, `systemctl hibernate` will refuse.
+  # Test manually with `systemctl hibernate` before trusting it. Lid/power
+  # actions are intentionally left as plain suspend (see services.logind).
+  boot.resumeDevice = "/dev/mapper/luks-e1906a9e-c934-4352-bfea-02620b6abd80";
+
   # TPM2 userspace support
   security.tpm2 = {
     enable = true;
