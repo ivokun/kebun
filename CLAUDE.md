@@ -115,4 +115,5 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 - `docs/adr/` — architecture decision records
 - `docs/omarchy/` — research briefs on upstream Omarchy
 - `thoughts/` — in-progress plans and drafts (not authoritative)
-- `AGENTS.md` — shorter agent-facing summary of this same material
+
+`AGENTS.md` is a symlink to this file — edit `CLAUDE.md` only.
