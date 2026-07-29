@@ -156,8 +156,8 @@ in {
     # Notifications
     mako
 
-    # App launcher
-    inputs.walker.packages.${pkgs.system}.walker
+    # App launcher (backend enabled via services.elephant below)
+    walker
 
     # Polkit authentication agent
     polkit_gnome
@@ -194,36 +194,25 @@ in {
   services.dbus.enable = true;
 
   # ─── Walker configuration ───
-  environment.etc."walker/config.toml".text = ''
-    # Walker app launcher configuration
+  #
+  # Elephant is walker's provider backend — walker 2.x is only a frontend and
+  # refuses to start without it. Every provider (apps, calc, clipboard, …) lives
+  # on this side, so without it SUPER+SPACE does nothing at all.
+  services.elephant.enable = true;
+
+  # Must live under xdg/, i.e. /etc/xdg/walker. Plain /etc/walker is not on
+  # XDG_CONFIG_DIRS, so walker silently never reads it.
+  #
+  # This is walker 2.x schema; walker merges it over its own defaults, so the
+  # upstream provider actions and prefixes (">" runner, "/" files, "." symbols,
+  # ":" clipboard, "@" websearch, "=" calc) stay in place.
+  environment.etc."xdg/walker/config.toml".text = ''
     force_keyboard_focus = true
     selection_wrap = true
 
-    [list]
-    max_entries = 50
-
-    [[providers]]
-    name = "applications"
-    weight = 5
-
-    [[providers]]
-    name = "websearch"
-    prefix = "?"
-    weight = 3
-
-    [[providers]]
-    name = "files"
-    prefix = "~"
-    weight = 2
-
-    [[providers]]
-    name = "symbols"
-    prefix = ">"
-    weight = 1
-
-    [[providers]]
-    name = "clipboard"
-    prefix = "c"
-    weight = 1
+    [providers]
+    default = ["desktopapplications", "calc", "websearch"]
+    empty = ["desktopapplications"]
+    max_results = 50
   '';
 }

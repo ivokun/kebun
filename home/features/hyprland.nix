@@ -258,11 +258,11 @@ in {
         "SUPER SHIFT, O, Pop window, exec, window-pop"
 
         # ─── Menus ───
-        "SUPER, SPACE, Launch apps, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
-        "SUPER CTRL, E, Emoji picker, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker -m symbols"
-        "SUPER CTRL, SPACE, System menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
-        "SUPER, ESCAPE, System menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
-        ", XF86PowerOff, Power menu, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker"
+        "SUPER, SPACE, Launch apps, exec, ${pkgs.walker}/bin/walker"
+        "SUPER CTRL, E, Emoji picker, exec, ${pkgs.walker}/bin/walker -m symbols"
+        "SUPER CTRL, SPACE, System menu, exec, ${pkgs.walker}/bin/walker"
+        "SUPER, ESCAPE, System menu, exec, ${pkgs.walker}/bin/walker"
+        ", XF86PowerOff, Power menu, exec, ${pkgs.walker}/bin/walker"
         "SUPER, K, Show keybindings, exec, menu-keybindings"
         "SUPER, A, Web apps, exec, menu-webapp"
 
@@ -371,7 +371,7 @@ in {
 
         # ─── Clipboard ───
 
-        "SUPER CTRL, V, Clipboard manager, exec, ${inputs.walker.packages.${pkgs.system}.walker}/bin/walker -m clipboard"
+        "SUPER CTRL, V, Clipboard manager, exec, ${pkgs.walker}/bin/walker -m clipboard"
 
         # ─── Mouse Bindings ───
         "SUPER, mouse_down, Scroll workspace forward, workspace, e+1"
@@ -525,6 +525,9 @@ in {
         "uwsm app -- mako"
         "uwsm app -- waybar"
         "uwsm app -- fcitx5"
+        # Run walker as a gapplication service so SUPER+SPACE is instant. Its
+        # elephant backend starts on its own via services.elephant.
+        "uwsm app -- ${pkgs.walker}/bin/walker --gapplication-service"
         "uwsm app -- swaybg -c '#faf4ed' -m solid_color"
         "uwsm app -- swayosd-server --style ${config.home.homeDirectory}/.config/swayosd/style.css"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"

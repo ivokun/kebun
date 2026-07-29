@@ -20,18 +20,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Elephant backend for Walker
-    elephant = {
-      url = "github:abenz1267/elephant";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    # Walker app launcher
-    walker = {
-      url = "github:abenz1267/walker";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.elephant.follows = "elephant";
-    };
+    # Walker and its elephant backend come from nixpkgs, which carries them as a
+    # co-maintained pair plus a working services.elephant module. As flake
+    # inputs the two versions had to be paired by hand, and walker's own module
+    # collided with the nixpkgs one over services.elephant.
 
     # Nix-index database for command-not-found
     nix-index-database = {
@@ -46,8 +38,6 @@
     home-manager,
     hyprland,
     nh,
-    elephant,
-    walker,
     nix-index-database,
     ...
   } @ inputs: let
@@ -115,7 +105,6 @@
               home-manager.backupFileExtension = "hm-backup";
               nixpkgs.overlays = [
                 (final: prev: {
-                  walker = inputs.walker.packages.${prev.system}.walker;
                   deno = prev.deno.overrideAttrs (old: {
                     checkFlags =
                       (old.checkFlags or [])

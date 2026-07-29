@@ -50,11 +50,13 @@
     systemctl --user restart waybar
   '';
 
-  # Restart walker
+  # Restart walker (and elephant, its provider backend) as background services,
+  # not as a visible window — walker is invoked on demand via SUPER+SPACE.
   restart-walker = pkgs.writeShellScriptBin "restart-walker" ''
     ${pkgs.procps}/bin/pkill walker || true
+    systemctl --user restart elephant
     sleep 0.5
-    ${pkgs.walker}/bin/walker &
+    uwsm app -- ${pkgs.walker}/bin/walker --gapplication-service &
   '';
 
   # Color picker
