@@ -260,7 +260,8 @@ in {
         # ─── Menus ───
         "SUPER, SPACE, Launch apps, exec, ${pkgs.walker}/bin/walker"
         "SUPER CTRL, E, Emoji picker, exec, ${pkgs.walker}/bin/walker -m symbols"
-        "SUPER CTRL, SPACE, System menu, exec, ${pkgs.walker}/bin/walker"
+        # SUPER CTRL SPACE belongs to the Background menu further down; this
+        # binding ran bare walker, same as SUPER SPACE and SUPER ESCAPE below.
         "SUPER, ESCAPE, System menu, exec, ${pkgs.walker}/bin/walker"
         ", XF86PowerOff, Power menu, exec, ${pkgs.walker}/bin/walker"
         "SUPER, K, Show keybindings, exec, menu-keybindings"
