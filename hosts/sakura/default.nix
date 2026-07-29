@@ -34,19 +34,23 @@
   # TPM2 kernel modules for initrd
   boot.initrd.availableKernelModules = ["tpm_crb" "tpm_tis"];
 
-  # ─── Hibernation ───
-  # Resume from the dedicated LUKS-encrypted swap partition (luks-e1906…),
-  # which systemd-initrd unlocks via TPM2 *before* resume. This is a raw swap
-  # partition (not a btrfs swapfile), so no resume_offset is required.
+  # ─── Hibernation: NOT enabled, because it cannot work on this layout ───
+  # The LUKS swap partition (luks-e1906…) is 8.8 GiB against 30.6 GiB of RAM,
+  # so the kernel refuses to hibernate — swap must be >= RAM. `boot.resumeDevice`
+  # used to be set here, which made the config read as if hibernation worked
+  # when `systemctl hibernate` would always bail out.
   #
-  # PREREQUISITES before hibernation actually works:
-  #   1. Reboot into this config so the LUKS swap partition — not the legacy
-  #      /swap/swapfile from the old generation — is the active swap device.
-  #   2. Swap must be >= RAM (31 GB). Verify: `swapon --show` and `lsblk`.
-  #      If the partition is smaller, `systemctl hibernate` will refuse.
-  # Test manually with `systemctl hibernate` before trusting it. Lid/power
-  # actions are intentionally left as plain suspend (see services.logind).
-  boot.resumeDevice = "/dev/mapper/luks-e1906a9e-c934-4352-bfea-02620b6abd80";
+  # To enable it for real, the swap partition has to be recreated at >= 31 GiB.
+  # That is destructive and offline work, not a config change:
+  #   1. Boot installation media and unlock the disk.
+  #   2. `swapoff`, delete and recreate the partition >= 31 GiB, re-`luksFormat`,
+  #      `mkswap`, and update the UUIDs in hardware-configuration.nix and in
+  #      boot.initrd.luks.devices above.
+  #   3. Re-add: boot.resumeDevice = "/dev/mapper/luks-<new-uuid>";
+  #      (A raw swap partition needs no resume_offset, unlike a btrfs swapfile.)
+  #   4. Then `suspend-then-hibernate` becomes worthwhile for long sleeps —
+  #      9h of s2idle costs a large fraction of this 41 Wh battery.
+  # Verify with `swapon --show` and `free -h` before trusting any of it.
 
   # TPM2 userspace support
   security.tpm2 = {
@@ -102,7 +106,11 @@
     lidSwitch = "suspend";
     lidSwitchExternalPower = "suspend";
     lidSwitchDocked = "ignore";
-    powerKey = "suspend";
+    # "lock", not "suspend". A black screen invites a power-button tap, and
+    # with suspend that put the machine straight back to sleep mid-diagnosis
+    # (2026-07-29 08:32). Locking is idempotent and harmless when already
+    # locked; long-press still powers off.
+    powerKey = "lock";
     powerKeyLongPress = "poweroff";
   };
 
