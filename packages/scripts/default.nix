@@ -71,6 +71,13 @@
     set -uo pipefail
 
     max_attempts=5
+
+    # A run that lasts this long counts as healthy, and the next failure starts
+    # a fresh attempt budget. Without this the counter is cumulative for the
+    # whole lock session, so five separate crashes hours apart exhaust it just
+    # as surely as a tight crash loop does — and the fifth one strands the
+    # screen even though hyprlock had been up and working in between.
+    healthy_secs=30
     attempt=0
 
     while :; do
@@ -78,9 +85,13 @@
       # is the status of the *if*, which is 0 on a false condition, so the
       # signal check below would never match.
       rc=0
+      started=$SECONDS
       ${pkgs.hyprlock}/bin/hyprlock || rc=$?
+      ran=$((SECONDS - started))
 
-      # Exit 0 = the user actually unlocked.
+      # Exit 0 = the user actually unlocked, or hyprlock found another
+      # lockscreen already holding ext-session-lock and bowed out ("Seems we
+      # got yeeten"). Either way the screen is somebody else's problem now.
       if [ "$rc" = 0 ]; then
         exit 0
       fi
@@ -91,6 +102,10 @@
         exit "$rc"
       fi
 
+      if [ "$ran" -ge "$healthy_secs" ]; then
+        attempt=0
+      fi
+
       attempt=$((attempt + 1))
       if [ "$attempt" -ge "$max_attempts" ]; then
         echo "hyprlock failed $max_attempts times (last rc=$rc); giving up." >&2
@@ -98,9 +113,38 @@
         exit "$rc"
       fi
 
-      echo "hyprlock exited rc=$rc (attempt $attempt/$max_attempts); relaunching to keep the screen usable." >&2
+      # Back off rather than retrying flat-out every second. The crash this
+      # guards against happens while outputs are being torn down and re-added
+      # across resume, and that churn outlasts five one-second retries — the
+      # old budget could be spent entirely inside the window that causes the
+      # crash. 2+4+6+8 spans ~20s instead of ~5s.
+      echo "hyprlock exited rc=$rc after ''${ran}s (attempt $attempt/$max_attempts); relaunching to keep the screen usable." >&2
+      ${pkgs.coreutils}/bin/sleep $((attempt * 2))
+    done
+  '';
+
+  # Bring the panel back after resume.
+  #
+  # A single `hyprctl dispatch dpms on` fired straight after wake can land
+  # before the compositor has finished re-initialising the output, and a dpms
+  # call that is dropped leaves a dark screen that is indistinguishable from a
+  # hung lockscreen — you cannot tell "the display never came back" from
+  # "hyprlock is wedged" by looking at it. Retry until the compositor answers.
+  #
+  # `hyprctl` exits 0 and prints "ok" on success, so match on the output rather
+  # than the status: a request the compositor rejects still exits 0.
+  wake-display = pkgs.writeShellScriptBin "wake-display" ''
+    set -uo pipefail
+
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      if [ "$(${pkgs.hyprland}/bin/hyprctl dispatch dpms on 2>&1)" = "ok" ]; then
+        exit 0
+      fi
       ${pkgs.coreutils}/bin/sleep 1
     done
+
+    echo "dpms on never succeeded after resume; display may stay dark." >&2
+    exit 1
   '';
 
   # Restart walker (and elephant, its provider backend) as background services,

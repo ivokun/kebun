@@ -172,6 +172,7 @@ in {
       restart-waybar
       restart-walker
       hyprlock-guard
+      wake-display
       color-picker
       window-pop
       check-updates

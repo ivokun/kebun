@@ -441,7 +441,11 @@ in {
         "SUPER CTRL, PRINT, Screenshot OCR, exec, screenshot-ocr"
 
         # ─── Lock Screen ───
-        "SUPER CTRL, L, Lock system, exec, ${pkgs.hyprlock}/bin/hyprlock"
+        # Via loginctl, not bare hyprlock: that routes through hypridle's
+        # lock_cmd so the lock gets hyprlock-guard's crash supervision, and it
+        # sets logind's LockedHint. Launching hyprlock directly produced a lock
+        # hypridle did not know about and nothing was watching.
+        "SUPER CTRL, L, Lock system, exec, lock-screen"
 
         # ─── Control Panels ───
         "SUPER CTRL, A, Audio controls, exec, uwsm app -- ${pkgs.pavucontrol}/bin/pavucontrol"
@@ -549,8 +553,27 @@ in {
         # Not bare hyprlock — a crash while locked blanks the screen for good.
         # See hyprlock-guard in packages/scripts/default.nix.
         lock_cmd = "${scripts.hyprlock-guard}/bin/hyprlock-guard";
-        before_sleep_cmd = "loginctl lock-session && ${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-        after_sleep_cmd = "${pkgs.coreutils}/bin/sleep 2 && ${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
+
+        # No `hyprctl dispatch dpms off` chained on here, deliberately.
+        #
+        # `loginctl lock-session` returns as soon as the Lock signal is *sent*,
+        # not once hyprlock has painted, so a chained dpms off switched the
+        # output off while hyprlock was still starting up. With the output off
+        # the compositor stops sending frame callbacks, and hyprlock 0.9.6 has
+        # no timer fallback — it sat waiting for a callback that never came,
+        # frozen mid fade-in. Suspend then froze it there for good: on resume
+        # the panel lit up with nothing drawn on it, hyprlock still holding
+        # ext-session-lock and still not reading the keyboard, so no password
+        # could be typed and no second hyprlock could take the lock from it.
+        # Only a forced power-off got out of that.
+        #
+        # Suspending blanks the panel by itself a moment later, and
+        # inhibit_sleep = 3 already holds off the suspend until the session is
+        # genuinely locked, so the dpms call bought nothing it was risking.
+        # Observed 2026-07-29 across boots -1 through -4; the locks that
+        # rendered fine that morning were the ones taken without it.
+        before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd = "${scripts.wake-display}/bin/wake-display";
         inhibit_sleep = 3;
       };
 
@@ -562,7 +585,7 @@ in {
         {
           timeout = 605;
           on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-          on-resume = "${pkgs.hyprland}/bin/hyprctl dispatch dpms on && ${pkgs.brightnessctl}/bin/brightnessctl -r";
+          on-resume = "${scripts.wake-display}/bin/wake-display && ${pkgs.brightnessctl}/bin/brightnessctl -r";
         }
         {
           timeout = 900;
