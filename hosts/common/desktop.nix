@@ -132,6 +132,12 @@ in {
     args = ["expose_authtok" "${unlockLuksOnLogin}"];
   };
 
+  # ─── Hyprlock PAM stack ───
+  # Without this there is no /etc/pam.d/hyprlock, and hyprlock falls back to
+  # /etc/pam.d/su ("Pam module ... does not exist! Falling back to su") — the
+  # wrong stack to authenticate a screen unlock against.
+  security.pam.services.hyprlock = {};
+
   # ─── Desktop packages (system-level) ───
   environment.systemPackages = with pkgs; [
     # SDDM theme (must be in systemPackages for /run/current-system/sw/share/sddm/themes)

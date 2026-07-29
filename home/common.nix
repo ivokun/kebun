@@ -171,6 +171,7 @@ in {
       toggle-nightlight
       restart-waybar
       restart-walker
+      hyprlock-guard
       color-picker
       window-pop
       check-updates

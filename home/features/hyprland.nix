@@ -6,6 +6,8 @@
   username,
   ...
 }: let
+  scripts = import ../../packages/scripts {inherit pkgs;};
+
   # Rose Pine Dawn active border color
   activeBorderColor = "rgb(56949f)";
   inactiveBorderColor = "rgba(595959aa)";
@@ -544,7 +546,9 @@ in {
 
     settings = {
       general = {
-        lock_cmd = "${pkgs.hyprlock}/bin/hyprlock";
+        # Not bare hyprlock — a crash while locked blanks the screen for good.
+        # See hyprlock-guard in packages/scripts/default.nix.
+        lock_cmd = "${scripts.hyprlock-guard}/bin/hyprlock-guard";
         before_sleep_cmd = "loginctl lock-session && ${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
         after_sleep_cmd = "${pkgs.coreutils}/bin/sleep 2 && ${pkgs.hyprland}/bin/hyprctl dispatch dpms on";
         inhibit_sleep = 3;
@@ -602,9 +606,14 @@ in {
         fade_on_empty = false;
       };
 
-      # Fingerprint auth (ThinkPad X13 Gen 1)
+      # Fingerprint auth is OFF because nothing can service it: fprintd is not
+      # enabled anywhere in this config, so hyprlock was probing a D-Bus name
+      # that does not exist on every unlock. To actually enable it, add
+      # `services.fprintd.enable = true;` to hosts/sakura/default.nix, enroll
+      # with `fprintd-enroll`, then flip this back to true. (The X13 Gen 1's
+      # Synaptics 06cb:00bd reader may additionally need libfprint-tod.)
       auth = {
-        fingerprint.enabled = true;
+        fingerprint.enabled = false;
       };
     };
   };

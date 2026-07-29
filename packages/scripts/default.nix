@@ -50,6 +50,59 @@
     systemctl --user restart waybar
   '';
 
+  # Keep the lock screen renderable if hyprlock dies.
+  #
+  # Under ext-session-lock-v1 a compositor MUST keep every output blanked when
+  # the lock client disappears without unlocking — otherwise a crashing locker
+  # would expose the desktop. So a hyprlock crash while locked leaves a black
+  # screen that no keypress can recover: the machine is alive, but nothing is
+  # left to accept the password.
+  #
+  # hyprlock 0.9.6 does crash this way. Observed 2026-07-29 after a 9h suspend:
+  # SIGSEGV in CRenderer::removeWidgetsFor via _CWlRegistryGlobalRemove, i.e.
+  # inside the handler for a Wayland output going away — which is exactly what
+  # happens as outputs are torn down and re-added across resume.
+  #
+  # Relaunching re-acquires the lock and renders again, so the recovery is to
+  # restart it rather than to leave the session stranded. Exit 0 (a real
+  # unlock) and SIGTERM/SIGINT (a deliberate `pkill hyprlock` from a TTY) both
+  # end the loop, so manual recovery still works.
+  hyprlock-guard = pkgs.writeShellScriptBin "hyprlock-guard" ''
+    set -uo pipefail
+
+    max_attempts=5
+    attempt=0
+
+    while :; do
+      # Capture with `|| rc=$?`, not `if ...; then` — after an if-statement $?
+      # is the status of the *if*, which is 0 on a false condition, so the
+      # signal check below would never match.
+      rc=0
+      ${pkgs.hyprlock}/bin/hyprlock || rc=$?
+
+      # Exit 0 = the user actually unlocked.
+      if [ "$rc" = 0 ]; then
+        exit 0
+      fi
+
+      # 143 = SIGTERM, 130 = SIGINT — someone killed it on purpose.
+      if [ "$rc" = 143 ] || [ "$rc" = 130 ]; then
+        echo "hyprlock terminated by signal (rc=$rc); not relaunching." >&2
+        exit "$rc"
+      fi
+
+      attempt=$((attempt + 1))
+      if [ "$attempt" -ge "$max_attempts" ]; then
+        echo "hyprlock failed $max_attempts times (last rc=$rc); giving up." >&2
+        echo "Recover from a TTY: Ctrl+Alt+F2, then 'loginctl unlock-session'." >&2
+        exit "$rc"
+      fi
+
+      echo "hyprlock exited rc=$rc (attempt $attempt/$max_attempts); relaunching to keep the screen usable." >&2
+      ${pkgs.coreutils}/bin/sleep 1
+    done
+  '';
+
   # Restart walker (and elephant, its provider backend) as background services,
   # not as a visible window — walker is invoked on demand via SUPER+SPACE.
   restart-walker = pkgs.writeShellScriptBin "restart-walker" ''
