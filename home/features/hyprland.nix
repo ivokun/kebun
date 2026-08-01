@@ -516,6 +516,20 @@ in {
       ];
 
       # ─── Lid Switch ───
+      #
+      # These are only safe because toggle-laptop-display now refuses to disable
+      # the last enabled output. Unguarded, this pair was the cause of the
+      # post-suspend hangs: lid close destroyed eDP-1's wl_output, and the
+      # matching lid-open handler could not undo it because it looked the panel
+      # up in `hyprctl monitors -j`, which omits disabled monitors. Suspend can
+      # also invert the ordering of the two — the close handler gets frozen and
+      # thaws on resume, after the open handler has already run — so the safety
+      # has to live in the script, not in the ordering here. See the comments on
+      # toggle-laptop-display in packages/scripts/default.nix.
+      #
+      # They still earn their keep when docked: lidSwitchDocked = "ignore" means
+      # closing the lid with an external display attached does not suspend, and
+      # then switching the internal panel off is exactly right.
       bindl = [
         ", switch:on:Lid Switch, exec, toggle-laptop-display off"
         ", switch:off:Lid Switch, exec, toggle-laptop-display on"
@@ -573,7 +587,14 @@ in {
         # Observed 2026-07-29 across boots -1 through -4; the locks that
         # rendered fine that morning were the ones taken without it.
         before_sleep_cmd = "loginctl lock-session";
-        after_sleep_cmd = "${scripts.wake-display}/bin/wake-display";
+
+        # The settle argument is load-bearing. Freezing user.slice defers any
+        # in-flight lid handler, so a `keyword monitor eDP-1,disable` queued
+        # ~100 ms before the freeze lands on *resume* instead — measured 273 ms
+        # after hypridle had already run this hook. A one-shot reconcile cannot
+        # see damage that has not happened yet, so keep re-checking for 20s.
+        # hypridle spawns this fire-and-forget, so the runtime blocks nothing.
+        after_sleep_cmd = "${scripts.wake-display}/bin/wake-display 20";
         inhibit_sleep = 3;
       };
 

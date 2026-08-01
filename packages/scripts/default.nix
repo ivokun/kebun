@@ -50,101 +50,148 @@
     systemctl --user restart waybar
   '';
 
-  # Keep the lock screen renderable if hyprlock dies.
+  # Start hyprlock, exactly once, on an output that can actually render.
   #
-  # Under ext-session-lock-v1 a compositor MUST keep every output blanked when
-  # the lock client disappears without unlocking — otherwise a crashing locker
-  # would expose the desktop. So a hyprlock crash while locked leaves a black
-  # screen that no keypress can recover: the machine is alive, but nothing is
-  # left to accept the password.
+  # This replaces a relaunch-supervisor that could not work. Two measured
+  # reasons it never fired:
   #
-  # hyprlock 0.9.6 does crash this way. Observed 2026-07-29 after a 9h suspend:
-  # SIGSEGV in CRenderer::removeWidgetsFor via _CWlRegistryGlobalRemove, i.e.
-  # inside the handler for a Wayland output going away — which is exactly what
-  # happens as outputs are torn down and re-added across resume.
+  #   * hyprlock 0.9.6 does not exit when the compositor denies it the lock
+  #     ("Seems we got yeeten"). `run()` calls exit(1), but the process
+  #     deadlocks inside exit with 19 threads parked in futex_do_wait, so
+  #     `hyprlock || rc=$?` blocks forever: no status, no retry, no "giving up"
+  #     message, and one leaked 19-thread process per lock signal. The old
+  #     comment asserting that path returns rc=0 was wrong in source and in
+  #     practice.
+  #   * Even a successful relaunch is refused. Hyprland clears
+  #     CSessionLockProtocol::m_locked in exactly one place — the
+  #     unlock_and_destroy handler of a *non-inert* lock — and sendDenied()
+  #     marks a replacement inert before it can get there. So with
+  #     misc:allow_session_lock_restore off, no relaunch can ever take over.
   #
-  # Relaunching re-acquires the lock and renders again, so the recovery is to
-  # restart it rather than to leave the session stranded. Exit 0 (a real
-  # unlock) and SIGTERM/SIGINT (a deliberate `pkill hyprlock` from a TTY) both
-  # end the loop, so manual recovery still works.
+  # What it does instead, cheaply and in order:
+  #
+  #   1. Repairs output state if there is nothing to render on. This is the
+  #      in-band escape hatch: `powerKey = "lock"` means logind — which watches
+  #      the power button on its own evdev handle, independent of Hyprland's
+  #      input pipeline — turns a power-button press into a Lock signal, which
+  #      lands here. Verified in the journal: "Power key pressed short." →
+  #      "Locking sessions..." → hypridle runs lock_cmd. On 0.54.0 a keybind
+  #      cannot be the hatch: CKeybindManager::onKeyEvent returns early while
+  #      m_unsafeState, before handleInternalKeybinds, so not even Ctrl+Alt+F2
+  #      is dispatched. Restoring an output makes a still-live lock holder
+  #      create its surface and start taking the password (hyprlock
+  #      src/core/Output.cpp setDone → createSessionLockSurface).
+  #   2. Collapses duplicate Lock signals to one hyprlock with a flock held
+  #      across the exec — hypridle re-runs lock_cmd on every Lock, including
+  #      the one before_sleep_cmd raises when the session is already locked,
+  #      which is what produced the "yeeten" storm.
+  #   3. execs hyprlock. No relaunch loop: there is nothing honest to loop on.
+  #
+  # Residual risk, accepted deliberately: if hyprlock *crashes* while holding
+  # the lock, the session stays locked with a dead client and no replacement can
+  # take it, because misc:allow_session_lock_restore is off. Recovery is then
+  # out-of-band, and the old advice here was wrong on 0.54.0 — Ctrl+Alt+F2 is
+  # not dispatched while m_unsafeState, and `loginctl unlock-session` cannot
+  # clear m_locked (Hyprland has no login1 integration for it). What does work:
+  #   * ssh in (services.openssh is enabled) and run `hyprctl reload`
+  #   * Alt+SysRq+S, then U, then B — a synced reboot; see kernel.sysrq in
+  #     hosts/common/core.nix
   hyprlock-guard = pkgs.writeShellScriptBin "hyprlock-guard" ''
     set -uo pipefail
 
-    max_attempts=5
+    hc=${pkgs.hyprland}/bin/hyprctl
+    jq=${pkgs.jq}/bin/jq
 
-    # A run that lasts this long counts as healthy, and the next failure starts
-    # a fresh attempt budget. Without this the counter is cumulative for the
-    # whole lock session, so five separate crashes hours apart exhaust it just
-    # as surely as a tight crash loop does — and the fifth one strands the
-    # screen even though hyprlock had been up and working in between.
-    healthy_secs=30
-    attempt=0
+    # Repair first, so the power button is a working escape hatch. Only
+    # `hyprctl reload` helps here — with zero enabled outputs the compositor
+    # never renders, so monitor rules never drain and `keyword monitor
+    # …,preferred` returns "ok" while changing nothing. Inlined rather than
+    # calling wake-display, because this attrset is not `rec`.
+    enabled_outputs=$("$hc" monitors -j 2>/dev/null |
+      "$jq" -r '[.[] | select(.disabled == false) | select((.name | startswith("HEADLESS")) | not)] | length' 2>/dev/null) || enabled_outputs=""
+    case "$enabled_outputs" in
+      "" | *[!0-9]*) enabled_outputs=0 ;;
+    esac
 
-    while :; do
-      # Capture with `|| rc=$?`, not `if ...; then` — after an if-statement $?
-      # is the status of the *if*, which is 0 on a false condition, so the
-      # signal check below would never match.
-      rc=0
-      started=$SECONDS
-      ${pkgs.hyprlock}/bin/hyprlock || rc=$?
-      ran=$((SECONDS - started))
+    if [ "$enabled_outputs" -eq 0 ]; then
+      echo "no enabled output at lock time; hyprctl reload to restore it" >&2
+      "$hc" reload >/dev/null 2>&1 || true
+      "$hc" dispatch dpms on >/dev/null 2>&1 || true
+    fi
 
-      # Exit 0 = the user actually unlocked, or hyprlock found another
-      # lockscreen already holding ext-session-lock and bowed out ("Seems we
-      # got yeeten"). Either way the screen is somebody else's problem now.
-      if [ "$rc" = 0 ]; then
-        exit 0
-      fi
+    # Single-instance. The lock is held for the lifetime of hyprlock because the
+    # fd survives the exec; a second Lock signal fails the lock and exits.
+    exec 9>"''${XDG_RUNTIME_DIR:-/tmp}/hyprlock-guard.lock"
+    if ! ${pkgs.util-linux}/bin/flock -n 9; then
+      echo "hyprlock already running for this session; not starting another." >&2
+      exit 0
+    fi
 
-      # 143 = SIGTERM, 130 = SIGINT — someone killed it on purpose.
-      if [ "$rc" = 143 ] || [ "$rc" = 130 ]; then
-        echo "hyprlock terminated by signal (rc=$rc); not relaunching." >&2
-        exit "$rc"
-      fi
-
-      if [ "$ran" -ge "$healthy_secs" ]; then
-        attempt=0
-      fi
-
-      attempt=$((attempt + 1))
-      if [ "$attempt" -ge "$max_attempts" ]; then
-        echo "hyprlock failed $max_attempts times (last rc=$rc); giving up." >&2
-        echo "Recover from a TTY: Ctrl+Alt+F2, then 'loginctl unlock-session'." >&2
-        exit "$rc"
-      fi
-
-      # Back off rather than retrying flat-out every second. The crash this
-      # guards against happens while outputs are being torn down and re-added
-      # across resume, and that churn outlasts five one-second retries — the
-      # old budget could be spent entirely inside the window that causes the
-      # crash. 2+4+6+8 spans ~20s instead of ~5s.
-      echo "hyprlock exited rc=$rc after ''${ran}s (attempt $attempt/$max_attempts); relaunching to keep the screen usable." >&2
-      ${pkgs.coreutils}/bin/sleep $((attempt * 2))
-    done
+    exec ${pkgs.hyprlock}/bin/hyprlock
   '';
 
-  # Bring the panel back after resume.
+  # Bring the panel back after resume, and *prove* that it came back.
   #
-  # A single `hyprctl dispatch dpms on` fired straight after wake can land
-  # before the compositor has finished re-initialising the output, and a dpms
-  # call that is dropped leaves a dark screen that is indistinguishable from a
-  # hung lockscreen — you cannot tell "the display never came back" from
-  # "hyprlock is wedged" by looking at it. Retry until the compositor answers.
+  # The previous version asserted `hyprctl dispatch dpms on` == "ok". That test
+  # is vacuous: Actions::dpms skips every monitor with !m_enabled and then
+  # returns a default-constructed success, so "ok" is printed even when every
+  # output is disabled — and even for a monitor name that does not exist. That
+  # false positive is why the last three attempts at this bug concluded "the
+  # panel was lit" and went hunting for a wedged hyprlock instead.
   #
-  # `hyprctl` exits 0 and prints "ok" on success, so match on the output rather
-  # than the status: a request the compositor rejects still exits 0.
+  # The real failure: a `keyword monitor eDP-1,disable` queued by the lid
+  # handler destroys the only wl_output. With zero enabled outputs Hyprland is
+  # in unsafe state, and CMonitorFrameScheduler::canRender() refuses to render,
+  # so monitor rules never drain from the render pre-check hook —
+  # `keyword monitor …,preferred,auto,1` answers "ok" and changes nothing.
+  # Only `hyprctl reload` recovers, because CConfigManager::reload calls
+  # ensureMonitorStatus() directly, and it also drops the runtime disable.
+  #
+  # And it has to keep watching, not check once. Freezing user.slice defers the
+  # lid handler's disable until resume: measured landing 273 ms *after* hypridle
+  # had already run this script. Pass a settle window in seconds to keep
+  # re-checking (the resume hook does); no argument means check once and return,
+  # which is what the idle listener wants so `&& brightnessctl -r` is not held up.
   wake-display = pkgs.writeShellScriptBin "wake-display" ''
     set -uo pipefail
 
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
-      if [ "$(${pkgs.hyprland}/bin/hyprctl dispatch dpms on 2>&1)" = "ok" ]; then
-        exit 0
-      fi
-      ${pkgs.coreutils}/bin/sleep 1
-    done
+    hc=${pkgs.hyprland}/bin/hyprctl
+    jq=${pkgs.jq}/bin/jq
 
-    echo "dpms on never succeeded after resume; display may stay dark." >&2
-    exit 1
+    # Outputs the compositor will actually render on. HEADLESS is excluded: it
+    # satisfies a naive count without lighting up any physical panel.
+    enabled_outputs() {
+      n=$("$hc" monitors -j 2>/dev/null |
+        "$jq" -r '[.[] | select(.disabled == false) | select((.name | startswith("HEADLESS")) | not)] | length' 2>/dev/null) || n=""
+      case "$n" in
+        "" | *[!0-9]*) echo 0 ;;
+        *) echo "$n" ;;
+      esac
+    }
+
+    # Not a health check — see above. Just the thing that undoes the 605s
+    # idle listener's `dpms off`.
+    "$hc" dispatch dpms on >/dev/null 2>&1 || true
+
+    settle=''${1:-0}
+    ticks=$((settle * 2))
+    tick=0
+
+    while :; do
+      if [ "$(enabled_outputs)" -eq 0 ]; then
+        echo "no enabled output; hyprctl reload to restore monitor state" >&2
+        "$hc" reload >/dev/null 2>&1 || true
+        ${pkgs.coreutils}/bin/sleep 1
+        "$hc" dispatch dpms on >/dev/null 2>&1 || true
+        if [ "$(enabled_outputs)" -eq 0 ]; then
+          echo "reload did not restore an output; the display is still dark." >&2
+        fi
+      fi
+
+      [ "$tick" -ge "$ticks" ] && break
+      tick=$((tick + 1))
+      ${pkgs.coreutils}/bin/sleep 0.5
+    done
   '';
 
   # Restart walker (and elephant, its provider backend) as background services,
@@ -637,31 +684,97 @@
   '';
 
   # ─── Toggle Laptop Display ───
+  # Toggle the internal panel, with the two invariants the old version lacked.
+  # This script is where the post-suspend hang was manufactured.
+  #
+  # 1. Discovery uses `hyprctl monitors all -j`, not `hyprctl monitors -j`.
+  #    A *disabled* monitor is absent from `monitors` altogether, so the old
+  #    script looked up an empty INTERNAL and hit `exit 1` before ever reaching
+  #    the re-enable: the panel it had just switched off could not be switched
+  #    back on, by the lid handler or by SUPER+CTRL+DELETE. A one-way latch.
+  #
+  # 2. It refuses to disable the last enabled output. `keyword monitor
+  #    NAME,disable` destroys the wl_output global; with none left Hyprland
+  #    enters unsafe state, where nothing renders at all, ext-session-lock is
+  #    granted to a surfaceless client that can never be evicted (the
+  #    NOACTIVEMONS branch sends `locked` and returns *before* arming the 5s
+  #    watchdog), and monitor rules stop draining so even `keyword monitor
+  #    …,preferred` becomes a no-op. Recovery is a hard power-off.
+  #
+  # The guard is what makes the lid binding safe rather than merely lucky: it is
+  # re-evaluated in the same process immediately before the disable, so a
+  # handler frozen 100 ms into a suspend and thawed 20 hours later on resume
+  # acts on live state and degrades to a no-op, instead of acting on a premise
+  # that expired overnight. Ordering between the lid-close and lid-open
+  # handlers stops mattering, which is what the previous fixes could not
+  # arrange — suspend can invert it.
+  #
+  # HEADLESS outputs do not count: they would satisfy the guard without
+  # lighting up a physical panel.
   toggle-laptop-display = pkgs.writeShellScriptBin "toggle-laptop-display" ''
-    set -euo pipefail
-    INTERNAL=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.name | test("eDP|LVDS")) | .name' | head -1)
+    set -uo pipefail
+
+    hc=${pkgs.hyprland}/bin/hyprctl
+    jq=${pkgs.jq}/bin/jq
+
+    INTERNAL=$("$hc" monitors all -j |
+      "$jq" -r '.[] | select(.name | test("eDP|LVDS")) | .name' |
+      ${pkgs.coreutils}/bin/head -1)
 
     if [ -z "$INTERNAL" ]; then
       ${pkgs.libnotify}/bin/notify-send "Display" "No internal display found"
       exit 1
     fi
 
-    DISABLED=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r --arg name "$INTERNAL" '.[] | select(.name == $name) | .disabled // false')
+    DISABLED=$("$hc" monitors all -j |
+      "$jq" -r --arg name "$INTERNAL" '.[] | select(.name == $name) | .disabled')
 
-    # Handle explicit on/off arguments
-    if [ "''${1:-}" = "off" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "$INTERNAL,disable"
-      ${pkgs.libnotify}/bin/notify-send "Display" "Internal monitor disabled"
-    elif [ "''${1:-}" = "on" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "$INTERNAL,preferred,auto,1"
+    # Fails safe: an unparseable count reads as 0 and so refuses the disable.
+    enabled_outputs() {
+      n=$("$hc" monitors -j 2>/dev/null |
+        "$jq" -r '[.[] | select(.disabled == false) | select((.name | startswith("HEADLESS")) | not)] | length' 2>/dev/null) || n=""
+      case "$n" in
+        "" | *[!0-9]*) echo 0 ;;
+        *) echo "$n" ;;
+      esac
+    }
+
+    enable_internal() {
+      # Re-applying a rule to a live output tears its wl_output global down and
+      # re-advertises it — the exact path of the one real hyprlock SIGSEGV on
+      # this machine (CRenderer::removeWidgetsFor via the registry global_remove
+      # handler). So do nothing when it is already on.
+      if [ "$DISABLED" != "true" ]; then
+        exit 0
+      fi
+      "$hc" keyword monitor "$INTERNAL,preferred,auto,1"
       ${pkgs.libnotify}/bin/notify-send "Display" "Internal monitor enabled"
-    elif [ "$DISABLED" = "true" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "$INTERNAL,preferred,auto,1"
-      ${pkgs.libnotify}/bin/notify-send "Display" "Internal monitor enabled"
-    else
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "$INTERNAL,disable"
+    }
+
+    disable_internal() {
+      if [ "$DISABLED" = "true" ]; then
+        exit 0
+      fi
+      if [ "$(enabled_outputs)" -le 1 ]; then
+        echo "refusing to disable $INTERNAL: it is the only enabled output" >&2
+        ${pkgs.libnotify}/bin/notify-send "Display" "Keeping $INTERNAL on — it is the only display"
+        exit 0
+      fi
+      "$hc" keyword monitor "$INTERNAL,disable"
       ${pkgs.libnotify}/bin/notify-send "Display" "Internal monitor disabled"
-    fi
+    }
+
+    case "''${1:-}" in
+      on) enable_internal ;;
+      off) disable_internal ;;
+      *)
+        if [ "$DISABLED" = "true" ]; then
+          enable_internal
+        else
+          disable_internal
+        fi
+        ;;
+    esac
   '';
 
   # ─── Toggle Mirror Display ───

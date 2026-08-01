@@ -140,6 +140,23 @@
   boot.kernel.sysctl = {
     "fs.file-max" = 2097152;
     "fs.inotify.max_user_watches" = 524288;
+
+    # Last-resort escape hatch: sync + remount-ro + signal + reboot
+    # (16 + 32 + 64 + 128). The kernel default here is 16, sync only, so
+    # Alt+SysRq+B did nothing and every wedged session on this machine ended
+    # with a held power button — an unsynced power cut, which is why most of
+    # those boots have no shutdown markers in the journal at all.
+    #
+    # SysRq is a kernel *input filter*, registered ahead of evdev in
+    # /proc/bus/input/handlers, so it still works when the compositor has
+    # stopped dispatching keys — which on Hyprland 0.54.0 is the case whenever
+    # there are no enabled outputs (CKeybindManager::onKeyEvent returns early
+    # while m_unsafeState, before it can reach even the VT-switch handling).
+    # Alt+SysRq+S, then U, then B is a clean synced reboot.
+    #
+    # Not a meaningful weakening: it needs physical access to the keyboard, and
+    # anyone at the keyboard can already cut power. The disks are LUKS.
+    "kernel.sysrq" = 240;
   };
 
   security.pam.loginLimits = [
