@@ -113,6 +113,22 @@
                         "uv_compat::tests::tty_reset_mode_restores_termios"
                       ];
                   });
+                  # opencode 1.18.11, backported from NixOS/nixpkgs@9d590febde.
+                  # The pinned nixos-unstable eval (2026-08-01) still carries 1.18.4.
+                  # Drop this override once the channel advances past the bump.
+                  opencode = prev.opencode.overrideAttrs (old: rec {
+                    version = "1.18.11";
+                    src = prev.fetchFromGitHub {
+                      owner = "anomalyco";
+                      repo = "opencode";
+                      tag = "v${version}";
+                      hash = "sha256-Rg+NeRLeu0e+WSTZd8oJzV3XMMxXZCZ5LImDcCraX8g=";
+                    };
+                    node_modules = old.node_modules.overrideAttrs (_: {
+                      inherit version src;
+                      outputHash = "sha256-lHr4g4Kw9CvyDHiuyuCDsyk9vOXzz/My5bI9/zd5aYE=";
+                    });
+                  });
                 })
               ];
             }
