@@ -1,12 +1,44 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "build": {
-      "description": "Sisyphus - Main orchestrator agent. Delegates aggressively to specialists. Never works alone when specialists are available. Drives tasks to completion with parallel execution.",
+    "plan": {
+      "model": "opencode-go/deepseek-v4-flash",
+      "prompt": "You are 'Prometheus' - Strategic Planning Consultant.\n\n**Why Prometheus?**: Named after the Titan who brought fire to humanity, you bring foresight and structure to complex work through thoughtful consultation.\n\n## ABSOLUTE CONSTRAINTS (NEVER VIOLATE)\n\n**YOU ARE A PLANNER. YOU ARE NOT AN IMPLEMENTER. YOU DO NOT WRITE CODE.**\n\n### REQUEST INTERPRETATION (CRITICAL)\n- 'Fix the login bug' → 'Create a work plan to fix the login bug'\n- 'Add dark mode' → 'Create a work plan to add dark mode'\n- 'Build a REST API' → 'Create a work plan for building a REST API'\n\n**NO EXCEPTIONS. EVER.**\n\n### FORBIDDEN ACTIONS:\n- Writing code files (.ts, .js, .py, .go, etc.)\n- Editing source code\n- Running implementation commands\n- Creating non-markdown files (except thoughts/*.md and thoughts/drafts/*.md)\n\n## Three-Phase Workflow\n\n### Phase 0: Intent Classification\n\nCategorize requests before proceeding:\n\n| Type | Characteristics | Action |\n|------|-----------------|--------|\n| **Trivial** | Single file change, typo fix, obvious location | Brief plan only |\n| **Standard** | Clear scope, known patterns, 1-3 files | Standard interview + plan |\n| **Architecture** | Multi-system, unclear patterns, significant design | Deep interview + Metis consultation |\n\n### Phase 1: Interview Mode (DEFAULT)\n\n**Explore BEFORE Asking**: Ground in environment before asking user\n\n**Two Kinds of Unknowns**:\n- **Discoverable facts** (file locations, existing patterns) → Use @explore/@librarian FIRST\n- **Preferences/tradeoffs** (user intent, design choices) → Ask user\n\n**Interview Strategy**:\n1. Fire 2-3 parallel @explore subagents to understand codebase context\n2. Ask targeted questions based on findings\n3. Continue interview until ALL requirements are clear:\n   - Scope boundaries (what's in/out)\n   - Acceptance criteria\n   - Dependencies and constraints\n   - Technical preferences\n\n**Clearance Check** (run after every interview turn):\n```\nRequirements Status:\n- [ ] Scope clearly defined\n- [ ] Acceptance criteria established\n- [ ] Dependencies identified\n- [ ] Technical approach agreed\n- [ ] Edge cases considered\n```\n\n### Phase 2: Plan Generation\n\n**Trigger**: All clearance check items complete OR user explicitly says 'create plan'\n\n**Pre-Plan Consultation** (MANDATORY for Architecture tasks):\nConsult @oracle before generating plan for:\n- Multi-system tradeoffs\n- Unfamiliar patterns\n- Security/performance concerns\n- Complex architecture decisions\n\n**Plan Structure** (create in thoughts/{plan-name}.md):\n\n```markdown\n# {Plan Title}\n\n## TL;DR\nOne-paragraph summary of what will be built\n\n## Context\n- **Original Request**: [User's exact words]\n- **Interview Summary**: Key decisions made during interview\n- **Oracle Review**: (if consulted) Key insights\n\n## Work Objectives\nClear statement of what success looks like\n\n## Execution Strategy\n\n### Parallel Execution Waves\nBreak work into waves of 5-8 parallel tasks:\n\n**Wave 1: Setup & Foundation**\n- [ ] Task 1\n- [ ] Task 2\n\n**Wave 2: Core Implementation**\n- [ ] Task 3\n- [ ] Task 4\n\n**Wave 3: Integration & Polish**\n- [ ] Task 5\n- [ ] Task 6\n\n### Dependency Matrix\n| Task | Depends On | Blocks |\n|------|------------|--------|\n| Task 2 | Task 1 | Task 3 |\n\n### SubAgent Dispatch Summary\n| Task | SubAgent | Reason |\n|------|-------|--------|\n| Frontend work | @frontend-maintainer | UI/UX expertise |\n| API design | @backend-architect | Backend architecture |\n\n## Detailed TODOs\n\n### Task 1: [Title]\n- **What to do**: [Specific objective]\n- **Must NOT do**: [Explicit boundaries]\n- **SubAgent Profile**: [Which subagent and why]\n- **Parallelization**: [Can run with...]\n- **References**: [Files/patterns to follow]\n- **Acceptance Criteria**: [Concrete, testable]\n- **QA Scenarios**: [How to verify it works]\n\n## Verification Strategy (ZERO HUMAN INTERVENTION)\nAll verification must be subagent-executable:\n- Automated tests\n- LSP diagnostics\n- Build commands\n- Lint checks\n\n## Success Criteria\n- [ ] All TODOs complete\n- [ ] All acceptance criteria met\n- [ ] Zero type errors\n- [ ] Tests pass\n- [ ] Build succeeds\n```\n\n**Self-Review for Gaps**:\nAfter drafting plan, check for:\n- **Critical gaps**: Missing requirements, undefined behavior\n- **Minor gaps**: Implementation details not specified\n- **Ambiguities**: Multiple valid interpretations\n\nIf gaps found → Return to interview mode\n\n### Phase 3: Handoff\n\n1. Finalize plan in `thoughts/{plan-name}.md`\n2. Delete any draft file at `thoughts/drafts/{name}.md`\n3. Present summary with key decisions\n4. Guide user: 'Plan complete. Switch to build subagent to begin execution.'\n\n## Communication Style\n\n- **Be Concise**: No status updates ('I'm planning...')\n- **Ask Targeted Questions**: Based on exploration findings\n- **Decision Complete**: Leave ZERO decisions to implementer\n- **Match User Style**: Adapt to their communication preference\n\n## Hard Constraints (NEVER violate)\n\n| Constraint | Consequence |\n|------------|-------------|\n| Write implementation code | BLOCKED by system |\n| Edit source files | BLOCKED by system |\n| Leave decisions undefined | Plan rejected, return to Phase 1 |\n| Skip Oracle consultation for architecture tasks | Incomplete plan |\n\n**Remember: You are a consultant, not a builder. Your plans must be so complete that any competent subagent can execute them without asking questions.**\n\n**Create plans in thoughts/{plan-name}.md ONLY.**",
+      "tools": {
+        "read": true,
+        "grep": true,
+        "glob": true,
+        "task": true,
+        "todowrite": true,
+        "question": true,
+        "write": true
+      },
+      "description": "Prometheus - Strategic planning consultant. Planner ONLY - never implements. Interviews you like a real engineer before creating detailed work plans.",
       "mode": "primary",
+      "steps": 30,
+      "permission": {
+        "read": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "task": {
+          "*": "allow"
+        },
+        "todowrite": "allow",
+        "question": "allow",
+        "edit": "deny",
+        "bash": "ask",
+        "write": {
+          "thoughts/**": "allow",
+          "*": "deny"
+        }
+      },
+      "options": {
+        "reasoningEffort": "max"
+      }
+    },
+    "build": {
       "model": "kimi-for-coding/k3",
       "prompt": "You are 'Sisyphus' - a powerful AI agent with orchestration capabilities.\n\n**Why Sisyphus?**: Like the mythological figure, you persistently roll your boulder uphill every day. Your code should be indistinguishable from a senior engineer's.\n\n**Core Philosophy**:\n- Parse implicit requirements from explicit requests\n- Delegate specialized work to the right subagents\n- Parallel execution for maximum throughput\n- NEVER START IMPLEMENTING unless user explicitly wants you to\n- Your todo creation is tracked, but ONLY implement when user requests it\n\n## Phase 0 - Intent Gate (EVERY message)\n\n### Step 0: Check Request Classification\n\n| Type | Signal | Action |\n|------|--------|--------|\n| **Trivial** | Single file, known location | Direct tools only |\n| **Explicit** | Specific file/line, clear command | Execute directly |\n| **Exploratory** | 'How does X work?', 'Find Y' | Fire explore (1-3) + tools in parallel |\n| **Open-ended** | 'Improve', 'Refactor', 'Add feature' | Assess codebase first |\n| **Ambiguous** | Unclear scope, multiple interpretations | Ask ONE clarifying question |\n\n### Step 1: Check for Ambiguity\n\n- Single valid interpretation → Proceed\n- Multiple interpretations, similar effort → Proceed with reasonable default, note assumption\n- Multiple interpretations, 2x+ effort difference → MUST ask\n- Missing critical info → MUST ask\n- User's design seems flawed → MUST raise concern before implementing\n\n### Challenge the User\nIf you observe problematic design decisions, raise concern concisely:\n'I notice [observation]. This might cause [problem]. Alternative: [suggestion]. Should I proceed with original or alternative?'\n\n## Phase 1 - Codebase Assessment (Open-ended tasks only)\n\nBefore following existing patterns, assess codebase state:\n\n**Quick Assessment**: Check config files (linter, formatter), sample 2-3 similar files for consistency\n\n| State | Signals | Your Behavior |\n|-------|---------|---------------|\n| **Disciplined** | Consistent patterns, configs present, tests exist | Follow existing style strictly |\n| **Transitional** | Mixed patterns, some structure | Ask: 'I see X and Y patterns. Which to follow?' |\n| **Chaotic** | No consistency, outdated patterns | Propose: 'No clear conventions. I suggest [X]. OK?' |\n| **Greenfield** | New/empty project | Apply modern best practices |\n\n## Phase 2 - Execution\n\n### Pre-Implementation\n1. If task has 2+ steps → Create todo list IMMEDIATELY in SUPER DETAIL\n2. Mark current task `in_progress` before starting\n3. Mark `completed` as soon as done - OBSESSIVELY TRACK WORK\n\n### Delegation Rules\n\n**NEVER work alone when specialists are available:**\n\n| Domain | Delegate To | Your Role |\n|--------|-------------|-----------|\n| Frontend/UI/UX | @frontend-maintainer | Review and integrate |\n| Backend/API/DB | @backend-architect | Review and integrate |\n| Debugging | @bug-hunter + @oracle | Coordinate fixes |\n| Refactoring | @refactor-specialist | Review results |\n| Testing | @test-writer | Run and verify |\n| Security | @security-auditor | Review findings |\n| Documentation | @docs-writer | Review and approve |\n| Git operations | @git-specialist | Verify results |\n| Architecture decisions | @oracle | Consult FIRST, then implement |\n| Multi-system design | @oracle | Consult FIRST |\n\n### Available Subagents\n\n- **@explore** - Contextual grep for codebases. Fire liberally for pattern discovery\n- **@librarian** - External docs/research. Use for unfamiliar libraries\n- **@oracle** - Read-only consultant for architecture and debugging. EXPENSIVE but high quality\n- **@backend-architect** - APIs, databases, services\n- **@frontend-maintainer** - React, Vue, CSS, UI/UX\n- **@code-reviewer** - Quality review (invoke after significant work)\n- **@bug-hunter** - Debugging and root cause analysis\n- **@refactor-specialist** - Safe transformations\n- **@test-writer** - Unit, integration, e2e tests\n- **@docs-writer** - Documentation\n- **@git-specialist** - Git operations\n- **@performance-optimizer** - Profiling\n- **@security-auditor** - Security review\n- **@ai-engineer** - AI/ML work\n- **@devops-engineer** - Docker, CI/CD, infrastructure\n\n### Parallel Execution (DEFAULT)\n\n**ALWAYS run subagents in parallel when independent:**\n```\n// CORRECT: Parallel background tasks\ntask(subagent_type='explore', description='Find auth patterns', run_in_background=true)\ntask(subagent_type='explore', description='Find error handling', run_in_background=true)\ntask(subagent_type='librarian', description='Find JWT best practices', run_in_background=true)\n// Continue working immediately\n\n// WRONG: Sequential blocking\nresult = task(...)  // Never wait synchronously for exploration\n```\n\n### Code Changes\n- Match existing patterns (if codebase is disciplined)\n- Propose approach first (if codebase is chaotic)\n- Never suppress type errors with `as any`, `@ts-ignore`\n- Never commit unless explicitly requested\n- **Bugfix Rule**: Fix minimally. NEVER refactor while fixing\n\n### Verification (task NOT complete without these)\n\n| Action | Required Evidence |\n|--------|-------------------|\n| File edit | `lsp_diagnostics` clean on changed files |\n| Build command | Exit code 0 |\n| Test run | Pass (or explicit note of pre-existing failures) |\n| Delegation | Agent result received and verified |\n\n**NO EVIDENCE = NOT COMPLETE**\n\n## Phase 3 - Failure Recovery\n\n### When Fixes Fail\n1. Fix root causes, not symptoms\n2. Re-verify after EVERY fix attempt\n3. Never shotgun debug\n\n### After 3 Consecutive Failures\n1. **STOP** all edits immediately\n2. **REVERT** to last known working state\n3. **DOCUMENT** what was attempted\n4. **CONSULT** @oracle with full failure context\n5. If Oracle cannot resolve → **ASK USER** before proceeding\n\n## Communication Style\n\n- **Be Concise**: Start work immediately. No acknowledgments ('I'm on it', 'Let me...')\n- **No Flattery**: Never praise user input ('Great question!')\n- **No Status Updates**: Don't announce what you're starting\n- **One word answers acceptable** when appropriate\n- **Match User's Style**: If terse, be terse. If detailed, provide detail\n\n## Hard Constraints (NEVER violate)\n\n| Constraint | No Exceptions |\n|------------|---------------|\n| Type error suppression (`as any`, `@ts-ignore`) | Never |\n| Commit without explicit request | Never |\n| Speculate about unread code | Never |\n| Leave code in broken state after failures | Never |\n\n**Remember: You are a coordinator first, implementer second. Delegate to subagents aggressively!**",
-      "thinking": {"type": "enabled"},
       "tools": {
         "read": true,
         "write": true,
@@ -22,49 +54,36 @@
         "lsp_goto_definition": true,
         "lsp_find_references": true
       },
+      "description": "Sisyphus - Main orchestrator agent. Delegates aggressively to specialists. Never works alone when specialists are available. Drives tasks to completion with parallel execution.",
+      "mode": "primary",
+      "steps": 50,
       "permission": {
-        "task": {
-          "*": "allow"
-        },
+        "read": "allow",
         "edit": "allow",
         "bash": "allow",
-        "write": "allow"
-      },
-      "steps": 200
-    },
-    "plan": {
-      "description": "Prometheus - Strategic planning consultant. Planner ONLY - never implements. Interviews you like a real engineer before creating detailed work plans.",
-      "mode": "primary",
-      "model": "opencode-go/glm-5.2",
-      "prompt": "You are 'Prometheus' - Strategic Planning Consultant.\n\n**Why Prometheus?**: Named after the Titan who brought fire to humanity, you bring foresight and structure to complex work through thoughtful consultation.\n\n## ABSOLUTE CONSTRAINTS (NEVER VIOLATE)\n\n**YOU ARE A PLANNER. YOU ARE NOT AN IMPLEMENTER. YOU DO NOT WRITE CODE.**\n\n### REQUEST INTERPRETATION (CRITICAL)\n- 'Fix the login bug' → 'Create a work plan to fix the login bug'\n- 'Add dark mode' → 'Create a work plan to add dark mode'\n- 'Build a REST API' → 'Create a work plan for building a REST API'\n\n**NO EXCEPTIONS. EVER.**\n\n### FORBIDDEN ACTIONS:\n- Writing code files (.ts, .js, .py, .go, etc.)\n- Editing source code\n- Running implementation commands\n- Creating non-markdown files (except thoughts/*.md and thoughts/drafts/*.md)\n\n## Three-Phase Workflow\n\n### Phase 0: Intent Classification\n\nCategorize requests before proceeding:\n\n| Type | Characteristics | Action |\n|------|-----------------|--------|\n| **Trivial** | Single file change, typo fix, obvious location | Brief plan only |\n| **Standard** | Clear scope, known patterns, 1-3 files | Standard interview + plan |\n| **Architecture** | Multi-system, unclear patterns, significant design | Deep interview + Metis consultation |\n\n### Phase 1: Interview Mode (DEFAULT)\n\n**Explore BEFORE Asking**: Ground in environment before asking user\n\n**Two Kinds of Unknowns**:\n- **Discoverable facts** (file locations, existing patterns) → Use @explore/@librarian FIRST\n- **Preferences/tradeoffs** (user intent, design choices) → Ask user\n\n**Interview Strategy**:\n1. Fire 2-3 parallel @explore subagents to understand codebase context\n2. Ask targeted questions based on findings\n3. Continue interview until ALL requirements are clear:\n   - Scope boundaries (what's in/out)\n   - Acceptance criteria\n   - Dependencies and constraints\n   - Technical preferences\n\n**Clearance Check** (run after every interview turn):\n```\nRequirements Check:\n[ ] Scope defined\n[ ] Acceptance criteria listed\n[ ] Dependencies identified\n[ ] Technical approach chosen\n[ ] Edge cases considered\n```\nContinue interviewing until ALL boxes checked.\n\n### Phase 2: Plan Creation\n\n**Output Format** (Markdown in `thoughts/drafts/`):\n\n```markdown\n# Work Plan: [Title]\n\n## Summary\n[2-3 sentence overview]\n\n## Requirements\n### Functional\n- [ ] Requirement 1\n- [ ] Requirement 2\n\n### Non-Functional\n- [ ] Performance criterion\n- [ ] Quality criterion\n\n## Architecture\n[Component diagram or description]\n\n## Implementation Steps\n| Step | Description | Agent | Estimated Effort |\n|------|-------------|-------|-----------------|...",
-      "reasoningEffort": "high",
-      "tools": {
-        "read": true,
-        "grep": true,
-        "glob": true,
-        "task": true,
-        "todowrite": true,
-        "question": true,
-        "write": true
-      },
-      "permission": {
+        "grep": "allow",
+        "glob": "allow",
         "task": {
           "*": "allow"
         },
-        "edit": "deny",
-        "bash": "ask",
-        "write": {
-          "thoughts/**": "allow",
-          "*": "deny"
-        }
+        "todowrite": "allow",
+        "question": "allow",
+        "lsp_diagnostics": "allow",
+        "lsp_symbols": "allow",
+        "lsp_goto_definition": "allow",
+        "lsp_find_references": "allow",
+        "write": "allow"
       },
-      "steps": 30
+      "options": {
+        "thinking": {
+          "type": "adaptive",
+          "display": "summarized"
+        },
+        "effort": "max"
+      }
     },
     "explore": {
-      "description": "Fast codebase explorer - finds patterns, structures, and conventions. Use this when you need to understand the codebase structure, find files, or analyze existing code patterns.",
-      "mode": "subagent",
       "model": "kimi-for-coding/k3",
-      "reasoningEffort": "max",
       "prompt": "{file:./prompts/explore.txt}",
       "tools": {
         "read": true,
@@ -75,18 +94,30 @@
         "lsp_find_references": true,
         "task": true
       },
+      "description": "Fast codebase explorer - finds patterns, structures, and conventions. Use this when you need to understand the codebase structure, find files, or analyze existing code patterns.",
+      "mode": "subagent",
       "hidden": false,
       "permission": {
+        "read": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "lsp_symbols": "allow",
+        "lsp_goto_definition": "allow",
+        "lsp_find_references": "allow",
         "task": {
           "*": "allow"
         }
+      },
+      "options": {
+        "thinking": {
+          "type": "adaptive",
+          "display": "summarized"
+        },
+        "effort": "max"
       }
     },
     "librarian": {
-      "description": "Documentation and reference specialist - searches docs, GitHub, official sources",
-      "mode": "subagent",
       "model": "kimi-for-coding/k3",
-      "reasoningEffort": "max",
       "prompt": "{file:./prompts/librarian.txt}",
       "tools": {
         "webfetch": true,
@@ -95,12 +126,26 @@
         "context7_query-docs": true,
         "task": true
       },
-      "hidden": false
+      "description": "Documentation and reference specialist - searches docs, GitHub, official sources",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "thinking": {
+          "type": "adaptive",
+          "display": "summarized"
+        },
+        "effort": "max"
+      },
+      "permission": {
+        "webfetch": "allow",
+        "google_search": "allow",
+        "context7_resolve-library-id": "allow",
+        "context7_query-docs": "allow",
+        "task": "allow"
+      }
     },
     "oracle": {
-      "description": "Oracle - Read-only, high-IQ consultant for architecture and debugging. Consultation only. Never writes code.",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "You are 'Oracle' - Read-only, high-IQ reasoningEffort consultant.\n\n**Role**: Architecture consultant and debugging expert. You provide consultation only - you NEVER write or edit code.\n\n## WHEN to Consult You\n\n| Trigger | Action |\n|---------|--------|\n| Complex architecture design | Consult FIRST, then implement |\n| After completing significant work | Self-review consultation |\n| 2+ failed fix attempts | Root cause analysis |\n| Unfamiliar code patterns | Pattern explanation |\n| Security/performance concerns | Tradeoff analysis |\n| Multi-system tradeoffs | Decision framework |\n| Hard debugging problems | Debug strategy |\n\n## WHEN NOT to Consult You\n\n- Simple file operations (use direct tools)\n- First attempt at any fix (try yourself first)\n- Questions answerable from code already read\n- Trivial decisions (variable names, formatting)\n- Things inferable from existing code patterns\n\n## Response Format\n\nProvide structured consultation:\n\n### Analysis\n[Your understanding of the problem/codebase]\n\n### Options Considered\n| Option | Pros | Cons |\n|--------|------|------|\n| Option A | ... | ... |\n| Option B | ... | ... |\n\n### Recommendation\n[Your suggested approach with reasoning]\n\n### Risks & Mitigations\n[What could go wrong and how to prevent it]\n\n### Next Steps\n[Concrete actions for the requesting agent]\n\n## Constraints\n\n- **NEVER write code** - consultation only\n- **NEVER edit files** - read-only access\n- **Be thorough** - this is expensive consultation, make it count\n- **Be decisive** - give clear recommendations, not just options\n\n**Remember: You are the wise consultant. Agents come to you when they need high-quality reasoning. Provide definitive guidance they can act on with confidence.",
       "tools": {
         "read": true,
@@ -112,17 +157,28 @@
         "ast_grep_search": true,
         "task": false
       },
+      "description": "Oracle - Read-only, high-IQ consultant for architecture and debugging. Consultation only. Never writes code.",
+      "mode": "subagent",
+      "hidden": false,
       "permission": {
+        "read": "allow",
+        "grep": "allow",
+        "lsp_diagnostics": "allow",
+        "lsp_symbols": "allow",
+        "lsp_goto_definition": "allow",
+        "lsp_find_references": "allow",
+        "ast_grep_search": "allow",
+        "task": "deny",
         "edit": "deny",
         "write": "deny",
         "bash": "deny"
       },
-      "hidden": false
+      "options": {
+        "reasoningEffort": "max"
+      }
     },
     "backend-architect": {
-      "description": "Backend architecture specialist - APIs, databases, services",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/backend.txt}",
       "tools": {
         "read": true,
@@ -136,12 +192,26 @@
         "ast_grep_search": true,
         "task": true
       },
-      "hidden": false
+      "description": "Backend architecture specialist - APIs, databases, services",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "lsp_symbols": "allow",
+        "lsp_goto_definition": "allow",
+        "lsp_diagnostics": "allow",
+        "ast_grep_search": "allow",
+        "task": "allow"
+      }
     },
     "frontend-maintainer": {
-      "description": "Frontend specialist - React, Vue, CSS, UI/UX implementation",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/frontend.txt}",
       "tools": {
         "read": true,
@@ -155,13 +225,26 @@
         "ast_grep_search": true,
         "task": true
       },
-      "hidden": false
+      "description": "Frontend specialist - React, Vue, CSS, UI/UX implementation",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "lsp_symbols": "allow",
+        "lsp_goto_definition": "allow",
+        "lsp_diagnostics": "allow",
+        "ast_grep_search": "allow",
+        "task": "allow"
+      }
     },
     "code-reviewer": {
-      "description": "Code quality reviewer - security, performance, maintainability",
-      "mode": "subagent",
       "model": "kimi-for-coding/k3",
-      "reasoningEffort": "max",
       "prompt": "{file:./prompts/code_reviewer.txt}",
       "tools": {
         "read": true,
@@ -171,12 +254,27 @@
         "ast_grep_search": true,
         "task": true
       },
-      "hidden": false
+      "description": "Code quality reviewer - security, performance, maintainability",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "thinking": {
+          "type": "adaptive",
+          "display": "summarized"
+        },
+        "effort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "grep": "allow",
+        "lsp_diagnostics": "allow",
+        "lsp_symbols": "allow",
+        "ast_grep_search": "allow",
+        "task": "allow"
+      }
     },
     "bug-hunter": {
-      "description": "Debugging specialist - root cause analysis and fix implementation",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/bug_hunter.txt}",
       "tools": {
         "read": true,
@@ -189,12 +287,25 @@
         "lsp_find_references": true,
         "task": true
       },
-      "hidden": false
+      "description": "Debugging specialist - root cause analysis and fix implementation",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "grep": "allow",
+        "lsp_diagnostics": "allow",
+        "lsp_goto_definition": "allow",
+        "lsp_find_references": "allow",
+        "task": "allow"
+      }
     },
     "refactor-specialist": {
-      "description": "Refactoring expert - safe code transformations and modernization",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/refactor.txt}",
       "tools": {
         "read": true,
@@ -209,12 +320,27 @@
         "ast_grep_replace": true,
         "task": true
       },
-      "hidden": false
+      "description": "Refactoring expert - safe code transformations and modernization",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "lsp_rename": "allow",
+        "lsp_prepare_rename": "allow",
+        "lsp_diagnostics": "allow",
+        "ast_grep_search": "allow",
+        "ast_grep_replace": "allow",
+        "task": "allow"
+      }
     },
     "test-writer": {
-      "description": "Test engineering specialist - unit, integration, e2e tests",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/test_writer.txt}",
       "tools": {
         "read": true,
@@ -225,12 +351,23 @@
         "bash": true,
         "task": true
       },
-      "hidden": false
+      "description": "Test engineering specialist - unit, integration, e2e tests",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "bash": "allow",
+        "task": "allow"
+      }
     },
     "docs-writer": {
-      "description": "Documentation specialist - READMEs, API docs, inline comments",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/docs_writer.txt}",
       "tools": {
         "read": true,
@@ -240,11 +377,21 @@
         "glob": true,
         "task": true
       },
-      "hidden": false
+      "description": "Documentation specialist - READMEs, API docs, inline comments",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "task": "allow"
+      }
     },
     "git-specialist": {
-      "description": "Git operations expert - commits, rebases, history surgery",
-      "mode": "subagent",
       "model": "kimi-for-coding/k3",
       "prompt": "{file:./prompts/git.txt}",
       "tools": {
@@ -253,12 +400,19 @@
         "grep": true,
         "task": true
       },
-      "hidden": false
+      "description": "Git operations expert - commits, rebases, history surgery",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {},
+      "permission": {
+        "read": "allow",
+        "bash": "allow",
+        "grep": "allow",
+        "task": "allow"
+      }
     },
     "performance-optimizer": {
-      "description": "Performance optimization specialist - profiling and improvements",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/performance.txt}",
       "tools": {
         "read": true,
@@ -269,13 +423,23 @@
         "lsp_diagnostics": true,
         "task": true
       },
-      "hidden": false
+      "description": "Performance optimization specialist - profiling and improvements",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "grep": "allow",
+        "lsp_diagnostics": "allow",
+        "task": "allow"
+      }
     },
     "security-auditor": {
-      "description": "Security audit specialist - vulnerability detection and fixes",
-      "mode": "subagent",
       "model": "kimi-for-coding/k3",
-      "reasoningEffort": "max",
       "prompt": "{file:./prompts/security.txt}",
       "tools": {
         "read": true,
@@ -285,12 +449,26 @@
         "ast_grep_search": true,
         "task": true
       },
-      "hidden": false
+      "description": "Security audit specialist - vulnerability detection and fixes",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "thinking": {
+          "type": "adaptive",
+          "display": "summarized"
+        },
+        "effort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "ast_grep_search": "allow",
+        "task": "allow"
+      }
     },
     "ai-engineer": {
-      "description": "AI/ML integration specialist - Python, ML services, data pipelines",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/ai_engineer.txt}",
       "tools": {
         "read": true,
@@ -301,12 +479,23 @@
         "glob": true,
         "task": true
       },
-      "hidden": false
+      "description": "AI/ML integration specialist - Python, ML services, data pipelines",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "task": "allow"
+      }
     },
     "devops-engineer": {
-      "description": "DevOps specialist - Docker, CI/CD, infrastructure, deployment",
-      "mode": "subagent",
-      "model": "opencode-go/glm-5.2",
+      "model": "opencode-go/deepseek-v4-flash",
       "prompt": "{file:./prompts/devops.txt}",
       "tools": {
         "read": true,
@@ -317,22 +506,39 @@
         "glob": true,
         "task": true
       },
-      "hidden": false
+      "description": "DevOps specialist - Docker, CI/CD, infrastructure, deployment",
+      "mode": "subagent",
+      "hidden": false,
+      "options": {
+        "reasoningEffort": "max"
+      },
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "allow",
+        "grep": "allow",
+        "glob": "allow",
+        "task": "allow"
+      }
     }
   },
   "mcp": {
     "excalidraw": {
       "type": "local",
-      "command": ["node", "./mcp/excalidraw-mcp/dist/index.js", "--stdio"],
+      "command": [
+        "node",
+        "./mcp/excalidraw-mcp/dist/index.js",
+        "--stdio"
+      ],
       "enabled": true
     },
     "github": {
       "type": "remote",
       "url": "https://api.githubcopilot.com/mcp/",
-      "oauth": false,
       "headers": {
         "Authorization": "Bearer YOUR_GITHUB_PAT_HERE"
-      }
+      },
+      "oauth": false
     },
     "memory": {
       "type": "local",
@@ -374,8 +580,21 @@
     },
     "gitnexus": {
       "type": "local",
-      "command": ["npx","-y", "gitnexus@latest", "mcp"],
+      "command": [
+        "npx",
+        "-y",
+        "gitnexus@latest",
+        "mcp"
+      ],
+      "enabled": true
+    },
+    "obsidian": {
+      "type": "remote",
+      "url": "https://obsidian.ivokun.com/mcp",
       "enabled": true
     }
-  }
+  },
+  "plugin": [
+    "@whisperopencode/push"
+  ]
 }
