@@ -30,6 +30,13 @@
       "amdgpu.dcdebugmask=0x10" # Disable PSR — prevents black screen on resume
       "acpi_sleep=nonvs" # Prevent ACPI NVS corruption during s0ix
       "processor.max_cstate=5" # Limit C-states to prevent s0ix resume failures
+      # Prefer S3 (deep) over s2idle. Renoir s2idle deadlocks on suspend
+      # re-entry while a previous resume is still in flight (3 fatal hangs
+      # in 10 days, 2026-08 — all lid-triggered, journal ends at
+      # "Performing sleep operation"). INERT until BIOS Sleep State is set
+      # to "Linux" (Config → Power); without that, deep isn't advertised.
+      # Verify after BIOS flip: cat /sys/power/mem_sleep → s2idle [deep]
+      "mem_sleep_default=deep"
     ];
 
     # ─── Plymouth boot splash ───
