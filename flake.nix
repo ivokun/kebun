@@ -138,7 +138,17 @@
   in {
     nixosConfigurations = nixpkgs.lib.mapAttrs mkSystem systems;
 
-    # Allow `nix fmt` to work
-    formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.alejandra;
+    # Allow `nix fmt` to work.
+    # Wrapper: current alejandra reads STDIN when invoked with no path args,
+    # so bare `nix fmt` dies with "unexpected end of file". Default to `.`.
+    formatter.x86_64-linux = let
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in
+      pkgs.writeShellScriptBin "alejandra" ''
+        if [ $# -eq 0 ]; then
+          set -- .
+        fi
+        exec ${pkgs.alejandra}/bin/alejandra "$@"
+      '';
   };
 }
