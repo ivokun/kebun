@@ -233,6 +233,39 @@ in {
     "/etc/profiles/per-user/${username}"
   ];
 
+  # ─── Elephant re-index on app installs ───
+  # Elephant caches its desktopapplications index at startup and has no file
+  # watching, so newly installed apps only appear in walker after a restart
+  # (seen with zoom-us: present on disk, invisible until elephant restarted).
+  # These units restart it automatically whenever the installed .desktop set
+  # changes — system switch, home-manager switch, or nix profile install.
+  #
+  # PathExistsGlob instead of PathChanged: all three applications dirs live
+  # behind symlinks that are atomically retargeted to new store paths on every
+  # rebuild. A PathChanged watch follows the symlink to the *old* store inode,
+  # never fires on the swap, and goes stale. The glob forces systemd to watch
+  # the parent directories and re-evaluate on every rename, which survives
+  # symlink swaps.
+  systemd.user.paths.elephant-reindex = {
+    description = "Restart elephant when installed applications change";
+    wantedBy = ["paths.target"];
+    pathConfig.PathExistsGlob = [
+      "/run/current-system/sw/share/applications/*.desktop"
+      "/etc/profiles/per-user/${username}/share/applications/*.desktop"
+      "/home/${username}/.local/state/nix/profiles/profile/share/applications/*.desktop"
+    ];
+  };
+
+  systemd.user.services.elephant-reindex = {
+    description = "Restart elephant to re-index desktop applications";
+    serviceConfig = {
+      Type = "oneshot";
+      # Let activation settle; profile symlinks are swapped as a batch.
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
+      ExecStart = "${pkgs.systemd}/bin/systemctl --user restart elephant.service";
+    };
+  };
+
   # Must live under xdg/, i.e. /etc/xdg/walker. Plain /etc/walker is not on
   # XDG_CONFIG_DIRS, so walker silently never reads it.
   #
