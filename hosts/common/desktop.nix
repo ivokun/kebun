@@ -237,34 +237,24 @@ in {
   # Elephant caches its desktopapplications index at startup and has no file
   # watching, so newly installed apps only appear in walker after a restart
   # (seen with zoom-us: present on disk, invisible until elephant restarted).
-  # These units restart it automatically whenever the installed .desktop set
-  # changes — system switch, home-manager switch, or nix profile install.
   #
-  # PathExistsGlob instead of PathChanged: all three applications dirs live
-  # behind symlinks that are atomically retargeted to new store paths on every
-  # rebuild. A PathChanged watch follows the symlink to the *old* store inode,
-  # never fires on the swap, and goes stale. The glob forces systemd to watch
-  # the parent directories and re-evaluate on every rename, which survives
-  # symlink swaps.
-  systemd.user.paths.elephant-reindex = {
-    description = "Restart elephant when installed applications change";
-    wantedBy = ["paths.target"];
-    pathConfig.PathExistsGlob = [
-      "/run/current-system/sw/share/applications/*.desktop"
-      "/etc/profiles/per-user/${username}/share/applications/*.desktop"
-      "/home/${username}/.local/state/nix/profiles/profile/share/applications/*.desktop"
-    ];
-  };
-
-  systemd.user.services.elephant-reindex = {
-    description = "Restart elephant to re-index desktop applications";
-    serviceConfig = {
-      Type = "oneshot";
-      # Let activation settle; profile symlinks are swapped as a batch.
-      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
-      ExecStart = "${pkgs.systemd}/bin/systemctl --user restart elephant.service";
-    };
-  };
+  # This runs inside the user session via nixos-activation.service, which
+  # switch-to-configuration restarts on every switch — after the new /etc and
+  # /run/current-system are in place, so the freshly installed .desktop files
+  # are already visible when elephant re-reads them.
+  #
+  # Do NOT go back to a systemd.user.path here. The applications dirs all sit
+  # behind symlinks that are atomically retargeted on rebuild, so PathChanged
+  # follows the symlink to the old store inode and never fires. PathExistsGlob
+  # does fire, but it is level-triggered: the glob still matches once the
+  # triggered unit exits, so systemd re-activates it immediately and elephant
+  # restarts in a tight loop forever (it did — every ~2s).
+  #
+  # try-restart, not restart: a no-op when there is no graphical session and
+  # elephant isn't running.
+  system.userActivationScripts.elephant-reindex = ''
+    ${pkgs.systemd}/bin/systemctl --user try-restart elephant.service || true
+  '';
 
   # Must live under xdg/, i.e. /etc/xdg/walker. Plain /etc/walker is not on
   # XDG_CONFIG_DIRS, so walker silently never reads it.
