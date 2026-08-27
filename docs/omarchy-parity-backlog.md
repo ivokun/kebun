@@ -82,6 +82,37 @@ the script fail soft regardless.
 
 ---
 
+## 2.5 Leftover Omarchy desktop entries in a shared `$HOME`
+
+*Related to the elephant PATH fix, but a separate problem and not fixable from
+the flake.*
+
+If kebun and an Arch/Omarchy install share `/home`, `~/.local/share/applications`
+still holds Omarchy's entries, and walker lists them under kebun where none of
+them can run. Observed entries and why they fail on NixOS:
+
+| Exec line | Why it can't launch under kebun |
+|---|---|
+| `omarchy-launch-webapp https://…` (~12 entries) | `omarchy-launch-webapp` lives in `~/.local/share/omarchy/bin`, which doesn't exist on NixOS |
+| `$TERMINAL --class=TUI.float -e bash -c '…'` | literal `$TERMINAL`, needs shell expansion the launcher doesn't do |
+| `aether --import-blueprint %u` | Arch-only package from Omarchy's pacman repo |
+| `Exec=alacritty`, `Exec=imv %F`, `Exec=mpv …` | bare names — these work once elephant has a real PATH |
+
+These files belong to the Arch side and are valid there, so **don't delete
+them**. Options, in rough order of preference:
+
+1. Leave them and accept dead entries in the launcher.
+2. Stop sharing `~/.local/share/applications` between the two systems.
+3. Have kebun shadow the duplicates by name with its own `xdg.desktopEntries`
+   (kebun already defines ChatGPT, YouTube, WhatsApp, Google Messages/Photos/Maps,
+   X, GitHub, HEY — the same names Omarchy generates), so the working entry wins.
+
+Note the overlap is not total: Omarchy also ships Basecamp, Google Contacts,
+Figma, Discord, Zoom, and Fizzy, which kebun's `webapps` list does not have —
+see item 4.x and the report's §2.
+
+---
+
 ## 3. Host config drift
 
 ### 3.1 Monitor layout is stale — **blocked on confirming your displays**
