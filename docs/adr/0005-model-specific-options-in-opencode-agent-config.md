@@ -101,5 +101,10 @@ The correct per-model options are not guesswork; they are enumerated by
 
 - Date proposed: 2026-08-03
 - Date accepted: 2026-08-03
+- 2026-08-27: the eleven `opencode-go/deepseek-v4-flash` agents were moved to
+  `opencode-go/glm-5.3-flash` (same `@ai-sdk/openai-compatible` transport, same
+  `reasoningEffort` option with a `max` tier per `opencode models --verbose`, and
+  cheaper at $0.075/$0.25 per Mtok vs $0.22/$0.66). The option shape in decision 3 is
+  unchanged; only the model ID moved.
 - Proposed by: ivokun
 - Accepted by: ivokun
