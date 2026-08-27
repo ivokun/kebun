@@ -137,7 +137,13 @@
         on_ac=0
         for dir in /sys/class/power_supply/*; do
           [ -r "$dir/type" ] || continue
-          [ "$(cat "$dir/type")" = "Mains" ] || continue
+          # USB counts as AC: on this machine the charger is USB-C PD, and a
+          # PD supply enumerates as type=USB, not type=Mains. Matching only
+          # Mains left the profile stuck on power-saver while charging.
+          case "$(cat "$dir/type")" in
+            Mains | USB) ;;
+            *) continue ;;
+          esac
           [ -r "$dir/online" ] || continue
           [ "$(cat "$dir/online")" = "1" ] && on_ac=1
         done
@@ -150,10 +156,19 @@
     };
   };
 
-  # Re-run the selector whenever the AC adapter changes state. Filtering on
-  # type=Mains avoids firing on the battery's frequent capacity uevents.
+  # Re-run the selector whenever a supply changes state. Filtering on type
+  # avoids firing on the battery's frequent capacity uevents; both Mains and
+  # USB are matched because the charger here is USB-C PD (see the type check
+  # in power-profile-auto above).
+  #
+  # `systemctl start` rather than `systemd-run --unit=<fixed-name>`: upstream
+  # Omarchy used a fixed transient unit name and had to drop it (749a8c04),
+  # because resume fires several power_supply events at once and every one
+  # after the first failed with "unit already loaded". Starting a persistent
+  # unit is idempotent — concurrent starts coalesce into the running job.
   services.udev.extraRules = ''
     ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", RUN+="${pkgs.systemd}/bin/systemctl start --no-block power-profile-auto.service"
+    ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="USB", RUN+="${pkgs.systemd}/bin/systemctl start --no-block power-profile-auto.service"
   '';
 
   # ─── NFS Mount (tubeinas via Tailscale) ───
