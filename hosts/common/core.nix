@@ -143,6 +143,19 @@
 
   system.stateVersion = "25.05";
 
+  # ─── locate ───
+  # plocate was installed as a bare package, which meant `locate` was on PATH
+  # but its database was never built — every query returned nothing. The
+  # service is what schedules updatedb.
+  services.locate = {
+    enable = true;
+    package = pkgs.plocate;
+  };
+
+  # Don't spin the disk rebuilding the index on battery (mirrors Omarchy's
+  # plocate-ac-only drop-in).
+  systemd.services.plocate-updatedb.unitConfig.ConditionACPower = true;
+
   # ─── File Descriptor Limits ───
   boot.kernel.sysctl = {
     "fs.file-max" = 2097152;

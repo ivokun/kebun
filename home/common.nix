@@ -137,7 +137,6 @@ in {
       # System utilities
       gnome-keyring
       libsecret
-      plocate
       socat
       xmlstarlet
       exfatprogs
@@ -169,6 +168,7 @@ in {
       lock-screen
       toggle-waybar
       toggle-nightlight
+      toggle-dnd
       restart-waybar
       restart-walker
       hyprlock-guard

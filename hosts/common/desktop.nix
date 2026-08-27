@@ -91,6 +91,16 @@ in {
   # GVfs for virtual filesystems (trash, mtp, etc.)
   services.gvfs.enable = true;
 
+  # ─── Secret storage ───
+  # gnome-keyring and libsecret were installed as bare packages, so anything
+  # storing a secret (Chrome/Brave passwords, libsecret consumers) had no
+  # running daemon to talk to. The PAM hook is the other half: it unlocks the
+  # keyring with the login password at greeter time, otherwise the daemon
+  # starts locked and prompts on first use.
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.sddm.enableGnomeKeyring = true;
+  security.pam.services.login.enableGnomeKeyring = true;
+
   # ─── Display Manager ───
   # Using SDDM (like Omarchy) instead of GDM for a cleaner Wayland experience.
   # Wayland support is enabled so the greeter runs natively on Wayland.
