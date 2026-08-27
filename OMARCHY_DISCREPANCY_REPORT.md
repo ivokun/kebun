@@ -191,6 +191,10 @@ equivalent, but it is three `pgrep`/`makoctl` invocations every two seconds, for
 
 ## 3. Real gaps worth closing
 
+> Tracked as concrete tasks in `docs/omarchy-parity-backlog.md`. The v4
+> question has its own record in
+> `docs/adr/0007-stay-on-omarchy-3-8-or-migrate-to-quattro.md`.
+
 Ranked for a single ThinkPad, in rough value-per-effort order.
 
 1. **Wire up what's already installed** — §1.1. Four one-to-three-line fixes.

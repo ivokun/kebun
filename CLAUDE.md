@@ -112,6 +112,7 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 
 - `INSTALL.md` — full install guide (LUKS + BTRFS + flakes)
 - `OMARCHY_DISCREPANCY_REPORT.md` — parity analysis vs Omarchy, incl. the v3.8 vs v4 (Quickshell/Lua) fork and what tracking each would mean
+- `docs/omarchy-parity-backlog.md` — actionable follow-ups from that analysis, with the file to touch for each
 - `docs/adr/` — architecture decision records
 - `docs/omarchy/` — research briefs on upstream Omarchy
 - `thoughts/` — in-progress plans and drafts (not authoritative)
