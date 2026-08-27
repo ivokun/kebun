@@ -216,6 +216,23 @@ in {
   # on this side, so without it SUPER+SPACE does nothing at all.
   services.elephant.enable = true;
 
+  # Elephant resolves each .desktop file's `Exec=` against its OWN process
+  # PATH, and the nixpkgs module sets no `path`, so the unit inherits systemd's
+  # minimal default — coreutils, findutils, gnugrep, gnused, systemd. Nothing
+  # else. Entries whose Exec is a bare binary name (which is most of them,
+  # including the webapp entries generated in home/features/webapps.nix) can
+  # therefore never be found, and activating one silently does nothing: the
+  # list still renders, because names and icons come from XDG_DATA_DIRS rather
+  # than PATH, so the launcher looks healthy while launching nothing.
+  #
+  # The unit's own Environment=PATH also wins over whatever `systemctl --user
+  # import-environment` put in the manager environment, so the session PATH
+  # never reaches it. Point it at the system and user profiles explicitly.
+  systemd.user.services.elephant.path = [
+    "/run/current-system/sw"
+    "/etc/profiles/per-user/${username}"
+  ];
+
   # Must live under xdg/, i.e. /etc/xdg/walker. Plain /etc/walker is not on
   # XDG_CONFIG_DIRS, so walker silently never reads it.
   #
