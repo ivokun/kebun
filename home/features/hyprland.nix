@@ -413,7 +413,10 @@ in {
         # ─── Notifications ───
         "SUPER, COMMA, Dismiss last notification, exec, ${pkgs.mako}/bin/makoctl dismiss"
         "SUPER SHIFT, COMMA, Dismiss all notifications, exec, ${pkgs.mako}/bin/makoctl dismiss --all"
-        "SUPER CTRL, COMMA, Toggle DND, exec, ${pkgs.mako}/bin/makoctl mode -t do-not-disturb && ${pkgs.libnotify}/bin/notify-send 'Notifications silenced' || ${pkgs.libnotify}/bin/notify-send 'Notifications enabled'"
+        # Branch on the resulting mode list, not on makoctl's exit status —
+        # `mode -t` succeeds in both directions, so the previous inline
+        # `&& ... || ...` reported "silenced" even when turning DND back off.
+        "SUPER CTRL, COMMA, Toggle DND, exec, toggle-dnd"
         "SUPER ALT, COMMA, Invoke last notification, exec, ${pkgs.mako}/bin/makoctl invoke"
         "SUPER SHIFT ALT, COMMA, Restore last notification, exec, ${pkgs.mako}/bin/makoctl restore"
 
@@ -550,11 +553,51 @@ in {
         # elephant backend starts on its own via services.elephant.
         "uwsm app -- ${pkgs.walker}/bin/walker --gapplication-service"
         "uwsm app -- swaybg -c '#faf4ed' -m solid_color"
-        "uwsm app -- swayosd-server --style ${config.home.homeDirectory}/.config/swayosd/style.css"
+        # swayosd-server and battery-monitor are systemd user services now,
+        # not exec-once entries — see below.
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
         "systemctl --user import-environment $(env | cut -d'=' -f 1)"
         "dbus-update-activation-environment --systemd --all"
       ];
+    };
+  };
+
+  # ─── Session daemons ───
+  # Both of these used to be (or should have been) `exec-once` lines. As
+  # systemd user units they get restarted when they die, which an exec-once
+  # entry never does — a crashed swayosd-server meant no volume or brightness
+  # OSD until the next login. Upstream Omarchy made the same move for swayosd
+  # in migration 1778171768.
+  systemd.user.services = {
+    swayosd-server = {
+      Unit = {
+        Description = "SwayOSD volume/brightness overlay";
+        PartOf = ["graphical-session.target"];
+        After = ["graphical-session.target"];
+      };
+      Service = {
+        ExecStart = "${pkgs.swayosd}/bin/swayosd-server --style ${config.home.homeDirectory}/.config/swayosd/style.css";
+        Restart = "always";
+        RestartSec = 2;
+      };
+      Install.WantedBy = ["graphical-session.target"];
+    };
+
+    # This one was never started at all: the script was defined and installed
+    # to PATH, but nothing in the config ever invoked it, so low-battery
+    # warnings simply never fired.
+    battery-monitor = {
+      Unit = {
+        Description = "Low-battery warning daemon";
+        PartOf = ["graphical-session.target"];
+        After = ["graphical-session.target"];
+      };
+      Service = {
+        ExecStart = "${scripts.battery-monitor}/bin/battery-monitor";
+        Restart = "always";
+        RestartSec = 30;
+      };
+      Install.WantedBy = ["graphical-session.target"];
     };
   };
 
@@ -689,6 +732,17 @@ in {
       "mode=do-not-disturb" = {
         invisible = true;
       };
+
+      # Carve-out so notify-send still gets through while silenced. Without
+      # it the toggle's own "Notifications silenced" confirmation is the
+      # first thing DND swallows, and the keybinding looks like it did
+      # nothing. Matches Omarchy's core.ini rule.
+      "mode=do-not-disturb app-name=notify-send" = {
+        invisible = false;
+      };
+
+      # Group repeats from the same app instead of stacking one per event.
+      "group-by" = "app-name,summary,body";
     };
 
     # Rose Pine Dawn colors

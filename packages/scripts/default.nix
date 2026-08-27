@@ -45,6 +45,21 @@
     fi
   '';
 
+  # Toggle do-not-disturb, reporting the state mako actually ended up in.
+  # `makoctl mode -t` exits 0 whichever way it toggled, so the caller has to
+  # read the mode list it prints rather than branch on the exit status.
+  toggle-dnd = pkgs.writeShellScriptBin "toggle-dnd" ''
+    set -euo pipefail
+
+    MODES=$(${pkgs.mako}/bin/makoctl mode -t do-not-disturb)
+
+    if echo "$MODES" | ${pkgs.gnugrep}/bin/grep -qx "do-not-disturb"; then
+      ${pkgs.libnotify}/bin/notify-send "Notifications silenced"
+    else
+      ${pkgs.libnotify}/bin/notify-send "Notifications enabled"
+    fi
+  '';
+
   # Restart waybar
   restart-waybar = pkgs.writeShellScriptBin "restart-waybar" ''
     systemctl --user restart waybar
