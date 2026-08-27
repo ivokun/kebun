@@ -21,8 +21,12 @@
 
     firewall = {
       enable = true;
-      allowedTCPPorts = [22 80 443];
-      allowedUDPPorts = [];
+      # 53317 is LocalSend. Without it the app and the `localsend-share`
+      # script can send but never appear to peers, because discovery is a
+      # UDP multicast announcement on that port and the transfer itself is
+      # the matching TCP listener.
+      allowedTCPPorts = [22 80 443 53317];
+      allowedUDPPorts = [53317];
     };
   };
 
