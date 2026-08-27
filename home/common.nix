@@ -57,6 +57,7 @@ in {
       signal-desktop
       slack
       telegram-desktop
+      zoom-us
 
       # File sharing
       localsend
