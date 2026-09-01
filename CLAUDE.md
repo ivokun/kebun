@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Kebun is a NixOS system flake for a single machine (`sakura`, a ThinkPad X13 Gen 1 with an AMD Renoir APU). It is a configuration repo, not a software project: there are no tests, no CI, and no build pipeline. Changes take effect by rebuilding the system. The desktop is a port of [Omarchy](https://omarchy.org) (an Arch/Hyprland distro) to NixOS idioms, tracking Omarchy's v3.8.x stable line.
+Kebun is a NixOS system flake for a single machine (`sakura`, a ThinkPad X13 Gen 1 with an AMD Renoir APU). It is a configuration repo, not a software project: there are no tests, no CI, and no build pipeline. Changes take effect by rebuilding the system. The desktop is a port of [Omarchy](https://omarchy.org) (an Arch/Hyprland distro) to NixOS idioms. **Migration status:** ADR-0007 (accepted 2026-09-01) migrates kebun to Omarchy v4's ("Quattro") architecture in stages — quickshell shell, Hyprland Lua config, theme-template engine. The v3-era guidance below (`bindd`, walker/elephant, waybar) describes the current transitional stack; the port requirements live in `docs/omarchy/quattro-port-inventory.md`.
 
 ## Commands
 
@@ -72,7 +72,7 @@ Scripts reference their dependencies by store path (`${pkgs.grim}/bin/grim`) rat
 
 ### Hyprland keybindings must use `bindd`
 
-`home/features/hyprland.nix` (~700 lines) is the largest module and holds bindings, window rules, hypridle, hyprlock, hyprsunset, mako, and the SwayOSD stylesheet.
+`home/features/hyprland.nix` (~820 lines) is the largest module and holds bindings, window rules, hypridle, hyprlock, hyprsunset, mako, and the SwayOSD stylesheet.
 
 Bindings go in the `bindd` list — the variant with a description field. The `menu-keybindings` script (SUPER+K) builds its cheatsheet from `hyprctl -j binds | jq 'select(.description != "")'`, so **a binding declared with plain `bind` is invisible in the keybinding menu**. Plain `bind`/`bindr`/`bindl`/`bindm` are reserved for things that shouldn't be listed (workspace switching, media keys, mouse drags).
 
@@ -101,6 +101,7 @@ Rose Pine Dawn is not driven by a shared palette module. Colors are re-declared 
 - **iwd, not NetworkManager.** `networkmanager.enable = false` is deliberate — `impala` (the WiFi TUI) drives iwd's D-Bus API directly and the two conflict. Wired/DHCP goes through systemd-networkd.
 - **Out-of-store-managed config trees.** Neovim (`home/nvim` → `~/.config/nvim`) and opencode (`home/opencode` → `~/.config/opencode`) are copied file-by-file via `home.file`/`xdg.configFile` because LazyVim manages its own plugins. `home/features/opencode.nix` enumerates every file explicitly — new prompts/skills must be added there.
 - **`/home/.snapshots` must be created manually** as a btrfs subvolume before snapper works: `sudo btrfs subvolume create /home/.snapshots`. The tmpfiles rule only fixes permissions.
+- **This repo is edited and built on IVOKUN-HTPC, not on kebun's target.** Hostname `ivokun-htpc`, an Arch + Omarchy 4.0.2 desktop (B550M board, live reference at `/usr/share/omarchy`). It is not kebun-managed; kebun deploys to `sakura` only. The HTPC's `~/.config` is Omarchy's own state — useful as a reference, never kebun-managed. Don't treat HTPC hardware or its monitor layout as sakura facts.
 
 ## Conventions
 

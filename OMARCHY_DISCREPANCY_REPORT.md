@@ -1,290 +1,361 @@
 # Omarchy → NixOS (Kebun) Discrepancy Analysis
 
-**Last updated:** 2026-08-27
-**Omarchy reference:** v3.8.5 (`master`, commit `f4378f0d`), as installed live on this machine at
-`~/.local/share/omarchy`, running Arch + Hyprland 0.56.2.
-**Kebun reference:** working tree at commit `c2b4a28`.
+**Last updated:** 2026-09-01
+**Omarchy reference:** **v4.0.2** (`omarchy 4.0.2-1` pacman package at `/usr/share/omarchy`),
+live on **IVOKUN-HTPC** (hostname `ivokun-htpc`, a B550M desktop running Arch — a
+separate machine, not kebun-managed): Hyprland 0.56.2, QuickShell 0.3.1, uwsm 0.26.7.
+**Kebun reference:** working tree at commit `86592b7`; deploys to `sakura` only.
 
-Findings below were checked against the running Omarchy install and against `nix eval` on the
-kebun flake, not inferred from documentation. Items marked *unverified* are flagged as such.
+Findings were checked against the running v4 install (every v3-era component is
+uninstalled and absent from the process table), against upstream release metadata, and
+against a full re-inventory of the kebun tree. Items marked *unverified* are flagged.
 
 ---
 
-## Headline: the upstream line kebun tracks is now in maintenance mode
+## Headline: the reference machine runs Quattro — the line kebun tracks is frozen
 
-The previous revision of this document described Omarchy 4 as `v4.0.0.alpha`, in development.
-That is no longer true:
+The previous revision of this report (2026-08-27) treated v4 as a release to watch and
+3.8.5 as the live reference. Both facts are now stale:
 
-- **v4.0.0 was released 2026-08-14**, and **v4.0.1 followed on 2026-08-25**.
-- **`quattro` is now the repository's default branch** (`git ls-remote --symref origin HEAD`
-  returns `refs/heads/quattro`). A stale `origin/HEAD` in an older local clone still points at
-  `master` — don't trust that cache.
-- Since the v4.0.0 tag, **`master` has received 1 commit; `quattro` has received 110.** The 3.8.x
-  line is backport-only.
-- 3.8.5 actively nags users to leave it: migration `1786465483.sh` fires a critical notification
-  ("Upgrade to Omarchy Quattro"), wired through a new clickable `mako` rule to the new
-  `omarchy-upgrade-to-quattro` command (2447 lines, shipped inside the 3.8.5 release itself).
+- **IVOKUN-HTPC ran `omarchy-upgrade-to-quattro` on 2026-09-01 at 14:57** (the
+  `*.omarchy-upgrade-to-quattro.20260901145742.bak` files under `~/.config` timestamp it).
+  Waybar, walker, elephant, mako, swayosd, hyprlock, and hypridle are all **uninstalled**;
+  the desktop runs as one QuickShell process. Correction: this is the reference machine,
+  not the machine kebun configures — earlier revisions of this report wrongly assumed a
+  shared `$HOME` between the two.
+- **The `master` (3.8.x) branch has received zero commits since the v3.8.5 tag on
+  2026-08-14.** It is not backport-only; it is frozen.
+- Upstream momentum is two **security-driven** patch releases in one week: v4.0.1
+  (2026-08-25) and v4.0.2 (2026-08-31), from a newly formed Omarchy security team, with
+  signed packages now required and a responsible-disclosure policy at omarchy.org/security.
+  None of that work reaches 3.8.x.
+- Upstream moved from `basecamp/omarchy` to **`omacom/omarchy`** (org rename; old URLs
+  redirect).
 
-**What v4 actually is.** `git diff --stat v3.8.4..v4.0.0` is 1876 files, +104k/−14k lines. Waybar
-and walker are *gone* — `git ls-tree -r v4.0.0 | grep -iE 'waybar|walker'` returns nothing. The bar,
-launcher, notifications, OSD, and lock screen are one QuickShell (Qt Quick/QML) application under
-`shell/`. Every Hyprland config file is now `.lua` using Hyprland's native Lua API plus an
-Omarchy `o.bind(keys, description, dispatcher)` wrapper. Omarchy itself now ships as pacman
-packages from a dedicated repo across four channels.
-
-**Consequence for kebun.** Tracking v4 is not incremental drift. It means re-deriving
-`home/features/hyprland.nix` from Lua semantics instead of `.conf`/`bindd`, and replacing
-`home/features/waybar.nix` plus the walker/elephant wiring with a QuickShell stack. That is a
-rewrite of the two largest modules in the repo. Staying on 3.8.5 is defensible, but it is now
-explicitly a decision to track a frozen branch, not a stable one.
+**Consequence for kebun.** ADR-0007 is **accepted: migrate to Quattro, staged** (the
+draft's hybrid recommendation rested on a shared-$HOME obstacle that does not exist —
+the machines are separate). The reference implementation kebun mirrors receives
+nothing — not even security fixes. Section 2 describes what v4 concretely is, now that
+it can be inspected live instead of inferred from diffs; the staged plan and port
+requirements are in the ADR and `docs/omarchy/quattro-port-inventory.md`.
 
 ---
 
 ## 1. Verified defects in kebun
 
-These are not parity gaps — they are things that do not work as the config implies.
+### 1.1 Fixed since the 2026-08-27 audit
 
-### 1.1 Four packages are installed but never wired up
+Re-verified in the tree at `86592b7`; all seven 2026-08-27 fixes are in place:
 
-A recurring pattern: the package lands in `PATH`, but nothing activates it.
+- `battery-monitor` now runs as a systemd user service (`Restart=always`)
+- `swayosd-server` supervised as a user service, off `exec-once`
+- `toggle-dnd` reads mako's resulting mode list instead of branching on exit status
+- LocalSend ports 53317 TCP+UDP open in `hosts/common/networking.nix`
+- `services.locate` (plocate) enabled in `hosts/common/core.nix`
+- gnome-keyring daemon + PAM unlock wired in `hosts/common/desktop.nix`
+- Power-profile udev rule matches both `Mains` and `USB` supply types
 
-| What | Where it's installed | What's missing |
-|---|---|---|
-| `battery-monitor` | `packages/scripts/default.nix:358`, listed in `home/common.nix:186` | Nothing launches it. Not in the `exec-once` list (`home/features/hyprland.nix:545-557`), and there are **no `systemd.user.services` anywhere under `home/`**. Low-battery warnings never fire. Omarchy runs the equivalent as `omarchy-battery-monitor.timer`. |
-| `localsend` | `home/common.nix:62`, with a `localsend-share` script and a `SUPER CTRL+S` binding | `networking.firewall` opens only TCP `22 80 443` and no UDP ports (`hosts/common/networking.nix:24-25`). LocalSend needs **53317 TCP+UDP**. Sending may work; receiving cannot. |
-| `plocate` | `home/common.nix:140` | `services.locate` is never enabled — no repo match outside that one package line. The database is never built, so `locate` returns nothing. |
-| `gnome-keyring` | `home/common.nix:138` | No `services.gnome.gnome-keyring.enable`, no `security.pam.services.*.enableGnomeKeyring`. Omarchy additionally strips `pam_gnome_keyring.so` from SDDM's PAM stack and provisions a passwordless default keyring; kebun does neither. Keyring unlock at login is unconfigured. |
+### 1.2 Still open from the last audit
 
-### 1.2 `reminder-*` looks ported but isn't
+- **`reminder-*` is still a passive notepad.** `reminder-set` appends a timestamped line to
+  `$XDG_DATA_HOME/kebun-reminders.txt`; nothing ever fires. v4's `omarchy-reminder` does it
+  properly with transient `omarchy-reminder-*.timer` systemd user timers (`show` reads
+  `list-timers --output=json`, `clear` cancels, shell indicator refreshes). Three
+  keybindings (SUPER+CTRL+R family) point at the notepad.
+- **Hyprland version skew.** Verified by `nix eval` on 2026-09-01: the compositor is
+  `0.54.0+date=2026-04-30_2ff5988` (the flake input, frozen since April) while every
+  `hyprctl` call site in `packages/scripts/default.nix` resolves to nixpkgs' **0.56.0** —
+  a 0.56 client against a 0.54 server. Decision pending in the backlog (§1.2 there); if
+  the bump happens it must land on **≥0.56.2** — 0.56.0/0.56.1 are the
+  invalid-`hyprctl -j binds`-JSON window.
+- **Monitor layout is stale — and the live layout moved again.** `home/sakura.nix`
+  declares `HDMI-A-1` (not in use) and a 4K `DP-2` with `bitdepth,10`/`vrr,2` dropped. The
+  live v4 config (`~/.config/hypr/hyprmon.lua`, HyprMon-generated) is now
+  `DP-1 2560x1440@59.95 at 1920x1440 scale 1.00` with **`DP-2` disabled outright**.
 
-`reminder-set` / `reminder-show` / `reminder-clear` (`packages/scripts/default.nix:~780`) append a
-timestamped line to `$XDG_DATA_HOME/kebun-reminders.txt` and `notify-send` the last 20 on demand.
-It is a passive notepad — nothing ever fires.
+### 1.3 New defects found in this audit
 
-Omarchy's `omarchy-reminder <minutes> [message]` schedules a real one-shot
-`systemd-run --user --on-active=Nm` transient timer that raises a critical notification when it
-elapses, with `show`/`clear` listing and cancelling live timers via `systemctl --user list-timers`.
+Found by full re-inventory, all confirmed in-tree:
 
-Same three command names, three keybindings pointing at them, and materially different behaviour.
-This is the single most misleading "PORTED" entry in the previous revision of this document.
-
-### 1.3 The DND toggle always reports the wrong state
-
-`home/features/hyprland.nix:416`:
-
-```
-makoctl mode -t do-not-disturb && notify-send 'Notifications silenced' || notify-send 'Notifications enabled'
-```
-
-The `&&`/`||` branch on `makoctl`'s **exit status**, not on the resulting mode. `makoctl mode -t`
-succeeds in both directions, so this reports "Notifications silenced" every time the toggle works —
-including when it is switching DND *off*. `makoctl mode -t` prints the resulting mode list on
-stdout; the branch needs to read that.
-
-### 1.4 Two different Hyprland versions are in play
-
-Confirmed by `nix eval`:
-
-- **Compositor:** `programs.hyprland.package` → `0.54.0+date=2026-04-30_2ff5988` (the `hyprland`
-  flake input, pinned since 2026-04-30 and untouched by the last several `flake.lock` updates).
-- **`hyprctl` CLI:** every one of the ~60 `hyprctl` call sites in `packages/scripts/default.nix`
-  uses `${pkgs.hyprland}/bin/hyprctl`, which resolves to nixpkgs' **`0.56.0`**.
-
-So the scripts drive a 0.56.0 client against a 0.54.0 server. This should be made consistent one
-way or the other regardless of anything else in this report.
-
-### 1.5 The monitor layout is stale
-
-`home/sakura.nix:11-15` declares:
-
-```
-",preferred,auto,1"
-"HDMI-A-1,1920x1080@60.00,2272x1440,1.00"
-"DP-2,3840x2160@60.00,1920x0,1.5"
-```
-
-The live setup (`~/.config/hypr/hyprland.conf`) is:
-
-```
-monitor=DP-1,2560x1440@59.95,1920x1440,1.00
-monitor=DP-2,3840x2160@60.00,1920x0,1.50,bitdepth,10,vrr,2
-```
-
-There is no `DP-1` entry in kebun, the `HDMI-A-1` entry describes a display that isn't in use, and
-the `DP-2` line drops `bitdepth,10` and `vrr,2`.
+1. **Browser flags are written to the wrong path.** `home/common.nix:246,252` uses
+   `home.file."config/brave-flags.conf"` / `"config/chrome-flags.conf"` — relative to
+   `$HOME`, that is `~/config/…`, but Chromium reads `~/.config/brave-flags.conf`. The
+   Wayland/IME flags are silently never applied.
+2. **Waybar `custom/idle` can never render.** `home/features/waybar.nix:162` gates on
+   `test -f /tmp/hypridle-disabled`; nothing in the repo ever creates that file (the idle
+   toggle is `hypridle --toggle`, which keeps no state file).
+3. **SUPER+XF86AudioMute is mislabeled.** `home/features/hyprland.nix:404` describes
+   "Switch audio output" but runs `pamixer --default-source toggle` — that toggles
+   *source* mute. Either the description or the command is wrong.
+4. **The X webapp can never focus.** `home/features/webapps.nix:59` uses
+   `match = "//x.com"`; Chromium's app_id is `chrome-x.com__-Default`, which does not
+   contain `//x.com`. The binding always relaunches. Fix is `match = "x.com"`.
+5. **`menu-omarchy` "Lock screen" bypasses `hyprlock-guard`.** It execs bare `hyprlock`,
+   skipping the zero-output repair + flock supervision that SUPER+CTRL+L deliberately
+   routes through.
+6. **SUPER+SHIFT+RETURN duplicates Browser.** It sits in the launcher slot upstream uses
+   for browser (v4: SUPER+SHIFT+RETURN *is* browser), so this may be deliberate — but
+   kebun also has SUPER+B for browser, and the combo reads like "alternate terminal".
+   Flagged for intent, not correctness.
+7. **Four parallel battery implementations exist:** waybar's native `battery` module, the
+   `battery-monitor` daemon, the `SUPER+SHIFT+Y` inline notify, and the `battery-*` script
+   family (of which only `battery-remaining-time` has a live caller, via `show-battery`).
+   Dead weight on PATH: `volume-toggle`, `brightness-toggle`, `audio-switch`, `mic-mute`,
+   `battery-status`, `battery-capacity`, `battery-remaining`, `launch-floating-terminal`.
 
 ---
 
-## 2. Drift against Omarchy 3.8.5
+## 2. What v4 actually is — verified against the live install
 
-### 2.1 The `hyprctl -j binds` breakage — narrower than it looks
+This replaces the diff-inference in the previous revision. All of it is inspectable on
+this machine.
 
-Omarchy commit `05d6f489` rewrote `omarchy-menu-keybindings` to parse **plain-text** `hyprctl binds`
-output with an awk state machine, because Hyprland 0.56 emitted invalid JSON from `hyprctl -j binds`.
-kebun's `menu-keybindings` (`packages/scripts/default.nix:510`) still uses
-`hyprctl -j binds | jq`, with no fallback and `set -euo pipefail` — so a malformed response aborts
-the script with no menu at all, which is worse than Omarchy's degraded case.
+### 2.1 The shell: one QuickShell process
 
-**However, tested live on this machine (Hyprland 0.56.2): the JSON is valid.** 180 binds parse
-cleanly, 178 carry descriptions. The breakage window was 0.56.0/0.56.1 and has since been fixed
-upstream. Combined with kebun's compositor being 0.54.0, **this is not broken today.** It is a
-landmine only if the Hyprland input is bumped to exactly 0.56.0 or 0.56.1.
+`omarchy-launch-shell` runs `quickshell -n -p $OMARCHY_PATH/shell` under `systemd-cat`,
+supervised by a bash `wait` loop with a crash-relaunch budget (5/min) and compositor
+liveness checks. `-n` (no auto-reload) is deliberate: package upgrades rewriting the tree
+mid-reload spawn a second engine generation that breaks IPC.
 
-### 2.2 Opacity retune — do NOT apply yet
+Everything v3 split across six daemons is a **plugin inside one QML engine**
+(`shell/plugins/`, each with a `manifest.json`, six kinds: `bar`, `bar-widget`, `panel`,
+`overlay`, `menu`, `service`):
 
-Omarchy commit `bfab1a70` raised every opacity value (`0.97/0.9` → `0.985/0.96`, `1/0.97` →
-`1.0/0.985`) because Hyprland 0.56 fixed an alpha-premultiplication bug that made old values render
-more transparent than intended.
-
-kebun still carries the pre-retune values (`home/features/hyprland.nix:199`, `212`, `213`). **This is
-correct for kebun as it stands**, because kebun's compositor is 0.54.0. These two changes are
-coupled: bump Hyprland to 0.56+ and the opacity values must move at the same time, or windows will
-visibly wash out.
-
-### 2.3 Power-profile udev rule misses the USB-C charging path
-
-Omarchy fixed this in migration `1777098818` ("Fix power profile auto-switching on USB-C only
-machines") by matching both supply types:
-
-```
-SUBSYSTEM=="power_supply", ATTR{type}=="Mains", RUN+=...
-SUBSYSTEM=="power_supply", ATTR{type}=="USB",   RUN+=...
-```
-
-kebun matches only `Mains`, in **both** the udev rule (`hosts/sakura/default.nix:156`) and the
-detection loop inside the service (`hosts/sakura/default.nix:140`). On a USB-C PD supply that
-enumerates as `type=USB`, the profile switch never fires. Worth a plug/unplug test on the dock.
-
-*Note:* kebun is **immune** to the separate bug fixed by commit `749a8c04` (fixed transient unit
-names colliding on resume). kebun dispatches to a persistent unit via `systemctl start --no-block`,
-which is idempotent by construction. That is a place kebun's design is ahead of upstream.
-
-### 2.4 SwayOSD is unsupervised
-
-Omarchy migration `1778171768` deliberately moved SwayOSD *off* `exec-once` and onto a user unit
-with `Restart=always`, `RestartSec=2`, `PartOf=graphical-session.target`. kebun still launches it
-from `exec-once` (`home/features/hyprland.nix:553`) with no supervision — if it dies, volume and
-brightness OSDs are gone until re-login. kebun also sets no `swayosd/config.toml`, so
-`show_percentage` and `max_volume` sit at compiled-in defaults where Omarchy pins them.
-
-### 2.5 Your live `~/.config` has drifted behind 3.8.5, and kebun inherited it
-
-Because you customized these files, Omarchy's updater left them alone. Diffing shipped defaults
-against your live copies surfaces upstream improvements that never reached either:
-
-- **waybar** — missing the newer `custom/idle-indicator` and `custom/notification-silencing-indicator`
-  modules and the `#custom-weather.unavailable` collapse styling; `custom/update` interval is 3600
-  where upstream moved to 21600.
-- **ghostty** — missing `window-theme = ghostty`, `gtk-toolbar-style = flat`, `async-backend = epoll`
-  (a documented Hyprland-slowness workaround), and `shell-integration-features = ssh-env`, which is
-  what makes terminfo work over SSH.
-- **kitty** — missing `cursor_blink_interval 0` and `shell_integration no-cursor`.
-
-### 2.6 Indicator modules poll where upstream signals
-
-Omarchy's three waybar indicators declare `"signal": N` and are pushed by
-`pkill -RTMIN+N waybar`. kebun's equivalents (`home/features/waybar.nix:143-183`) use
-`interval = 2` with an `exec-if` guard, and no script in the repo ever signals waybar. Functionally
-equivalent, but it is three `pgrep`/`makoctl` invocations every two seconds, forever.
-
----
-
-## 3. Real gaps worth closing
-
-> Tracked as concrete tasks in `docs/omarchy-parity-backlog.md`. The v4
-> question has its own record in
-> `docs/adr/0007-stay-on-omarchy-3-8-or-migrate-to-quattro.md`.
-
-Ranked for a single ThinkPad, in rough value-per-effort order.
-
-1. **Wire up what's already installed** — §1.1. Four one-to-three-line fixes.
-2. **Real timed reminders** — §1.2. systemd user timers are idiomatic on NixOS; the script is short.
-3. **Wi-Fi power-save toggle** — `omarchy-wifi-powersave <on|off>` iterates `/sys/class/net/*/wireless`
-   and calls `iw dev $iface set power_save`. Directly relevant to battery life, and kebun already
-   runs iwd. Absent entirely.
-4. **Touchpad enable/disable toggle** — `omarchy-toggle-touchpad` persists a
-   `hyprctl keyword device[...]:enabled` state and shows an OSD. Absent.
-5. **Suspend-inhibit ("caffeine") toggle** — no way to hold off suspend for a long build or a
-   presentation without editing hypridle and rebuilding.
-6. **Wallpaper images** — kebun's `menu-background` offers four solid colors and
-   `swaybg -c '#faf4ed' -m solid_color`. There is no photo wallpaper support at all, and
-   `home/sakura.nix:107` still has the wallpaper wiring commented out. This is a cheaper,
-   self-contained slice of the theming gap and doesn't require multi-theme switching first.
-7. **`system-sleep/unmount-fuse` hook** — Omarchy lazy-unmounts `fuse.gvfsd-fuse` before sleep and
-   restarts `gvfs-daemon` after, to stop the freeze hanging. kebun runs Nautilus + gvfs and has
-   documented suspend/resume fragility on this Renoir machine (ADR-0006, `hosts/common/core.nix:29-39`).
-   Plausible contributor; worth testing before assuming it's unrelated. *Unverified.*
-8. **Window rules kebun lacks** — picture-in-picture handling (float/pin/size/aspect) is absent
-   entirely; 1Password has no `no_screen_share` rule; the terminal tag matches only `Alacritty`
-   where Omarchy matches all four emulators.
-9. **Richer share and capture** — `omarchy-menu-share` picks a file/folder/clipboard via fzf and
-   sends headless; kebun's `localsend-share` only opens the GUI. `omarchy-capture-screenrecording`
-   supports desktop audio, microphone, and webcam; kebun's records silent video only.
-10. **`ALT+TAB` doesn't raise** — Omarchy binds `bringactivetotop` as a *second* bind on the same
-    key alongside `cyclenext`. kebun binds only `cyclenext` (`home/features/hyprland.nix:346-347`),
-    so alt-tabbed windows may not actually come forward.
-11. **Shell ergonomics** — no `..`/`...`/`....` directory shortcuts; no `MANPAGER` (Omarchy pipes man
-    pages through `bat`); no SSH port-forward helpers (`fip`/`dip`/`lip`); no tmux dev-layout builders
-    (`tdl`/`tdlm`/`tsl`), which given how much agent work happens here is the most relevant of these.
-12. **Misc system tuning** — `net.ipv4.tcp_mtu_probing=1` (SSH flakiness); `usbcore.autosuspend=-1`;
-    `gtk-enable-primary-paste=true`; `DefaultTimeoutStopSec=5s`; masking
-    `systemd-networkd-wait-online.service`; `MulticastDNS=no` in resolved, since kebun currently runs
-    resolved *and* avahi/`nssmdns4` answering mDNS concurrently.
-
----
-
-## 4. Confirmed non-issues
-
-Things that look like drift but aren't, recorded so they don't get re-flagged:
-
-- **App-launcher keybindings.** Omarchy's stock template moved app launchers to `SUPER SHIFT+*`, but
-  your live `~/.config/hypr/bindings.conf` uses plain `SUPER+B/N/D/O`. kebun matches *your* scheme.
-  Not stale — deliberate.
-- **Fingerprint unlock disabled in hyprlock** (`home/features/hyprland.nix:660`). The live Omarchy
-  install has it on, but kebun's `false` is deliberate and documented in place: `services.fprintd` is
-  not enabled anywhere, so hyprlock was probing a D-Bus name that does not exist on every unlock.
-  Enabling it is a three-step hardware task (enable `fprintd`, enroll, possibly add `libfprint-tod`
-  for the X13's Synaptics `06cb:00bd`), tracked in §3 — not a one-line flip.
-- **Rose Pine Dawn.** Omarchy's theme is named `rose-pine`, but its `colors.toml` is the Dawn palette
-  (`background = "#faf4ed"`, `foreground = "#575279"`) — identical to what kebun hardcodes.
-- **`initramfs_async=0`** (migration `1786479765`). Targets a kernel 7.1 initramfs race that breaks
-  Plymouth's LUKS prompt. `nix eval` puts kebun on **6.18.40**, so it does not apply — but it will
-  when nixpkgs moves to 7.1, and kebun runs exactly the Plymouth + LUKS combination affected.
-- **`pkill -9` for waybar** (commit `5f3a8d45`). kebun drives waybar as a systemd user service, which
-  escalates to SIGKILL on its own. Structurally immune.
-- **`qmk-hid`**, **sof-firmware promotion**, **the Neovim theme symlink fix** — Framework 16 hardware,
-  pacman explicit/dependency bookkeeping, and `omarchy-nvim`'s bootstrap flow respectively. None have
-  a NixOS analogue.
-- **Bootloader, firewall, snapshots, package installation.** systemd-boot + generations, declarative
-  nftables, `/home`-only snapper, and module-options-instead-of-`install-*` remain correct NixOS
-  substitutions, not gaps.
-- **Script count.** 284 Omarchy commands vs 61 kebun scripts, with **zero orphans** — every script in
-  `packages/scripts/default.nix` appears in `home/common.nix`. Roughly 146 of Omarchy's are Arch
-  plumbing with no Nix meaning.
-
-**Do not port** Omarchy's `cx` / `cy` shell aliases, which launch coding agents with permission
-prompts disabled (`claude --permission-mode bypassPermissions`, `codex -s danger-full-access -a never`).
-
----
-
-## 5. Revised parity assessment
-
-The previous revision claimed ~85% overall and ~90% on "meaningful helpers". Checked script by
-script rather than category by category, meaningful-helper parity is closer to **75-80%** — the
-category-level view hid §1.2 (same names, different behaviour) and the four unwired packages in §1.1.
-
-| Category | Assessment |
+| Plugin | Replaces |
 |---|---|
-| Desktop shell stack | 100% vs 3.8.5 — matches component for component |
-| Hardware (this ThinkPad) | ~95% — the USB-C power-profile path (§2.3) is the one hole |
-| UX scripts | ~75-80% once behaviour is checked, not just names |
-| App configs | ~85% — no Foot; imv/xournalpp/wiremix/Typora unconfigured |
-| System features | ~85% — several unwired services (§1.1) |
-| Theme system | ~20% — 1 theme, no switching, no font-set, no image wallpapers |
-| **Overall (relevant features)** | **~80%** |
+| `bar` + `panels/*` (audio, bluetooth, clock, disk-speedtest, dropbox, monitor, network, power, speedtest, tailscale, weather, wifiqr) | Waybar + all its modules |
+| `menu` + `services/AppLibrary.qml` | Walker + elephant (app index is **in-process**; menu structure is JSONC data with `when:` bash predicates, not a provider daemon) |
+| `notifications` | mako (DND, history, invoke-last included) |
+| `osd` | SwayOSD |
+| `lock` | hyprlock (QuickShell `WlSessionLock`; PAM services `omarchy-lock-password` / `-fingerprint`) |
+| `services/idle` | hypridle (exactly two timeouts: `idle.screensaver` 150s, `idle.lock` 300s) |
+| `services/nightlight` | hyprsunset |
+| `background` | swaybg |
+| `polkit` | polkit-gnome agent |
+| `clipboard`, `emojis`, `image-picker`, `reminders` | walker providers / new |
+| `agents` | new: AI agent usage panel fed by `omarchy-agent-usage-*` collectors |
 
-**Bottom line.** kebun remains a faithful port of a branch that upstream has stopped developing.
-The work in §1 is small and should happen regardless of what is decided about v4 — those are
-defects, not parity gaps. The v4 question (§Headline) deserves its own ADR: the honest options are
-to stay on 3.8.5 indefinitely and accept it as frozen, or to plan a QuickShell + Lua migration that
-rewrites the two largest modules in the repo.
+Persisted state is **one file**, `~/.config/omarchy/shell.json` (bar layout, idle
+timeouts, disabled plugins); a valid user file fully replaces the shipped default — no
+deep-merge. All control is IPC: `omarchy-shell` wraps `quickshell ipc` with verbs
+`summon/hide/toggle/call/rescanPlugins/reloadConfig/togglePanelAt`. Third-party plugins
+are git repos cloned into `~/.config/omarchy/plugins/`, hot-reloaded — inherently
+un-declarative; a NixOS port would need to treat that dir as user state.
+
+### 2.2 Hyprland config is Lua
+
+`~/.config/hypr/hyprland.lua` → `dofile(bootstrap.lua)` (package.path + cache purge on
+reload) → `require("default.hypr.omarchy")` → user `hypr.{monitors,input,bindings,
+looknfeel,autostart}` → generated runtime toggles from `~/.local/state/omarchy/toggles/`
+→ `hyprmon` profile.
+
+`o.bind(keys, description, dispatcher, opts)` (`default/hypr/helpers.lua`):
+- `description` feeds the keybindings menu (`nil` = unlisted) — same contract as kebun's
+  `bindd` convention.
+- Dispatchers can be **table specs**: `{omarchy="terminal"}`, `{launch="obsidian",
+  focus="^obsidian$"}`, `{webapp=url}`, `{tui="btop"}` compile to the right
+  `omarchy-launch-*` call. `o.launch()` wraps `uwsm-app --` centrally.
+- Options map to bind flags: `{locked, repeating, release, mouse}`.
+- Requires **Hyprland 0.56+** (the Lua API). Kebun's compositor is 0.54.0 — this alone
+  gates any config-port.
+- Uses **positional `code:NN`** for digit/workspace binds (kebun already does this) and
+  supports things Nix attrsets can't express: closures as dispatchers (cursor zoom reads
+  and re-sets `cursor.zoom_factor`), event-scoped bind lifetime (screenshot keys bound on
+  `layer.opened` of the selection namespace, unbound on close).
+
+The v4 keymap's user-visible deltas vs kebun: SUPER+SPACE opens the **root menu** (kebun:
+walker apps); SUPER+ALT+SPACE = apps; window grouping is first-class (SUPER+G family —
+kebun has these); SUPER+CTRL+1-9 toggles the Nth bar panel; media keys call
+`omarchy-shell media *` (MPRIS via shell IPC, not playerctl); SUPER+C/V/X is a
+terminal-aware universal clipboard (sends CTRL+Insert to `+terminal`-tagged windows).
+
+### 2.3 Other stack substitutions
+
+| v3 (kebun current) | v4 |
+|---|---|
+| wl-screenrec (kebun `screenrecord`) | **gpu-screen-recorder** (kms backend; webcam overlay window, merged desktop+mic audio, −14 LUFS normalize pass) |
+| satty (kebun has it installed) | **tensaku** (`dev.tensaku.Tensaku`, the default screenshot editor) |
+| iwd + impala | **NetworkManager + nmcli** (`omarchy-network-*`; kebun deliberately stays on iwd) |
+| wiremix / pavucontrol (kebun: wiremix) | shell audio panel |
+| bluetui (kebun) | shell bluetooth panel + `bluetoothctl`/`rfkill` |
+| tmux | partly **herdr** ("terminal workspace manager for AI coding agents", SUPER+CTRL+RETURN; tmux bindings still shipped) |
+| hyprwhspr-rs (kebun dictation) | **voxtype** (whisper, F9 PTT; optional, not installed here) |
+| Foot is upstream's default terminal | kebun primary is Alacritty (foot unconfigured) |
+
+### 2.4 New upstream components with no kebun counterpart
+
+- **The omarchy theme engine** (correction: not aether). `omarchy-theme-set` stages
+  `/usr/share/omarchy/themes/<name>/` (+ user overlay), renders 17
+  `default/themed/*.tpl` targets (`alacritty/foot/ghostty/kitty`, btop, helix,
+  neovim.lua, hyprland.lua, shell.toml, colors.toml, obsidian.css, vscode, chromium,
+  keyboard.rgb, claude.json, …) from the theme's `colors.toml`, atomically swaps
+  `~/.local/state/omarchy/current/theme/`, and pushes the live palette into the running
+  shell over IPC (`applyTheme`, `background themeTransition`). 22 themes ship; the
+  reference runs `rose-pine`. **This is exactly kebun's "theme is hardcoded and
+  duplicated" problem, solved upstream.** *Aether* is a separate, optional GUI engine
+  (Go/Wails, own package) targeting the v3 app set — not part of this path, not in
+  nixpkgs, and not needed for the port.
+- **herdr 0.8.2** — persistent terminal sessions for agent work. Kebun has no
+  multiplexer in the default flow.
+- **tensaku 0.28.0** — annotation in the capture pipeline (screenshot → click → edit).
+- **The `omarchy` meta-CLI** — a self-documenting dispatcher that reads
+  `# omarchy:summary/args/group` headers from all 428 scripts. Kebun's 62 scripts have no
+  equivalent discoverability surface (SUPER+K covers bindings only).
+- **`omarchy-crash-watch` + `omarchy-agent-crash`** — follows journald for
+  systemd-coredump's MESSAGE_ID, raises a critical toast whose click opens the default
+  coding agent on a diagnosis prompt. Kebun has the `diagnose-crash` skill and opencode —
+  the wiring is missing, not the pieces.
+- **Lock-before-suspend done properly** (`omarchy-system-sleep-lock` / `-monitor`): a
+  `systemd-inhibit --mode=delay` watcher on logind's `PrepareForSleep`, requesting the
+  lock and polling until `.secure`, with the total budget **derived from logind's own
+  `InhibitDelayMaxUSec`**. Kebun's `before_sleep_cmd = loginctl lock-session` fires and
+  forgets — no confirmation the lock actually landed before sleep. This pattern ports even
+  though kebun's lock target is hyprlock.
+
+### 2.5 Packaging (no NixOS analogue)
+
+Omarchy ships as signed pacman packages (`omarchy` + `omarchy-settings`, version-locked)
+across four channels — `stable`, `rc`, `edge`, `dev` — each backed by its own Arch mirror
+snapshot. QuickShell ships as a **stable 0.3.1** package from the omarchy repo
+(correction of the earlier "quickshell-git pin" claim — `pacman.conf` carries plain
+`quickshell`, and `install/omarchy-base.packages` lists the official-repo package). All
+of this is meaningless to NixOS; what transfers is the lesson: watch QuickShell
+versions, and expect Qt6 ABI fragility.
+
+**nixpkgs availability for the port:** `quickshell` 0.3.0 is packaged (the reference
+runs 0.3.1 — verify plugin compatibility at Stage 2), along with
+`gpu-screen-recorder` 6.0.1, `herdr` 0.8.2, and `voxtype` 0.7.5. **`aether` and
+`tensaku` are not packaged** (and aether is not needed — see §2.4's correction: v4's
+theme engine is omarchy's own template renderer).
+
+### 2.6 Reference-machine context (correction, 2026-09-01)
+
+An earlier revision of this section described a "shared $HOME" between the Arch install
+and kebun, with an ownership conflict and a `.bak` graveyard as evidence. **The premise
+was wrong: IVOKUN-HTPC is a separate machine** (hostname `ivokun-htpc`, B550M desktop).
+Kebun is edited and built there but deploys only to `sakura`; nothing is shared. The
+`~/.config/hypr` files being regular Arch-owned files with 13 timestamped `.bak` files
+is simply the HTPC's own omarchy state and its v3→v4 migration residue — not an
+HM-vs-omarchy conflict. The ADR-0007 "logically blocked" analysis, the ownership
+treaty, and the activation tripwire derived from it are all void; migration is
+unblocked. Also invalidated: the §1.2 "live monitor layout" observation (that was the
+HTPC's monitors, not sakura's) and backlog items §0.8 and §2.5.
+
+---
+
+## 3. v4.0.1/v4.0.2 security hardening — what applies to kebun
+
+Both patch releases were security waves. Per-item relevance:
+
+| Upstream fix | kebun exposure |
+|---|---|
+| SSH: key-only auth, sshd disabled when no usable key (v4.0.2) | **kebun runs OpenSSH with `PasswordAuthentication` on** (`hosts/common/networking.nix`). Worth matching upstream: keys-only, or off. |
+| CUPS hardened; automatic printer discovery (cups-browsed) removed (v4.0.2) | kebun runs CUPS with Avahi discovery and an open firewall. Reconsider whether discovery is needed. |
+| Docker group opt-in (v4.0.1) | `ivokun` is in `docker` (root-equivalent). Deliberate, but note upstream now treats it as opt-in hardening. |
+| Theme/app installer shell-injection fixes, webapp URL validation + desktop-entry escaping (v4.0.1/4.0.2) | kebun's `webapps.nix` is a static declarative list — structurally safe. No theme installer exists. |
+| Hyprland Lua injection via USB device names (v4.0.1) | kebun isn't on Lua config; revisit if migrating. |
+| Agents launch with auto-review instead of full bypass (v4.0.1) | kebun never shipped the `cx`/`cy` bypass aliases. Already aligned — keep it that way. |
+| Signed packages required | N/A (Nix store is content-addressed). |
+
+---
+
+## 4. Portable v4 improvements worth porting
+
+Ranked for this ThinkPad, independent of the Quattro-migration decision. Tracked as tasks
+in `docs/omarchy-parity-backlog.md`.
+
+1. **Real timed reminders** — §1.2. v4's `omarchy-reminder` (transient user timers +
+   countdown `show` + `clear`) is the reference implementation. Small, self-contained.
+2. **Lock-before-suspend with a budget** — §2.4. Complements kebun's existing
+   hyprlock-guard saga (ADR-0004, ADR-0006) with the `PrepareForSleep` inhibitor half.
+3. **`omarchy-capture-qr`** — region-grab → `zbarimg` (QR symbology only) →
+   `wl-copy --sensitive` so otpauth secrets never hit clipboard history. Trivial.
+4. **Crash-watch → agent** — §2.4. journald coredump follower + toast → opencode with a
+   diagnosis prompt. All dependencies already on the system.
+5. **Injection-safe notification-send** — v4 calls `org.freedesktop.Notifications.Notify`
+   via `busctl` so hostile headlines can't be reparsed as options. The base call works
+   against mako.
+6. **UPower battery status** — `omarchy-battery-status` (percentage, health from
+   energy-full vs design, humanized time) beats kebun's four raw-`/sys` implementations
+   and would consolidate them (§1.3.7).
+7. **Persistent Bluetooth power toggle** — rfkill soft-block as source of truth
+   (systemd-rfkill restores across boots; BlueZ `Powered` never persists).
+8. **Terminal config catch-up** — still missing from the last audit, still shipped in v4:
+   ghostty `async-backend = epoll` (Hyprland-slowness workaround), `window-theme =
+   ghostty`, `shell-integration-features = ssh-env` (terminfo over SSH); kitty
+   `cursor_blink_interval 0`, `shell_integration no-cursor`; plus v4's uniform **CSI-u
+   Shift+Enter** encoding across all four terminals (`CSI 13;2u`) so TUIs can distinguish
+   it.
+9. **Wireplumber bluez auto-connect rule** (`a2dp_sink a2dp_source` SPA-JSON) — kebun
+   doesn't configure wireplumber at all; fixes BT headset reconnect friction.
+10. **Persistent input-device toggle** — `omarchy-toggle-input-device` writes a state file
+    the config reads at reload; survives restarts, unlike kebun's nothing.
+11. **Per-window width memory** (`omarchy-hyprland-window-width`) — save/restore focused
+    width per window+workspace (v4 binds it SUPER+Home / SUPER+ALT+Home).
+12. **`menu-keybindings` upgrades** — `xkbcli compile-keymap` resolution of `code:`
+    bindings (kebun uses `code:10..19` for workspaces and currently shows raw codes).
+13. **Webapp icons** — v4's `omarchy-webapp-install` fetches and sanitizes icons into
+    hicolor; kebun's desktop entries all say `google-chrome`.
+14. **Wi-Fi QR share + password show** — v4 uses `nmcli --show-secrets`; kebun is on iwd,
+    so port via `iwctl`/`/var/lib/iwd/*.psk`. The `WIFI:S:…:T:WPA;P:…;;` payload format is
+    portable.
+15. **`omarchy-menu-timezone` / weather-location persistence** — small QoL over kebun's
+    stateless `show-weather`.
+
+---
+
+## 5. Confirmed non-issues
+
+Carried forward, re-verified where the ground moved:
+
+- **Opacity retune & `hyprctl -j binds` JSON fragility** — both remain coupled to a
+  Hyprland 0.56 bump kebun hasn't done (compositor still 0.54.0, pinned 2026-04-30).
+  kebun's current opacity values are *correct* for 0.54. If the bump happens: retune
+  `0.97/0.9 → 0.985/0.96`, and know that 0.56.0/0.56.1 (not .2) emitted invalid binds
+  JSON. v4's Lua configs additionally *require* 0.56+.
+- **`initramfs_async=0`** — targets a kernel 7.1 initramfs race; kebun is on 6.18.40.
+  Revisit when nixpkgs moves.
+- **`pkill -9` for waybar** — kebun's systemd user service escalates on its own.
+- **App-launcher keybindings** — kebun's SUPER+B/N/D/O matches your live scheme, not
+  upstream's SUPER+SHIFT+* template. Note v4 *did* keep SUPER+SHIFT+RETURN = browser,
+  which kebun also has (see §1.3.6 for the intent question).
+- **Rose Pine Dawn** — v4's `rose-pine` theme is still the Dawn palette kebun hardcodes.
+  The current live theme on this machine is `rose-pine`.
+- **`cx`/`cy` permission-bypass aliases** — still do-not-port. Upstream itself softened
+  this in v4.0.1 (auto-review instead of bypass).
+- **Script count** — 428 v4 commands vs 62 kebun scripts, zero orphans in kebun (62/62
+  installed). Roughly 100+ of v4's are pacman/channel/migration plumbing with no Nix
+  meaning; ~50 are `install-*`/`remove-*` app installers.
+- **iwd vs NetworkManager** — v4 switched to NM; kebun's iwd stance (ADR-0002) stands.
+  NM-bound upstream commands (`omarchy-network-*`) are not portable as-is.
+- **`qmk-hid`, limine, Plymouth switching, hibernation installers, factory reset,
+  channels** — Arch/pacman/installer concerns, no NixOS analogue.
+
+---
+
+## 6. Revised parity assessment
+
+The "parity vs 3.8.5" frame is dead — 3.8.5 is frozen and uninstalled on the reference
+machine. Two axes now:
+
+**Axis 1 — kebun's own correctness (independent of upstream):** 7 defects fixed since
+2026-08-27; 3 carried open (reminders, hyprctl skew, monitors); **7 new ones found**
+(§1.3), of which the browser-flags path and the X-webapp match are user-visible daily.
+
+**Axis 2 — tracking v4:** structural, not incremental.
+
+| Layer | kebun today | v4 reality | Gap type |
+|---|---|---|---|
+| Desktop shell | waybar + walker/elephant + mako + swayosd + hyprlock + hypridle + hyprsunset + swaybg + polkit-gnome (9 components) | one QuickShell process, plugin manifests, shell.json state, IPC verbs | **rewrite** (`waybar.nix`, walker wiring in `desktop.nix`, mako/swayosd/hyprlock/hypridle sections of `hyprland.nix`) |
+| Hyprland config | Nix attrsets → hyprland.conf, `bindd` | Lua API, `o.bind` table-spec dispatchers, runtime toggles, hyprmon; requires Hyprland 0.56+ | **rewrite** (`hyprland.nix`) + compositor bump |
+| Theme | Rose Pine Dawn hardcoded in ~12 files | aether generates 17 targets from one palette, live IPC push | high-value, **adoptable without v4** (Nix-generate the same tree) |
+| Scripts | 62, zero orphans | 428, incl. genuinely new capability (crash-watch, reminders, capture-qr, sleep-lock budget) | **incremental** — §4 list ports one by one |
+| Security posture | see §3 | two hardening releases | mostly small, apply now |
+
+**Bottom line.** Decision made: **ADR-0007 accepted — migrate to Quattro, staged**
+(compositor bump → shell derivations → Lua config → stack swap → theme engine →
+cleanup). The hybrid recommendation is void: it rested on a shared-$HOME obstacle that
+does not exist (§2.6). §1.3 items 1 and 4 are stack-independent — fix now; the
+v3-component items are superseded by the Stage 4 stack swap. The port requirements are
+in `docs/omarchy/quattro-port-inventory.md`; the staged plan and retained divergences
+(iwd, Rose Pine Dawn, ghostty/kitty, kebun's script set, UWSM) are in ADR-0007.
