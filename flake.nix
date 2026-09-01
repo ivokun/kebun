@@ -9,8 +9,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Pinned to the Quattro migration target (ADR-0007 Stage 1): v4's Lua config
+    # layer requires 0.56+, and 0.56.0/0.56.1 emitted invalid `hyprctl -j binds`
+    # JSON. Bump the ref deliberately, not via a blanket flake update.
     hyprland = {
-      url = "github:hyprwm/Hyprland";
+      url = "github:hyprwm/Hyprland?ref=v0.56.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

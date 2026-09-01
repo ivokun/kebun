@@ -4,9 +4,15 @@
   pkgs,
   inputs,
   username,
+  system,
   ...
 }: let
-  scripts = import ../../packages/scripts {inherit pkgs;};
+  # Scripts get the compositor's own hyprctl (the flake input), not nixpkgs'
+  # pkgs.hyprland — the versions drift and a mismatched client misleads scripts.
+  scripts = import ../../packages/scripts {
+    inherit pkgs;
+    hyprland = inputs.hyprland.packages.${system}.hyprland;
+  };
 
   # Rose Pine Dawn active border color
   activeBorderColor = "rgb(56949f)";
@@ -195,8 +201,8 @@ in {
         # Suppress maximize events (Hyprland 0.53+)
         "suppress_event maximize, match:class .*"
 
-        # Default slight transparency
-        "opacity 0.97 0.9, match:class .*"
+        # Default slight transparency (retuned for Hyprland 0.56, ADR-0007 Stage 1)
+        "opacity 0.985 0.96, match:class .*"
 
         # Fix XWayland dragging issues
         "no_focus on, match:class ^$, match:title ^$, match:xwayland 1, match:float 1, match:fullscreen 0, match:pin 0"
@@ -209,8 +215,8 @@ in {
         "tag +chromium-based-browser, match:class ((google-)?[cC]hrom(e|ium)|[bB]rave-browser|[mM]icrosoft-edge|Vivaldi-stable|helium)"
         "tag +firefox-based-browser, match:class ([fF]irefox|zen|librewolf)"
         "tile on, match:tag chromium-based-browser"
-        "opacity 1 0.97, match:tag chromium-based-browser"
-        "opacity 1 0.97, match:tag firefox-based-browser"
+        "opacity 1.0 0.985, match:tag chromium-based-browser"
+        "opacity 1.0 0.985, match:tag firefox-based-browser"
 
         # Terminal tag
         "tag +terminal, match:class Alacritty"

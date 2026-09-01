@@ -1,4 +1,11 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  # The compositor's own hyprctl (the flake input), not nixpkgs' pkgs.hyprland —
+  # the two versions drift and a mismatched client misleads hyprctl-driven scripts.
+  # Callers pass inputs.hyprland.packages.${system}.hyprland.
+  hyprland ? pkgs.hyprland,
+  ...
+}: {
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
     ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.swappy}/bin/swappy -f -
   '';
@@ -114,7 +121,7 @@
   hyprlock-guard = pkgs.writeShellScriptBin "hyprlock-guard" ''
     set -uo pipefail
 
-    hc=${pkgs.hyprland}/bin/hyprctl
+    hc=${hyprland}/bin/hyprctl
     jq=${pkgs.jq}/bin/jq
 
     # Repair first, so the power button is a working escape hatch. Only
@@ -170,7 +177,7 @@
   wake-display = pkgs.writeShellScriptBin "wake-display" ''
     set -uo pipefail
 
-    hc=${pkgs.hyprland}/bin/hyprctl
+    hc=${hyprland}/bin/hyprctl
     jq=${pkgs.jq}/bin/jq
 
     # Outputs the compositor will actually render on. HEADLESS is excluded: it
@@ -225,9 +232,9 @@
 
   # Window pop (float + pin active window)
   window-pop = pkgs.writeShellScriptBin "window-pop" ''
-    ${pkgs.hyprland}/bin/hyprctl dispatch togglefloating
-    ${pkgs.hyprland}/bin/hyprctl dispatch pin
-    ${pkgs.hyprland}/bin/hyprctl dispatch centerwindow
+    ${hyprland}/bin/hyprctl dispatch togglefloating
+    ${hyprland}/bin/hyprctl dispatch pin
+    ${hyprland}/bin/hyprctl dispatch centerwindow
   '';
 
   # Check for flake updates (interactive)
@@ -407,13 +414,13 @@
     set -euo pipefail
     STATE_FILE="$XDG_RUNTIME_DIR/hypr-gaps-state"
     if [ -f "$STATE_FILE" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_in 5
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_out 10
+      ${hyprland}/bin/hyprctl keyword general:gaps_in 5
+      ${hyprland}/bin/hyprctl keyword general:gaps_out 10
       rm -f "$STATE_FILE"
       ${pkgs.libnotify}/bin/notify-send "Gaps" "Normal spacing"
     else
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_in 0
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_out 0
+      ${hyprland}/bin/hyprctl keyword general:gaps_in 0
+      ${hyprland}/bin/hyprctl keyword general:gaps_out 0
       touch "$STATE_FILE"
       ${pkgs.libnotify}/bin/notify-send "Gaps" "No gaps"
     fi
@@ -422,12 +429,12 @@
   # Toggle layout (dwindle/master)
   toggle-layout = pkgs.writeShellScriptBin "toggle-layout" ''
     set -euo pipefail
-    CURRENT=$(${pkgs.hyprland}/bin/hyprctl getoption general:layout | ${pkgs.gawk}/bin/awk -F '= ' '{print $2}')
+    CURRENT=$(${hyprland}/bin/hyprctl getoption general:layout | ${pkgs.gawk}/bin/awk -F '= ' '{print $2}')
     if [ "$CURRENT" = "dwindle" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword general:layout master
+      ${hyprland}/bin/hyprctl keyword general:layout master
       ${pkgs.libnotify}/bin/notify-send "Layout" "Master layout"
     else
-      ${pkgs.hyprland}/bin/hyprctl keyword general:layout dwindle
+      ${hyprland}/bin/hyprctl keyword general:layout dwindle
       ${pkgs.libnotify}/bin/notify-send "Layout" "Dwindle layout"
     fi
   '';
@@ -471,14 +478,14 @@
     WINDOW_PATTERN="$1"
     shift
 
-    WINDOW_ADDRESS=$(${pkgs.hyprland}/bin/hyprctl clients -j | \
+    WINDOW_ADDRESS=$(${hyprland}/bin/hyprctl clients -j | \
       ${pkgs.jq}/bin/jq -r --arg p "$WINDOW_PATTERN" '
       .[] | select((.class | ascii_downcase | contains($p | ascii_downcase))
       or (.title | ascii_downcase | contains($p | ascii_downcase))) | .address' | \
       ${pkgs.coreutils}/bin/head -n1)
 
     if [ -n "$WINDOW_ADDRESS" ]; then
-      ${pkgs.hyprland}/bin/hyprctl dispatch focuswindow "address:$WINDOW_ADDRESS"
+      ${hyprland}/bin/hyprctl dispatch focuswindow "address:$WINDOW_ADDRESS"
     else
       exec uwsm app -- "$@"
     fi
@@ -522,7 +529,7 @@
   menu-keybindings = pkgs.writeShellScriptBin "menu-keybindings" ''
     set -euo pipefail
 
-    ${pkgs.hyprland}/bin/hyprctl -j binds | ${pkgs.jq}/bin/jq -r '
+    ${hyprland}/bin/hyprctl -j binds | ${pkgs.jq}/bin/jq -r '
       def decode_modmask:
         . as $mod |
         [(if ($mod / 64 | floor) % 2 >= 1 then "SUPER" else empty end),
@@ -535,7 +542,7 @@
       select(.description != "") |
       (.modmask | tonumber) as $mod |
       "\($mod | decode_modmask)\(.key | ascii_upcase)  →  \(.description)"
-    ' | sort -u | ${pkgs.walker}/bin/walker --dmenu -p "Keybindings"
+    ' | sort -u | ${pkgs.walker}/bin/walker --dmenu -p "Keybindings" || true
   '';
 
   # ─── Capture Menu ───
@@ -563,7 +570,7 @@
 
     case "$CHOICE" in
       "Window transparency")
-        ${pkgs.hyprland}/bin/hyprctl dispatch setprop "address:$(${pkgs.hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.address')" opaque toggle
+        ${hyprland}/bin/hyprctl dispatch setprop "address:$(${hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.address')" opaque toggle
         ;;
       "Window gaps") toggle-gaps ;;
       "Single-window square") toggle-single-window-square ;;
@@ -634,26 +641,26 @@
   # ─── Close All Windows ───
   close-all-windows = pkgs.writeShellScriptBin "close-all-windows" ''
     set -euo pipefail
-    mapfile -t ADDRESSES < <(${pkgs.hyprland}/bin/hyprctl clients -j | ${pkgs.jq}/bin/jq -r '.[].address')
+    mapfile -t ADDRESSES < <(${hyprland}/bin/hyprctl clients -j | ${pkgs.jq}/bin/jq -r '.[].address')
     for addr in "''${ADDRESSES[@]}"; do
-      ${pkgs.hyprland}/bin/hyprctl dispatch closewindow "address:$addr" || true
+      ${hyprland}/bin/hyprctl dispatch closewindow "address:$addr" || true
     done
   '';
 
   # ─── Cycle Monitors ───
   cycle-monitors = pkgs.writeShellScriptBin "cycle-monitors" ''
     set -euo pipefail
-    CURRENT=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .id')
-    TOTAL=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq 'length')
+    CURRENT=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .id')
+    TOTAL=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq 'length')
     NEXT=$(( (CURRENT + 1) % TOTAL ))
-    ${pkgs.hyprland}/bin/hyprctl dispatch focusmonitor "$NEXT"
+    ${hyprland}/bin/hyprctl dispatch focusmonitor "$NEXT"
   '';
 
   # ─── Cycle Monitor Scaling ───
   cycle-monitor-scaling = pkgs.writeShellScriptBin "cycle-monitor-scaling" ''
     set -euo pipefail
-    MONITOR=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .name')
-    CURRENT=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .scale')
+    MONITOR=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .name')
+    CURRENT=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .scale')
     CURRENT=$(printf "%.2f" "$CURRENT")
 
     if [ "$CURRENT" = "1.00" ]; then
@@ -666,14 +673,14 @@
       NEXT="1.00"
     fi
 
-    ${pkgs.hyprland}/bin/hyprctl keyword monitor "$MONITOR,preferred,auto,$NEXT"
+    ${hyprland}/bin/hyprctl keyword monitor "$MONITOR,preferred,auto,$NEXT"
     ${pkgs.libnotify}/bin/notify-send "Monitor Scale" "$MONITOR → $NEXT"
   '';
 
   # ─── File Manager (current directory) ───
   file-manager-cwd = pkgs.writeShellScriptBin "file-manager-cwd" ''
     set -euo pipefail
-    CWD=$(${pkgs.hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
+    CWD=$(${hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
     [ -z "$CWD" ] && CWD="$HOME"
     [ ! -d "$CWD" ] && CWD="$HOME"
     uwsm app -- ${pkgs.nautilus}/bin/nautilus --new-window "$CWD"
@@ -684,15 +691,15 @@
     set -euo pipefail
     STATE_FILE="$XDG_RUNTIME_DIR/hypr-square-state"
     if [ -f "$STATE_FILE" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_in 5
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_out 10
-      ${pkgs.hyprland}/bin/hyprctl keyword general:border_size 2
+      ${hyprland}/bin/hyprctl keyword general:gaps_in 5
+      ${hyprland}/bin/hyprctl keyword general:gaps_out 10
+      ${hyprland}/bin/hyprctl keyword general:border_size 2
       rm -f "$STATE_FILE"
       ${pkgs.libnotify}/bin/notify-send "Layout" "Normal mode"
     else
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_in 0
-      ${pkgs.hyprland}/bin/hyprctl keyword general:gaps_out 0
-      ${pkgs.hyprland}/bin/hyprctl keyword general:border_size 0
+      ${hyprland}/bin/hyprctl keyword general:gaps_in 0
+      ${hyprland}/bin/hyprctl keyword general:gaps_out 0
+      ${hyprland}/bin/hyprctl keyword general:border_size 0
       touch "$STATE_FILE"
       ${pkgs.libnotify}/bin/notify-send "Layout" "Single-window square"
     fi
@@ -729,7 +736,7 @@
   toggle-laptop-display = pkgs.writeShellScriptBin "toggle-laptop-display" ''
     set -uo pipefail
 
-    hc=${pkgs.hyprland}/bin/hyprctl
+    hc=${hyprland}/bin/hyprctl
     jq=${pkgs.jq}/bin/jq
 
     INTERNAL=$("$hc" monitors all -j |
@@ -795,7 +802,7 @@
   # ─── Toggle Mirror Display ───
   toggle-mirror-display = pkgs.writeShellScriptBin "toggle-mirror-display" ''
     set -euo pipefail
-    MONITORS=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[].name')
+    MONITORS=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[].name')
     COUNT=$(echo "$MONITORS" | ${pkgs.coreutils}/bin/wc -l)
 
     if [ "$COUNT" -lt 2 ]; then
@@ -806,12 +813,12 @@
     PRIMARY=$(echo "$MONITORS" | ${pkgs.coreutils}/bin/head -1)
     SECONDARY=$(echo "$MONITORS" | ${pkgs.coreutils}/bin/tail -1)
 
-    CURRENT_MIRROR=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r --arg sec "$SECONDARY" '.[] | select(.name == $sec) | .mirrorOf // empty')
+    CURRENT_MIRROR=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r --arg sec "$SECONDARY" '.[] | select(.name == $sec) | .mirrorOf // empty')
     if [ -n "$CURRENT_MIRROR" ]; then
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1"
+      ${hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1"
       ${pkgs.libnotify}/bin/notify-send "Display" "Mirroring disabled"
     else
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1,mirror,$PRIMARY"
+      ${hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1,mirror,$PRIMARY"
       ${pkgs.libnotify}/bin/notify-send "Display" "Mirroring $PRIMARY to $SECONDARY"
     fi
   '';
@@ -828,7 +835,7 @@
       "Record screen")
         OUTPUT="$HOME/Videos/screenrecord-$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S).mp4"
         ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$OUTPUT")"
-        OUTPUT_GEOM=$(${pkgs.hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | "\(.width)x\(.height)+\(.x),\(.y)"')
+        OUTPUT_GEOM=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | "\(.width)x\(.height)+\(.x),\(.y)"')
         ${pkgs.libnotify}/bin/notify-send "Screen recording started" "Recording to $OUTPUT"
         ${pkgs.wl-screenrec}/bin/wl-screenrec -g "$OUTPUT_GEOM" -f "$OUTPUT"
         ;;
@@ -939,7 +946,7 @@
       ${pkgs.walker}/bin/walker --dmenu -p "Transcode")
 
     # Use active window's working directory or home
-    CWD=$(${pkgs.hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
+    CWD=$(${hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
     [ -z "$CWD" ] \&\& CWD="$HOME"
     cd "$CWD"
 
