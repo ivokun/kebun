@@ -70,6 +70,7 @@
             ./home/common.nix
             ./home/sakura.nix
             ./home/features/hyprland.nix
+            ./home/features/omarchy-shell.nix
             ./home/features/waybar.nix
             ./home/features/terminals.nix
             ./home/features/shell.nix
