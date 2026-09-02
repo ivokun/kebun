@@ -8,11 +8,8 @@
   # Host-specific home-manager settings for sakura
 
   # ─── Hyprland monitor layout ───
-  wayland.windowManager.hyprland.settings.monitor = lib.mkForce [
-    ",preferred,auto,1"
-    "HDMI-A-1,1920x1080@60.00,2272x1440,1.00"
-    "DP-2,3840x2160@60.00,1920x0,1.5"
-  ];
+  # Moved to ~/.config/hypr/monitors.lua (ADR-0007 Stage 3) — the Lua layer
+  # replaced the HM-generated monitor list.
 
   # ─── Borg backup excludes ───
   home.file.".borg-excludes".text = ''

@@ -526,23 +526,21 @@
 
   # ─── Keybindings Menu ───
   # Parses hyprctl -j binds and shows a searchable menu in Walker
+  # ADR-0007 Stage 3: bindings live in ~/.config/hypr/bindings.lua now, and
+  # `hyprctl -j binds` reports Lua dispatchers as __lua, so the old JSON
+  # pipeline cannot render them. Parse the source instead: every menu-visible
+  # bind is a single-line o.bind("KEYS", "Description", ...) call.
+  # TODO: resolve code:NN keys via xkbcli compile-keymap like upstream's
+  # omarchy-menu-keybindings; until then they are shown raw.
   menu-keybindings = pkgs.writeShellScriptBin "menu-keybindings" ''
     set -euo pipefail
 
-    ${hyprland}/bin/hyprctl -j binds | ${pkgs.jq}/bin/jq -r '
-      def decode_modmask:
-        . as $mod |
-        [(if ($mod / 64 | floor) % 2 >= 1 then "SUPER" else empty end),
-         (if ($mod % 2) >= 1 then "SHIFT" else empty end),
-         (if ($mod / 4 | floor) % 2 >= 1 then "CTRL" else empty end),
-         (if ($mod / 8 | floor) % 2 >= 1 then "ALT" else empty end)
-        ] | if length > 0 then join(" + ") + " + " else "" end;
-
-      .[] |
-      select(.description != "") |
-      (.modmask | tonumber) as $mod |
-      "\($mod | decode_modmask)\(.key | ascii_upcase)  →  \(.description)"
-    ' | sort -u | ${pkgs.walker}/bin/walker --dmenu -p "Keybindings" || true
+    # Anchored to start-of-line so the o.bind example in bindings.lua's header
+    # comment (and any indented call) never matches.
+    ${pkgs.gnugrep}/bin/grep -oE '^o\.bind\("[^"]+", "[^"]+"' ~/.config/hypr/bindings.lua |
+      ${pkgs.gnused}/bin/sed -E 's/^o\.bind\("([^"]+)", "([^"]+)"$/\1  →  \2/' |
+      sort -u |
+      ${pkgs.walker}/bin/walker --dmenu -p "Keybindings" || true
   '';
 
   # ─── Capture Menu ───
