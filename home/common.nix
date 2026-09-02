@@ -170,28 +170,12 @@ in {
     ++ (with scripts; [
       screenshot
       screenshot-clipboard
-      volume-toggle
-      brightness-toggle
-      lock-screen
-      toggle-waybar
-      toggle-nightlight
-      toggle-dnd
-      restart-waybar
-      restart-walker
-      hyprlock-guard
       wake-display
       color-picker
       window-pop
       check-updates
-      check-waybar-updates
       screenrecord
-      audio-switch
-      battery-status
-      battery-capacity
-      battery-remaining
       battery-remaining-time
-      battery-monitor
-      mic-mute
       toggle-gaps
       toggle-layout
       toggle-power-profile
@@ -202,10 +186,8 @@ in {
       launch-wifi
       launch-bluetooth
       launch-activity
-      launch-floating-terminal
 
       # Menus
-      menu-keybindings
       menu-capture
       menu-toggle
       menu-hardware

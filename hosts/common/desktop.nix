@@ -142,11 +142,11 @@ in {
     args = ["expose_authtok" "${unlockLuksOnLogin}"];
   };
 
-  # ─── Hyprlock PAM stack ───
-  # Without this there is no /etc/pam.d/hyprlock, and hyprlock falls back to
-  # /etc/pam.d/su ("Pam module ... does not exist! Falling back to su") — the
-  # wrong stack to authenticate a screen unlock against.
-  security.pam.services.hyprlock = {};
+  # ─── Omarchy shell lock plugin PAM stack ───
+  # The QuickShell lock screen probes /etc/pam.d/omarchy-lock-password and
+  # refuses to lock without it ("missing-pam"). Fingerprint unlock
+  # (omarchy-lock-fingerprint + fprintd) is deferred — see backlog §3.2.
+  security.pam.services."omarchy-lock-password" = {};
 
   # ─── Desktop packages (system-level) ───
   environment.systemPackages = with pkgs; [
@@ -169,15 +169,6 @@ in {
     # Wallpaper
     swaybg
 
-    # Notifications
-    mako
-
-    # App launcher (backend enabled via services.elephant below)
-    walker
-
-    # Polkit authentication agent
-    polkit_gnome
-
     # Polkit (already enabled above, but ensure package is available)
     polkit
 
@@ -197,9 +188,6 @@ in {
 
     # Laptop power
     acpi
-
-    # On-screen display for volume/brightness
-    swayosd
   ];
 
   # ─── Bluetooth ───
@@ -208,67 +196,4 @@ in {
 
   # ─── D-Bus ───
   services.dbus.enable = true;
-
-  # ─── Walker configuration ───
-  #
-  # Elephant is walker's provider backend — walker 2.x is only a frontend and
-  # refuses to start without it. Every provider (apps, calc, clipboard, …) lives
-  # on this side, so without it SUPER+SPACE does nothing at all.
-  services.elephant.enable = true;
-
-  # Elephant resolves each .desktop file's `Exec=` against its OWN process
-  # PATH, and the nixpkgs module sets no `path`, so the unit inherits systemd's
-  # minimal default — coreutils, findutils, gnugrep, gnused, systemd. Nothing
-  # else. Entries whose Exec is a bare binary name (which is most of them,
-  # including the webapp entries generated in home/features/webapps.nix) can
-  # therefore never be found, and activating one silently does nothing: the
-  # list still renders, because names and icons come from XDG_DATA_DIRS rather
-  # than PATH, so the launcher looks healthy while launching nothing.
-  #
-  # The unit's own Environment=PATH also wins over whatever `systemctl --user
-  # import-environment` put in the manager environment, so the session PATH
-  # never reaches it. Point it at the system and user profiles explicitly.
-  systemd.user.services.elephant.path = [
-    "/run/current-system/sw"
-    "/etc/profiles/per-user/${username}"
-  ];
-
-  # ─── Elephant re-index on app installs ───
-  # Elephant caches its desktopapplications index at startup and has no file
-  # watching, so newly installed apps only appear in walker after a restart
-  # (seen with zoom-us: present on disk, invisible until elephant restarted).
-  #
-  # This runs inside the user session via nixos-activation.service, which
-  # switch-to-configuration restarts on every switch — after the new /etc and
-  # /run/current-system are in place, so the freshly installed .desktop files
-  # are already visible when elephant re-reads them.
-  #
-  # Do NOT go back to a systemd.user.path here. The applications dirs all sit
-  # behind symlinks that are atomically retargeted on rebuild, so PathChanged
-  # follows the symlink to the old store inode and never fires. PathExistsGlob
-  # does fire, but it is level-triggered: the glob still matches once the
-  # triggered unit exits, so systemd re-activates it immediately and elephant
-  # restarts in a tight loop forever (it did — every ~2s).
-  #
-  # try-restart, not restart: a no-op when there is no graphical session and
-  # elephant isn't running.
-  system.userActivationScripts.elephant-reindex = ''
-    ${pkgs.systemd}/bin/systemctl --user try-restart elephant.service || true
-  '';
-
-  # Must live under xdg/, i.e. /etc/xdg/walker. Plain /etc/walker is not on
-  # XDG_CONFIG_DIRS, so walker silently never reads it.
-  #
-  # This is walker 2.x schema; walker merges it over its own defaults, so the
-  # upstream provider actions and prefixes (">" runner, "/" files, "." symbols,
-  # ":" clipboard, "@" websearch, "=" calc) stay in place.
-  environment.etc."xdg/walker/config.toml".text = ''
-    force_keyboard_focus = true
-    selection_wrap = true
-
-    [providers]
-    default = ["desktopapplications", "calc", "websearch"]
-    empty = ["desktopapplications"]
-    max_results = 50
-  '';
 }

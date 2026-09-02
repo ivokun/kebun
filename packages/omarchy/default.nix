@@ -28,6 +28,7 @@
 
   runtimeDeps = with pkgs; [
     bash
+    brightnessctl # omarchy-brightness-display
     coreutils
     findutils
     gawk
@@ -36,10 +37,15 @@
     hyprland
     inotify-tools
     jq
+    libxkbcommon # xkbcli, keyname resolution in omarchy-menu-keybindings
+    lua # omarchy-menu-keybindings' Lua-dofile cache step
+    perl # omarchy-menu-select builds JSON with perl JSON::PP
     procps
+    pulseaudio # pactl, needed by omarchy-audio-output-volume
     quickshell
     systemd
     util-linux
+    wireplumber # wpctl, needed by omarchy-audio-input-mute
   ];
 
   # Entry scripts (plus their repo-internal callees) that get wrapped.
@@ -59,6 +65,18 @@
     "omarchy-cmd-present"
     "omarchy-hyprland-session-locked"
     "omarchy-plugin-list"
+    # Stage 4 verbs kebun scripts call directly.
+    "omarchy-menu-emoji"
+    "omarchy-menu-clipboard"
+    "omarchy-menu-select"
+    "omarchy-menu-input"
+    "omarchy-menu-keybindings"
+    "omarchy-audio-output-volume"
+    "omarchy-audio-output-switch"
+    "omarchy-audio-input-mute"
+    "omarchy-brightness-display"
+    "omarchy-toggle-nightlight"
+    "omarchy-notification-battery"
   ];
 in
   pkgs.runCommand "omarchy-shell-env-4.0.2" {

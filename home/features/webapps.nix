@@ -78,7 +78,7 @@
 
   menu-webapp = pkgs.writeShellScriptBin "menu-webapp" ''
     set -euo pipefail
-    CHOICE=$(printf '%s\n' ${menuArgs} | ${pkgs.walker}/bin/walker --dmenu -p "Web app" || true)
+    CHOICE=$(printf '%s\n' ${menuArgs} | omarchy-menu-select "Web app" || true)
     [ -z "$CHOICE" ] && exit 0
     case "$CHOICE" in
     ${caseArms}
@@ -87,7 +87,7 @@
 in {
   home.packages = [menu-webapp];
 
-  # Desktop entries — discoverable in Walker's app search and the app grid.
+  # Desktop entries — discoverable in the shell's app search and the app grid.
   xdg.desktopEntries = builtins.listToAttrs (map (app: {
       name = "webapp-${slug app.name}";
       value = {

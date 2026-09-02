@@ -6,24 +6,7 @@
   username,
   system,
   ...
-}: let
-  # Scripts get the compositor's own hyprctl (the flake input), not nixpkgs'
-  # pkgs.hyprland — the versions drift and a mismatched client misleads scripts.
-  scripts = import ../../packages/scripts {
-    inherit pkgs;
-    hyprland = inputs.hyprland.packages.${system}.hyprland;
-  };
-
-  # polkit-gnome's agent binary lives in libexec/, never bin/, so installing
-  # the package can never put it on PATH — the old exec-once interpolated the
-  # store path for exactly that reason. The Lua autostart is static text, so
-  # symlink the agent into bin/ and launch it by bare name instead.
-  polkit-gnome-agent = pkgs.runCommandLocal "polkit-gnome-agent" {} ''
-    mkdir -p $out/bin
-    ln -s ${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1 \
-      $out/bin/polkit-gnome-authentication-agent-1
-  '';
-in {
+}: {
   # ─── Hyprland — Lua layer (ADR-0007 Stage 3) ───
   #
   # The compositor config ships as the Lua files emitted below
@@ -33,9 +16,11 @@ in {
   # ~/.config/hypr/hyprland.lua loads the vendored upstream defaults from
   # $OMARCHY_PATH and then kebun's overrides.
   #
-  # The PRESERVE sections further down (systemd user services, hypridle,
-  # hyprlock, hyprsunset, mako, swayosd style) are unchanged and stay until the
-  # Stage 4 stack swap.
+  # ADR-0007 Stage 4 retired the v3 shell stack (waybar, walker, mako, swayosd,
+  # hypridle, hyprlock, hyprsunset, polkit-gnome): the vendored Omarchy v4
+  # QuickShell — omarchy-shell plus the omarchy-* session verbs — now provides
+  # the bar, menus, OSD, notifications, lock and idle handling. The theme
+  # engine swap is Stage 5.
   wayland.windowManager.hyprland = {
     enable = true;
     package = inputs.hyprland.packages.${pkgs.system}.hyprland;
@@ -49,18 +34,15 @@ in {
   };
 
   # Bare commands the Lua layer needs that nothing else put on PATH:
-  # - hyprctl must be the compositor's own build (flake input), not nixpkgs'
-  # - hypridle --toggle (SUPER+CTRL+I) — services.hypridle only creates a
-  #   systemd unit and never exposes the binary
-  # - notify-send (battery bind) and pavucontrol (audio panel) were store-path
-  #   interpolations before
-  # - polkit-gnome-agent wraps the libexec-only polkit authentication agent
+  # - hyprctl must be the compositor's own build (flake input), not nixpkgs';
+  #   the shell's verbs and kebun's scripts read it
+  # - pavucontrol is the audio panel (SUPER+CTRL+A)
+  # - hyprsunset is the nightlight binary — the shell's
+  #   omarchy-toggle-nightlight verb drives it via `hyprctl hyprsunset temperature`
   home.packages = [
     inputs.hyprland.packages.${pkgs.system}.hyprland
-    pkgs.hypridle
-    pkgs.libnotify
     pkgs.pavucontrol
-    polkit-gnome-agent
+    pkgs.hyprsunset
   ];
 
   # ─── Lua layer entry ───
@@ -72,9 +54,9 @@ in {
     omarchy_default_bindings = false
     omarchy_preinstalled_bindings = false
 
-    -- Upstream defaults, minus default.hypr.autostart (it execs omarchy-launch-shell
-    -- and omarchy provisioning — kebun runs its own autostart until Stage 4) and
-    -- minus the gated bindings/* (see kill-switches above).
+    -- Upstream defaults, minus default.hypr.autostart (kebun launches the shell
+    -- itself — under uwsm, see hypr/autostart.lua — and skips upstream's
+    -- provisioning hooks) and minus the gated bindings/* (see kill-switches above).
     require("default.hypr.helpers")
     require("default.hypr.envs")
     require("default.hypr.looknfeel")
@@ -159,11 +141,13 @@ in {
   '';
 
   xdg.configFile."hypr/bindings.lua".text = ''
-    -- Kebun keybindings — ported verbatim from the old hyprland.conf bindd
-    -- list (ADR-0007 Stage 3). Descriptions are load-bearing: menu-keybindings
-    -- parses this file's o.bind("KEYS", "Description", ...) lines, so keep
-    -- every call on one line. Binds with a nil description are invisible to
-    -- the menu, matching the old plain bind/bindr/bindl/bindm entries.
+    -- Kebun keybindings — ported from the old hyprland.conf bindd list
+    -- (ADR-0007 Stage 3); Stage 4 re-pointed the launcher/menu, OSD,
+    -- notification, lock and idle binds at the Omarchy v4 shell verbs, with
+    -- kebun's own scripts kept. Descriptions are load-bearing:
+    -- omarchy-menu-keybindings reads `hyprctl binds`, which exposes them, so
+    -- keep every call on one line. Binds with a nil description are invisible
+    -- to the menu, matching the old plain bind/bindr/bindl/bindm entries.
     --
     -- Flag notes:
     -- - Media and brightness keys adopt upstream's flags: { locked = true,
@@ -198,13 +182,12 @@ in {
     o.bind("SUPER + SHIFT + O", "Pop window", "window-pop")
 
     -- ─── Menus ───
-    o.bind("SUPER + SPACE", "Launch apps", "walker")
-    o.bind("SUPER + CTRL + E", "Emoji picker", "walker -m symbols")
-    -- SUPER CTRL SPACE belongs to the Background menu further down; this
-    -- binding ran bare walker, same as SUPER SPACE and SUPER ESCAPE below.
-    o.bind("SUPER + ESCAPE", "System menu", "walker")
-    o.bind("XF86PowerOff", "Power menu", "walker")
-    o.bind("SUPER + K", "Show keybindings", "menu-keybindings")
+    o.bind("SUPER + SPACE", "Launch apps", "omarchy-menu toggle apps")
+    o.bind("SUPER + CTRL + E", "Emoji picker", "omarchy-shell shell toggle omarchy.emojis")
+    -- SUPER CTRL SPACE belongs to the Background menu further down.
+    o.bind("SUPER + ESCAPE", "System menu", "omarchy-menu toggle system")
+    o.bind("XF86PowerOff", "Power menu", "omarchy-menu toggle system", { locked = true })
+    o.bind("SUPER + K", "Show keybindings", "omarchy-menu-keybindings")
     o.bind("SUPER + A", "Web apps", "menu-webapp")
 
     -- ─── Window Management ───
@@ -311,25 +294,25 @@ in {
     o.bind("SUPER + CTRL + RIGHT", "Move grouped window focus right", hl.dsp.group.next())
 
     -- ─── Clipboard ───
-    o.bind("SUPER + CTRL + V", "Clipboard manager", "walker -m clipboard")
+    o.bind("SUPER + CTRL + V", "Clipboard manager", "omarchy-shell shell toggle omarchy.clipboard")
 
     -- ─── Mouse Bindings (wheel) ───
     o.bind("SUPER + mouse_down", "Scroll workspace forward", hl.dsp.focus({ workspace = "e+1" }))
     o.bind("SUPER + mouse_up", "Scroll workspace backward", hl.dsp.focus({ workspace = "e-1" }))
 
     -- ─── Media Keys ───
-    o.bind("XF86AudioRaiseVolume", "Volume up", "swayosd-client --output-volume raise", { locked = true, repeating = true })
-    o.bind("XF86AudioLowerVolume", "Volume down", "swayosd-client --output-volume lower", { locked = true, repeating = true })
-    o.bind("XF86AudioMute", "Mute", "swayosd-client --output-volume mute-toggle", { locked = true })
-    o.bind("XF86AudioMicMute", "Mute microphone", "swayosd-client --input-volume mute-toggle", { locked = true })
-    o.bind("XF86MonBrightnessUp", "Brightness up", "swayosd-client --brightness raise", { locked = true, repeating = true })
-    o.bind("XF86MonBrightnessDown", "Brightness down", "swayosd-client --brightness lower", { locked = true, repeating = true })
+    o.bind("XF86AudioRaiseVolume", "Volume up", "omarchy-audio-output-volume raise", { locked = true, repeating = true })
+    o.bind("XF86AudioLowerVolume", "Volume down", "omarchy-audio-output-volume lower", { locked = true, repeating = true })
+    o.bind("XF86AudioMute", "Mute", "omarchy-audio-output-volume mute-toggle", { locked = true })
+    o.bind("XF86AudioMicMute", "Mute microphone", "omarchy-audio-input-mute", { locked = true })
+    o.bind("XF86MonBrightnessUp", "Brightness up", "omarchy-brightness-display +5%", { locked = true, repeating = true })
+    o.bind("XF86MonBrightnessDown", "Brightness down", "omarchy-brightness-display 5%-", { locked = true, repeating = true })
 
     -- ─── Precise Media Adjustments ───
-    o.bind("ALT + XF86AudioRaiseVolume", "Volume up precise", "swayosd-client --output-volume +1", { locked = true, repeating = true })
-    o.bind("ALT + XF86AudioLowerVolume", "Volume down precise", "swayosd-client --output-volume -1", { locked = true, repeating = true })
-    o.bind("ALT + XF86MonBrightnessUp", "Brightness up precise", "swayosd-client --brightness +1", { locked = true, repeating = true })
-    o.bind("ALT + XF86MonBrightnessDown", "Brightness down precise", "swayosd-client --brightness -1", { locked = true, repeating = true })
+    o.bind("ALT + XF86AudioRaiseVolume", "Volume up precise", "omarchy-audio-output-volume +1", { locked = true, repeating = true })
+    o.bind("ALT + XF86AudioLowerVolume", "Volume down precise", "omarchy-audio-output-volume -1", { locked = true, repeating = true })
+    o.bind("ALT + XF86MonBrightnessUp", "Brightness up precise", "omarchy-brightness-display +1%", { locked = true, repeating = true })
+    o.bind("ALT + XF86MonBrightnessDown", "Brightness down precise", "omarchy-brightness-display 1%-", { locked = true, repeating = true })
 
     -- ─── Media Playback ───
     o.bind("XF86AudioNext", "Next track", "playerctl next", { locked = true })
@@ -338,30 +321,28 @@ in {
     o.bind("XF86AudioPrev", "Previous track", "playerctl previous", { locked = true })
 
     -- ─── Audio Output Switch ───
-    o.bind("SUPER + XF86AudioMute", "Switch audio output", "pamixer --default-source toggle", { locked = true })
+    o.bind("SUPER + XF86AudioMute", "Switch audio output", "omarchy-audio-output-switch", { locked = true })
 
     -- ─── Music Player ───
     o.bind("SUPER + SHIFT + ALT + M", "Launch cliamp", "uwsm app -- alacritty -e cliamp")
 
     -- ─── Aesthetics ───
-    o.bind("SUPER + SHIFT + SPACE", "Toggle top bar", "toggle-waybar")
+    o.bind("SUPER + SHIFT + SPACE", "Toggle top bar", "omarchy-toggle-bar")
     o.bind("SUPER + BACKSPACE", "Toggle window transparency", "hyprctl dispatch setprop \"address:$(hyprctl activewindow -j | jq -r '.address')\" opaque toggle")
 
     -- ─── Notifications ───
-    o.bind("SUPER + comma", "Dismiss last notification", "makoctl dismiss")
-    o.bind("SUPER + SHIFT + comma", "Dismiss all notifications", "makoctl dismiss --all")
-    -- Branch on the resulting mode list, not on makoctl's exit status —
-    -- `mode -t` succeeds in both directions, so the previous inline
-    -- `&& ... || ...` reported "silenced" even when turning DND back off.
-    o.bind("SUPER + CTRL + comma", "Toggle DND", "toggle-dnd")
-    o.bind("SUPER + ALT + comma", "Invoke last notification", "makoctl invoke")
-    o.bind("SUPER + SHIFT + ALT + comma", "Restore last notification", "makoctl restore")
+    o.bind("SUPER + comma", "Dismiss last notification", "omarchy-shell notifications dismissOne")
+    o.bind("SUPER + SHIFT + comma", "Dismiss all notifications", "omarchy-shell notifications dismissAll")
+    o.bind("SUPER + CTRL + comma", "Toggle notification silencing", "omarchy-toggle-notification-silencing")
+    o.bind("SUPER + ALT + comma", "Invoke last notification", "omarchy-shell notifications invokeLast")
+    -- The v4 shell IPC has no "restore last" — history is the closest verb.
+    o.bind("SUPER + SHIFT + ALT + comma", "Notification history", "omarchy-shell notifications showHistory")
 
     -- ─── Toggle Idling ───
-    o.bind("SUPER + CTRL + I", "Toggle locking on idle", "hypridle --toggle")
+    o.bind("SUPER + CTRL + I", "Toggle idle locking", "omarchy-toggle-idle")
 
     -- ─── Nightlight ───
-    o.bind("SUPER + CTRL + N", "Toggle nightlight", "toggle-nightlight")
+    o.bind("SUPER + CTRL + N", "Toggle nightlight", "omarchy-toggle-nightlight")
 
     -- ─── Screenshots ───
     o.bind("PRINT", "Screenshot with editing", "grim -g \"$(slurp)\" - | swappy -f -")
@@ -369,7 +350,7 @@ in {
     o.bind("SUPER + PRINT", "Color picker", "pkill hyprpicker || hyprpicker -a")
 
     -- ─── Battery ───
-    o.bind("SUPER + SHIFT + Y", "Show battery status", "notify-send \"Battery\" \"$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo 'N/A')% ($(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo 'Unknown'))\"")
+    o.bind("SUPER + SHIFT + Y", "Show battery status", "omarchy-notification-battery")
 
     -- ─── Window Gaps ───
     o.bind("SUPER + ALT + Z", "Toggle window gaps", "toggle-gaps")
@@ -381,11 +362,11 @@ in {
     o.bind("SUPER + CTRL + PRINT", "Screenshot OCR", "screenshot-ocr")
 
     -- ─── Lock Screen ───
-    -- Via loginctl, not bare hyprlock: that routes through hypridle's
-    -- lock_cmd so the lock gets hyprlock-guard's crash supervision, and it
-    -- sets logind's LockedHint. Launching hyprlock directly produced a lock
-    -- hypridle did not know about and nothing was watching.
-    o.bind("SUPER + CTRL + L", "Lock system", "lock-screen")
+    -- Lock goes through the shell's ext-session-lock plugin
+    -- (omarchy-shell lock lock); the v3 hyprlock-guard crash-supervision and
+    -- logind LockedHint concerns are re-validated at sakura deploy
+    -- (ADR-0004/0006 gates).
+    o.bind("SUPER + CTRL + L", "Lock system", "omarchy-system-lock")
 
     -- ─── Control Panels ───
     o.bind("SUPER + CTRL + A", "Audio controls", "uwsm app -- pavucontrol")
@@ -537,9 +518,6 @@ in {
 
     -- Idle inhibit on fullscreen.
     o.window(".*", { idle_inhibit = "fullscreen" })
-
-    -- Layer rules.
-    hl.layer_rule({ match = { namespace = "walker" }, no_anim = true })
   '';
 
   xdg.configFile."hypr/looknfeel.lua".text = ''
@@ -674,10 +652,12 @@ in {
   '';
 
   xdg.configFile."hypr/autostart.lua".text = ''
-    -- Kebun autostart — ported from the old exec-once list (ADR-0007 Stage 3).
-    -- Upstream's default.hypr.autostart is NOT loaded by kebun's entry: it
-    -- starts omarchy-launch-shell and the Omarchy provisioning hooks, which
-    -- stay off until the Stage 4 stack swap.
+    -- Kebun autostart — ported from the old exec-once list (ADR-0007 Stage 3),
+    -- then swapped for the vendored Omarchy v4 QuickShell (ADR-0007 Stage 4):
+    -- mako, waybar, walker and the polkit-gnome agent are gone; the shell now
+    -- provides the bar, menus, OSD, notifications, lock and idle handling.
+    -- Upstream's default.hypr.autostart is still not loaded by kebun's entry —
+    -- kebun launches the shell itself below and skips the provisioning hooks.
 
     -- Slow app launch fix — set systemd vars before starting session services.
     o.exec_on_start("systemctl --user import-environment $(env | cut -d'=' -f 1)")
@@ -686,276 +666,32 @@ in {
     -- Session daemons. o.launch wraps with uwsm-app --, which is uwsm's own
     -- wrapper for `uwsm app --` — same systemd session scoping the old
     -- exec-once entries had.
-    o.launch_on_start("mako")
-    o.launch_on_start("waybar")
+    --
+    -- The shell launch deliberately diverges from upstream: upstream's
+    -- default/hypr/autostart.lua uses a raw hl.exec_cmd("omarchy-launch-shell"),
+    -- but kebun's UWSM mandate requires every launched app to land inside the
+    -- systemd session scope (see CLAUDE.md), so it gets an explicit
+    -- `uwsm app --` prefix instead.
+    o.exec_on_start("uwsm app -- omarchy-launch-shell")
     o.launch_on_start("fcitx5")
-    -- Run walker as a gapplication service so SUPER+SPACE is instant. Its
-    -- elephant backend starts on its own via services.elephant.
-    o.launch_on_start("walker --gapplication-service")
+    -- Wallpaper stays swaybg (solid Rose Pine Dawn) until the Stage 5 theme
+    -- engine lands.
     o.launch_on_start("swaybg -c '#faf4ed' -m solid_color")
-
-    -- Polkit authentication agent. The binary lives in polkit_gnome's
-    -- libexec/, so a bin/ symlink (polkit-gnome-agent in home.packages) puts
-    -- the bare name on PATH.
-    o.exec_on_start("polkit-gnome-authentication-agent-1")
-
-    -- swayosd-server and battery-monitor are systemd user services now, not
-    -- autostart entries — see home/features/hyprland.nix.
   '';
 
-  # ─── Session daemons ───
-  # Both of these used to be (or should have been) `exec-once` lines. As
-  # systemd user units they get restarted when they die, which an exec-once
-  # entry never does — a crashed swayosd-server meant no volume or brightness
-  # OSD until the next login. Upstream Omarchy made the same move for swayosd
-  # in migration 1778171768.
-  systemd.user.services = {
-    swayosd-server = {
-      Unit = {
-        Description = "SwayOSD volume/brightness overlay";
-        PartOf = ["graphical-session.target"];
-        After = ["graphical-session.target"];
-      };
-      Service = {
-        ExecStart = "${pkgs.swayosd}/bin/swayosd-server --style ${config.home.homeDirectory}/.config/swayosd/style.css";
-        Restart = "always";
-        RestartSec = 2;
-      };
-      Install.WantedBy = ["graphical-session.target"];
-    };
+  # ─── Idle handling ───
+  # Idle is the shell's idle service plugin now; timings live in shell.json
+  # (screensaver 150s, lock 300s). No idle-suspend: the v3 hypridle 900s
+  # suspend listener is intentionally not carried — noted for deploy
+  # validation on sakura.
 
-    # This one was never started at all: the script was defined and installed
-    # to PATH, but nothing in the config ever invoked it, so low-battery
-    # warnings simply never fired.
-    battery-monitor = {
-      Unit = {
-        Description = "Low-battery warning daemon";
-        PartOf = ["graphical-session.target"];
-        After = ["graphical-session.target"];
-      };
-      Service = {
-        ExecStart = "${scripts.battery-monitor}/bin/battery-monitor";
-        Restart = "always";
-        RestartSec = 30;
-      };
-      Install.WantedBy = ["graphical-session.target"];
-    };
-  };
+  # ─── Lock screen ───
+  # The shell's lock plugin is the lock screen now (omarchy-shell lock lock).
+  # Its PAM service, omarchy-lock-password, is enabled system-side by the
+  # Stage 4 desktop module.
 
-  # ─── Hypridle ───
-  services.hypridle = {
-    enable = true;
-
-    settings = {
-      general = {
-        # Not bare hyprlock — a crash while locked blanks the screen for good.
-        # See hyprlock-guard in packages/scripts/default.nix.
-        lock_cmd = "${scripts.hyprlock-guard}/bin/hyprlock-guard";
-
-        # No `hyprctl dispatch dpms off` chained on here, deliberately.
-        #
-        # `loginctl lock-session` returns as soon as the Lock signal is *sent*,
-        # not once hyprlock has painted, so a chained dpms off switched the
-        # output off while hyprlock was still starting up. With the output off
-        # the compositor stops sending frame callbacks, and hyprlock 0.9.6 has
-        # no timer fallback — it sat waiting for a callback that never came,
-        # frozen mid fade-in. Suspend then froze it there for good: on resume
-        # the panel lit up with nothing drawn on it, hyprlock still holding
-        # ext-session-lock and still not reading the keyboard, so no password
-        # could be typed and no second hyprlock could take the lock from it.
-        # Only a forced power-off got out of that.
-        #
-        # Suspending blanks the panel by itself a moment later, and
-        # inhibit_sleep = 3 already holds off the suspend until the session is
-        # genuinely locked, so the dpms call bought nothing it was risking.
-        # Observed 2026-07-29 across boots -1 through -4; the locks that
-        # rendered fine that morning were the ones taken without it.
-        before_sleep_cmd = "loginctl lock-session";
-
-        # The settle argument is load-bearing. Freezing user.slice defers any
-        # in-flight lid handler, so a `keyword monitor eDP-1,disable` queued
-        # ~100 ms before the freeze lands on *resume* instead — measured 273 ms
-        # after hypridle had already run this hook. A one-shot reconcile cannot
-        # see damage that has not happened yet, so keep re-checking for 20s.
-        # hypridle spawns this fire-and-forget, so the runtime blocks nothing.
-        after_sleep_cmd = "${scripts.wake-display}/bin/wake-display 20";
-        inhibit_sleep = 3;
-      };
-
-      listener = [
-        {
-          timeout = 600;
-          on-timeout = "loginctl lock-session";
-        }
-        {
-          timeout = 605;
-          on-timeout = "${pkgs.hyprland}/bin/hyprctl dispatch dpms off";
-          on-resume = "${scripts.wake-display}/bin/wake-display && ${pkgs.brightnessctl}/bin/brightnessctl -r";
-        }
-        {
-          timeout = 900;
-          on-timeout = "systemctl suspend";
-        }
-      ];
-    };
-  };
-
-  # ─── Hyprlock ───
-  programs.hyprlock = {
-    enable = true;
-
-    settings = {
-      general.ignore_empty_input = true;
-
-      background = {
-        monitor = "";
-        color = "rgba(250,244,237, 1.0)";
-        blur_passes = 3;
-      };
-
-      animations.enabled = false;
-
-      input-field = {
-        monitor = "";
-        size = "650, 100";
-        position = "0, 0";
-        halign = "center";
-        valign = "center";
-        inner_color = "rgba(250,244,237, 0.8)";
-        outer_color = "rgba(87,82,121, 1.0)";
-        outline_thickness = 4;
-        font_family = "CaskaydiaMono Nerd Font";
-        font_color = "rgba(87,82,121, 1.0)";
-        placeholder_text = "Enter Password";
-        check_color = "rgba(86,148,159, 1.0)";
-        fail_text = "<i>$FAIL ($ATTEMPTS)</i>";
-        rounding = 0;
-        shadow_passes = 0;
-        fade_on_empty = false;
-      };
-
-      # Fingerprint auth is OFF because nothing can service it: fprintd is not
-      # enabled anywhere in this config, so hyprlock was probing a D-Bus name
-      # that does not exist on every unlock. To actually enable it, add
-      # `services.fprintd.enable = true;` to hosts/sakura/default.nix, enroll
-      # with `fprintd-enroll`, then flip this back to true. (The X13 Gen 1's
-      # Synaptics 06cb:00bd reader may additionally need libfprint-tod.)
-      auth = {
-        fingerprint.enabled = false;
-      };
-    };
-  };
-
-  # ─── Hyprsunset ───
-  services.hyprsunset = {
-    enable = true;
-  };
-
-  # ─── Mako (Notifications) ───
-  services.mako = {
-    enable = true;
-
-    settings = {
-      anchor = "top-right";
-      default-timeout = 5000;
-      width = 420;
-      "outer-margin" = 20;
-      padding = "10,15";
-      "border-size" = 2;
-      "max-icon-size" = 32;
-      font = "sans-serif 14px";
-
-      "urgency=critical" = {
-        default-timeout = 0;
-        layer = "overlay";
-      };
-
-      "mode=do-not-disturb" = {
-        invisible = true;
-      };
-
-      # Carve-out so notify-send still gets through while silenced. Without
-      # it the toggle's own "Notifications silenced" confirmation is the
-      # first thing DND swallows, and the keybinding looks like it did
-      # nothing. Matches Omarchy's core.ini rule.
-      "mode=do-not-disturb app-name=notify-send" = {
-        invisible = false;
-      };
-
-      # Group repeats from the same app instead of stacking one per event.
-      "group-by" = "app-name,summary,body";
-    };
-
-    # Rose Pine Dawn colors
-    extraConfig = ''
-      text-color=#575279
-      border-color=#56949f
-      background-color=#faf4ed
-    '';
-  };
-
-  # ─── SwayOSD Rose Pine Dawn theme ───
-  xdg.configFile."swayosd/style.css".text = ''
-    window {
-      background: transparent;
-    }
-
-    .widget,
-    .osd-window,
-    #osd-window {
-      background: #faf4ed;
-      color: #575279;
-      border: 3px solid #56949f;
-      border-radius: 0;
-      padding: 20px 28px;
-      min-width: 420px;
-    }
-
-    .widget image,
-    .osd-window image,
-    #osd-window image {
-      color: #56949f;
-      -gtk-icon-size: 48px;
-      margin-right: 16px;
-    }
-
-    .widget progressbar trough,
-    .osd-window progressbar trough,
-    #osd-window progressbar trough {
-      background: #f2e9e1;
-      min-height: 16px;
-      border-radius: 0;
-    }
-
-    .widget progressbar progress,
-    .osd-window progressbar progress,
-    #osd-window progressbar progress {
-      background: #56949f;
-      min-height: 16px;
-      border-radius: 0;
-    }
-
-    .widget scale trough,
-    .osd-window scale trough,
-    #osd-window scale trough {
-      background: #f2e9e1;
-      min-height: 16px;
-      border-radius: 0;
-    }
-
-    .widget scale highlight,
-    .osd-window scale highlight,
-    #osd-window scale highlight {
-      background: #56949f;
-      border-radius: 0;
-    }
-
-    .widget label,
-    .osd-window label,
-    #osd-window label {
-      font-family: 'CaskaydiaMono Nerd Font';
-      font-size: 16px;
-      font-weight: bold;
-    }
-  '';
+  # ─── Notifications ───
+  # The shell is the notification daemon now (omarchy-shell notifications …,
+  # omarchy-notification-send); its silencing state lives in
+  # ~/.local/state/omarchy/notifications.json.
 }

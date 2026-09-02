@@ -14,144 +14,6 @@
     ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-clipboard}/bin/wl-copy
   '';
 
-  volume-toggle = pkgs.writeShellScriptBin "volume-toggle" ''
-    ${pkgs.pulseaudio}/bin/pactl set-default-sink $(${pkgs.pulseaudio}/bin/pactl list short sinks | grep -v "$(${pkgs.pulseaudio}/bin/pactl get-default-sink)" | head -1 | awk '{print $2}')
-  '';
-
-  brightness-toggle = pkgs.writeShellScriptBin "brightness-toggle" ''
-    if [ "$1" = "up" ]; then
-        ${pkgs.brightnessctl}/bin/brightnessctl set 5%+
-    elif [ "$1" = "down" ]; then
-        ${pkgs.brightnessctl}/bin/brightnessctl set 5%-
-    fi
-  '';
-
-  lock-screen = pkgs.writeShellScriptBin "lock-screen" ''
-    loginctl lock-session
-  '';
-
-  # Toggle waybar using systemd (UWSM-compatible)
-  toggle-waybar = pkgs.writeShellScriptBin "toggle-waybar" ''
-    if systemctl --user is-active --quiet waybar; then
-      systemctl --user stop waybar
-    else
-      systemctl --user start waybar
-    fi
-  '';
-
-  # Toggle nightlight using hyprsunset
-  toggle-nightlight = pkgs.writeShellScriptBin "toggle-nightlight" ''
-    STATE_FILE="$XDG_RUNTIME_DIR/hyprsunset-active"
-
-    if [ -f "$STATE_FILE" ]; then
-      ${pkgs.procps}/bin/pkill hyprsunset
-      rm -f "$STATE_FILE"
-    else
-      ${pkgs.hyprsunset}/bin/hyprsunset -t 4500 &
-      touch "$STATE_FILE"
-    fi
-  '';
-
-  # Toggle do-not-disturb, reporting the state mako actually ended up in.
-  # `makoctl mode -t` exits 0 whichever way it toggled, so the caller has to
-  # read the mode list it prints rather than branch on the exit status.
-  toggle-dnd = pkgs.writeShellScriptBin "toggle-dnd" ''
-    set -euo pipefail
-
-    MODES=$(${pkgs.mako}/bin/makoctl mode -t do-not-disturb)
-
-    if echo "$MODES" | ${pkgs.gnugrep}/bin/grep -qx "do-not-disturb"; then
-      ${pkgs.libnotify}/bin/notify-send "Notifications silenced"
-    else
-      ${pkgs.libnotify}/bin/notify-send "Notifications enabled"
-    fi
-  '';
-
-  # Restart waybar
-  restart-waybar = pkgs.writeShellScriptBin "restart-waybar" ''
-    systemctl --user restart waybar
-  '';
-
-  # Start hyprlock, exactly once, on an output that can actually render.
-  #
-  # This replaces a relaunch-supervisor that could not work. Two measured
-  # reasons it never fired:
-  #
-  #   * hyprlock 0.9.6 does not exit when the compositor denies it the lock
-  #     ("Seems we got yeeten"). `run()` calls exit(1), but the process
-  #     deadlocks inside exit with 19 threads parked in futex_do_wait, so
-  #     `hyprlock || rc=$?` blocks forever: no status, no retry, no "giving up"
-  #     message, and one leaked 19-thread process per lock signal. The old
-  #     comment asserting that path returns rc=0 was wrong in source and in
-  #     practice.
-  #   * Even a successful relaunch is refused. Hyprland clears
-  #     CSessionLockProtocol::m_locked in exactly one place — the
-  #     unlock_and_destroy handler of a *non-inert* lock — and sendDenied()
-  #     marks a replacement inert before it can get there. So with
-  #     misc:allow_session_lock_restore off, no relaunch can ever take over.
-  #
-  # What it does instead, cheaply and in order:
-  #
-  #   1. Repairs output state if there is nothing to render on. This is the
-  #      in-band escape hatch: `powerKey = "lock"` means logind — which watches
-  #      the power button on its own evdev handle, independent of Hyprland's
-  #      input pipeline — turns a power-button press into a Lock signal, which
-  #      lands here. Verified in the journal: "Power key pressed short." →
-  #      "Locking sessions..." → hypridle runs lock_cmd. On 0.54.0 a keybind
-  #      cannot be the hatch: CKeybindManager::onKeyEvent returns early while
-  #      m_unsafeState, before handleInternalKeybinds, so not even Ctrl+Alt+F2
-  #      is dispatched. Restoring an output makes a still-live lock holder
-  #      create its surface and start taking the password (hyprlock
-  #      src/core/Output.cpp setDone → createSessionLockSurface).
-  #   2. Collapses duplicate Lock signals to one hyprlock with a flock held
-  #      across the exec — hypridle re-runs lock_cmd on every Lock, including
-  #      the one before_sleep_cmd raises when the session is already locked,
-  #      which is what produced the "yeeten" storm.
-  #   3. execs hyprlock. No relaunch loop: there is nothing honest to loop on.
-  #
-  # Residual risk, accepted deliberately: if hyprlock *crashes* while holding
-  # the lock, the session stays locked with a dead client and no replacement can
-  # take it, because misc:allow_session_lock_restore is off. Recovery is then
-  # out-of-band, and the old advice here was wrong on 0.54.0 — Ctrl+Alt+F2 is
-  # not dispatched while m_unsafeState, and `loginctl unlock-session` cannot
-  # clear m_locked (Hyprland has no login1 integration for it). What does work:
-  #   * ssh in (services.openssh is enabled) and run `hyprctl reload`
-  #   * Alt+SysRq+S, then U, then B — a synced reboot; see kernel.sysrq in
-  #     hosts/common/core.nix
-  hyprlock-guard = pkgs.writeShellScriptBin "hyprlock-guard" ''
-    set -uo pipefail
-
-    hc=${hyprland}/bin/hyprctl
-    jq=${pkgs.jq}/bin/jq
-
-    # Repair first, so the power button is a working escape hatch. Only
-    # `hyprctl reload` helps here — with zero enabled outputs the compositor
-    # never renders, so monitor rules never drain and `keyword monitor
-    # …,preferred` returns "ok" while changing nothing. Inlined rather than
-    # calling wake-display, because this attrset is not `rec`.
-    enabled_outputs=$("$hc" monitors -j 2>/dev/null |
-      "$jq" -r '[.[] | select(.disabled == false) | select((.name | startswith("HEADLESS")) | not)] | length' 2>/dev/null) || enabled_outputs=""
-    case "$enabled_outputs" in
-      "" | *[!0-9]*) enabled_outputs=0 ;;
-    esac
-
-    if [ "$enabled_outputs" -eq 0 ]; then
-      echo "no enabled output at lock time; hyprctl reload to restore it" >&2
-      "$hc" reload >/dev/null 2>&1 || true
-      "$hc" dispatch dpms on >/dev/null 2>&1 || true
-    fi
-
-    # Single-instance. The lock is held for the lifetime of hyprlock because the
-    # fd survives the exec; a second Lock signal fails the lock and exits.
-    exec 9>"''${XDG_RUNTIME_DIR:-/tmp}/hyprlock-guard.lock"
-    if ! ${pkgs.util-linux}/bin/flock -n 9; then
-      echo "hyprlock already running for this session; not starting another." >&2
-      exit 0
-    fi
-
-    exec ${pkgs.hyprlock}/bin/hyprlock
-  '';
-
   # Bring the panel back after resume, and *prove* that it came back.
   #
   # The previous version asserted `hyprctl dispatch dpms on` == "ok". That test
@@ -216,15 +78,6 @@
     done
   '';
 
-  # Restart walker (and elephant, its provider backend) as background services,
-  # not as a visible window — walker is invoked on demand via SUPER+SPACE.
-  restart-walker = pkgs.writeShellScriptBin "restart-walker" ''
-    ${pkgs.procps}/bin/pkill walker || true
-    systemctl --user restart elephant
-    sleep 0.5
-    uwsm app -- ${pkgs.walker}/bin/walker --gapplication-service &
-  '';
-
   # Color picker
   color-picker = pkgs.writeShellScriptBin "color-picker" ''
     ${pkgs.procps}/bin/pkill hyprpicker || ${pkgs.hyprpicker}/bin/hyprpicker -a
@@ -251,48 +104,6 @@
     echo "To update: nix flake update"
   '';
 
-  # Waybar module: show icon when flake inputs have updates
-  check-waybar-updates = pkgs.writeShellScriptBin "check-waybar-updates" ''
-    set -euo pipefail
-
-    FLAKE_DIR="$HOME/Documents/dev/kebun"
-    if [ ! -d "$FLAKE_DIR" ]; then
-      echo '{"text":"","class":"","alt":""}'
-      exit 0
-    fi
-
-    cd "$FLAKE_DIR"
-
-    # Check if any input is outdated by comparing locked rev with latest
-    # nix flake metadata --json shows locked refs; if they differ from remote, updates exist
-    OUTDATED=$(${pkgs.nix}/bin/nix flake metadata --json 2>/dev/null | ${pkgs.jq}/bin/jq -r '
-      .locks.nodes.root.inputs[] as $input |
-      .locks.nodes[$input] |
-      select(.locked) |
-      select(.locked.type == "github" or .locked.type == "gitlab" or .locked.type == "sourcehut") |
-      .locked.owner + "/" + .locked.repo + ":" + (.locked.rev // "")
-    ' | while read -r line; do
-      owner_repo="''${line%:*}"
-      locked_rev="''${line#*:}"
-      [ -z "$locked_rev" ] && continue
-
-      # Fetch latest rev from GitHub API (default branch)
-      latest_rev=$(${pkgs.curl}/bin/curl -s "https://api.github.com/repos/$owner_repo/commits/HEAD" | ${pkgs.jq}/bin/jq -r '.sha // empty')
-      [ -z "$latest_rev" ] && continue
-
-      if [ "$locked_rev" != "$latest_rev" ]; then
-        echo "outdated"
-        break
-      fi
-    done)
-
-    if [ "$OUTDATED" = "outdated" ]; then
-      echo '{"text":"󰏗 ","class":"updates","alt":"updates"}'
-    else
-      echo '{"text":"","class":"","alt":""}'
-    fi
-  '';
-
   # Screen recording with wl-screenrec
   screenrecord = pkgs.writeShellScriptBin "screenrecord" ''
     OUTPUT="$HOME/Videos/screenrecord-$(date +%Y%m%d-%H%M%S).mp4"
@@ -300,60 +111,11 @@
 
     if ${pkgs.procps}/bin/pgrep -x wl-screenrec > /dev/null; then
       ${pkgs.procps}/bin/pkill -x wl-screenrec
-      ${pkgs.libnotify}/bin/notify-send "Screen recording saved" "$OUTPUT"
+      omarchy-notification-send "Screen recording saved" "$OUTPUT"
     else
-      ${pkgs.libnotify}/bin/notify-send "Screen recording started" "Recording to $OUTPUT"
+      omarchy-notification-send "Screen recording started" "Recording to $OUTPUT"
       ${pkgs.wl-screenrec}/bin/wl-screenrec -g "$(${pkgs.slurp}/bin/slurp)" -f "$OUTPUT"
     fi
-  '';
-
-  # Audio output switcher
-  audio-switch = pkgs.writeShellScriptBin "audio-switch" ''
-    DEFAULT_SINK=$(${pkgs.pulseaudio}/bin/pactl get-default-sink)
-    SINKS=$(${pkgs.pulseaudio}/bin/pactl list short sinks | ${pkgs.gawk}/bin/awk '{print $2}')
-
-    for sink in $SINKS; do
-      if [ "$sink" != "$DEFAULT_SINK" ]; then
-        ${pkgs.pulseaudio}/bin/pactl set-default-sink "$sink"
-        ${pkgs.libnotify}/bin/notify-send "Audio Output" "Switched to $sink"
-        break
-      fi
-    done
-  '';
-
-  # Battery status
-  battery-status = pkgs.writeShellScriptBin "battery-status" ''
-    set -euo pipefail
-    STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
-    echo "$STATUS"
-  '';
-
-  # Battery capacity percentage
-  battery-capacity = pkgs.writeShellScriptBin "battery-capacity" ''
-    set -euo pipefail
-    ${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "100"
-  '';
-
-  # Battery remaining with icon
-  battery-remaining = pkgs.writeShellScriptBin "battery-remaining" ''
-    set -euo pipefail
-    CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "100")
-    CAP="''${CAP:-100}"
-    STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
-    if [ "$STATUS" = "Charging" ]; then
-      ICON="󰂄"
-    elif [ "$CAP" -ge 80 ]; then
-      ICON="󰁹"
-    elif [ "$CAP" -ge 60 ]; then
-      ICON="󰂂"
-    elif [ "$CAP" -ge 40 ]; then
-      ICON="󰂀"
-    elif [ "$CAP" -ge 20 ]; then
-      ICON="󰁾"
-    else
-      ICON="󰁺"
-    fi
-    echo "$ICON $CAP%"
   '';
 
   # Battery remaining time estimate
@@ -376,39 +138,6 @@
     fi
   '';
 
-  # Background low-battery warning
-  battery-monitor = pkgs.writeShellScriptBin "battery-monitor" ''
-    set -euo pipefail
-    LOCKFILE="$XDG_RUNTIME_DIR/battery-monitor.lock"
-    if [ -f "$LOCKFILE" ] && kill -0 "$("${pkgs.coreutils}/bin/cat" "$LOCKFILE")" 2>/dev/null; then
-      exit 0
-    fi
-    echo $$ > "$LOCKFILE"
-    trap '"${pkgs.coreutils}/bin/rm" -f "$LOCKFILE"' EXIT
-    while true; do
-      CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "100")
-      STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
-      if [ "$STATUS" = "Discharging" ] && [ "$CAP" -le 15 ]; then
-        ${pkgs.libnotify}/bin/notify-send -u critical "Battery Low" "Battery at $CAP% — connect charger!"
-      elif [ "$STATUS" = "Discharging" ] && [ "$CAP" -le 25 ]; then
-        ${pkgs.libnotify}/bin/notify-send -u normal "Battery" "Battery at $CAP%"
-      fi
-      ${pkgs.coreutils}/bin/sleep 120
-    done
-  '';
-
-  # Mic mute toggle with notification
-  mic-mute = pkgs.writeShellScriptBin "mic-mute" ''
-    set -euo pipefail
-    ${pkgs.pulseaudio}/bin/pactl set-source-mute @DEFAULT_SOURCE@ toggle
-    MUTE=$(${pkgs.pulseaudio}/bin/pactl get-source-mute @DEFAULT_SOURCE@ | ${pkgs.gnugrep}/bin/grep -oP '(?<=Mute: )\w+')
-    if [ "$MUTE" = "yes" ]; then
-      ${pkgs.libnotify}/bin/notify-send "Microphone" "Muted" --icon=audio-input-microphone-muted
-    else
-      ${pkgs.libnotify}/bin/notify-send "Microphone" "Unmuted" --icon=audio-input-microphone
-    fi
-  '';
-
   # Toggle window gaps
   toggle-gaps = pkgs.writeShellScriptBin "toggle-gaps" ''
     set -euo pipefail
@@ -417,12 +146,12 @@
       ${hyprland}/bin/hyprctl keyword general:gaps_in 5
       ${hyprland}/bin/hyprctl keyword general:gaps_out 10
       rm -f "$STATE_FILE"
-      ${pkgs.libnotify}/bin/notify-send "Gaps" "Normal spacing"
+      omarchy-notification-send "Gaps" "Normal spacing"
     else
       ${hyprland}/bin/hyprctl keyword general:gaps_in 0
       ${hyprland}/bin/hyprctl keyword general:gaps_out 0
       touch "$STATE_FILE"
-      ${pkgs.libnotify}/bin/notify-send "Gaps" "No gaps"
+      omarchy-notification-send "Gaps" "No gaps"
     fi
   '';
 
@@ -432,10 +161,10 @@
     CURRENT=$(${hyprland}/bin/hyprctl getoption general:layout | ${pkgs.gawk}/bin/awk -F '= ' '{print $2}')
     if [ "$CURRENT" = "dwindle" ]; then
       ${hyprland}/bin/hyprctl keyword general:layout master
-      ${pkgs.libnotify}/bin/notify-send "Layout" "Master layout"
+      omarchy-notification-send "Layout" "Master layout"
     else
       ${hyprland}/bin/hyprctl keyword general:layout dwindle
-      ${pkgs.libnotify}/bin/notify-send "Layout" "Dwindle layout"
+      omarchy-notification-send "Layout" "Dwindle layout"
     fi
   '';
 
@@ -443,18 +172,18 @@
   toggle-power-profile = pkgs.writeShellScriptBin "toggle-power-profile" ''
     set -euo pipefail
     if ! CURRENT=$(${pkgs.power-profiles-daemon}/bin/powerprofilesctl get 2>/dev/null); then
-      ${pkgs.libnotify}/bin/notify-send -u critical "Power Profile" "Failed to read current profile"
+      omarchy-notification-send -u critical "Power Profile" "Failed to read current profile"
       exit 1
     fi
     if [ "$CURRENT" = "power-saver" ]; then
       ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced
-      ${pkgs.libnotify}/bin/notify-send "Power Profile" "Balanced"
+      omarchy-notification-send "Power Profile" "Balanced"
     elif [ "$CURRENT" = "balanced" ]; then
       ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set performance
-      ${pkgs.libnotify}/bin/notify-send "Power Profile" "Performance"
+      omarchy-notification-send "Power Profile" "Performance"
     else
       ${pkgs.power-profiles-daemon}/bin/powerprofilesctl set power-saver
-      ${pkgs.libnotify}/bin/notify-send "Power Profile" "Power Saver"
+      omarchy-notification-send "Power Profile" "Power Saver"
     fi
   '';
 
@@ -466,7 +195,7 @@
     trap '${pkgs.coreutils}/bin/rm -f "$TMPFILE"' EXIT
     ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" "$TMPFILE"
     ${pkgs.tesseract}/bin/tesseract "$TMPFILE" stdout | ${pkgs.wl-clipboard}/bin/wl-copy
-    ${pkgs.libnotify}/bin/notify-send "OCR" "Text copied to clipboard — may persist in clipboard history"
+    omarchy-notification-send "OCR" "Text copied to clipboard — may persist in clipboard history"
   '';
 
   # ─── TUI Launch System (inspired by Omarchy) ───
@@ -518,37 +247,12 @@
     exec launch-or-focus "org.kebun.btop" ${pkgs.alacritty}/bin/alacritty --class org.kebun.btop -e btop
   '';
 
-  # Launch a one-shot command in a floating terminal
-  launch-floating-terminal = pkgs.writeShellScriptBin "launch-floating-terminal" ''
-    exec uwsm app -- ${pkgs.alacritty}/bin/alacritty \
-      --class org.kebun.terminal -e "$@"
-  '';
-
-  # ─── Keybindings Menu ───
-  # Parses hyprctl -j binds and shows a searchable menu in Walker
-  # ADR-0007 Stage 3: bindings live in ~/.config/hypr/bindings.lua now, and
-  # `hyprctl -j binds` reports Lua dispatchers as __lua, so the old JSON
-  # pipeline cannot render them. Parse the source instead: every menu-visible
-  # bind is a single-line o.bind("KEYS", "Description", ...) call.
-  # TODO: resolve code:NN keys via xkbcli compile-keymap like upstream's
-  # omarchy-menu-keybindings; until then they are shown raw.
-  menu-keybindings = pkgs.writeShellScriptBin "menu-keybindings" ''
-    set -euo pipefail
-
-    # Anchored to start-of-line so the o.bind example in bindings.lua's header
-    # comment (and any indented call) never matches.
-    ${pkgs.gnugrep}/bin/grep -oE '^o\.bind\("[^"]+", "[^"]+"' ~/.config/hypr/bindings.lua |
-      ${pkgs.gnused}/bin/sed -E 's/^o\.bind\("([^"]+)", "([^"]+)"$/\1  →  \2/' |
-      sort -u |
-      ${pkgs.walker}/bin/walker --dmenu -p "Keybindings" || true
-  '';
-
   # ─── Capture Menu ───
   menu-capture = pkgs.writeShellScriptBin "menu-capture" ''
     set -euo pipefail
 
     CHOICE=$(echo -e "Screenshot (edit)\nScreenshot (clipboard)\nScreenshot (OCR)\nColor picker\nScreen recording" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Capture")
+      omarchy-menu-select "Capture")
 
     case "$CHOICE" in
       "Screenshot (edit)") screenshot ;;
@@ -563,8 +267,8 @@
   menu-toggle = pkgs.writeShellScriptBin "menu-toggle" ''
     set -euo pipefail
 
-    CHOICE=$(echo -e "Window transparency\nWindow gaps\nSingle-window square\nNightlight\nIdle locking\nLayout (dwindle/master)\nWaybar" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Toggle")
+    CHOICE=$(echo -e "Window transparency\nWindow gaps\nSingle-window square\nNightlight\nIdle locking\nLayout (dwindle/master)\nTop bar" | \
+      omarchy-menu-select "Toggle")
 
     case "$CHOICE" in
       "Window transparency")
@@ -572,10 +276,10 @@
         ;;
       "Window gaps") toggle-gaps ;;
       "Single-window square") toggle-single-window-square ;;
-      "Nightlight") toggle-nightlight ;;
-      "Idle locking") ${pkgs.hypridle}/bin/hypridle --toggle ;;
+      "Nightlight") omarchy-toggle-nightlight ;;
+      "Idle locking") omarchy-toggle-idle ;;
       "Layout (dwindle/master)") toggle-layout ;;
-      "Waybar") toggle-waybar ;;
+      "Top bar") omarchy-toggle-bar ;;
     esac
   '';
 
@@ -584,22 +288,18 @@
     set -euo pipefail
 
     CHOICE=$(echo -e "Audio controls\nBluetooth controls\nWiFi controls\nBattery status\nPower profile\nBrightness up\nBrightness down\nVolume up\nVolume down" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Hardware")
+      omarchy-menu-select "Hardware")
 
     case "$CHOICE" in
       "Audio controls") uwsm app -- ${pkgs.pavucontrol}/bin/pavucontrol ;;
       "Bluetooth controls") uwsm app -- ${pkgs.blueman}/bin/blueman-manager ;;
       "WiFi controls") launch-wifi ;;
-      "Battery status")
-        CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "N/A")
-        STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
-        ${pkgs.libnotify}/bin/notify-send "Battery" "$CAP% ($STATUS)"
-        ;;
+      "Battery status") omarchy-notification-battery ;;
       "Power profile") toggle-power-profile ;;
-      "Brightness up") ${pkgs.swayosd}/bin/swayosd-client --brightness raise ;;
-      "Brightness down") ${pkgs.swayosd}/bin/swayosd-client --brightness lower ;;
-      "Volume up") ${pkgs.swayosd}/bin/swayosd-client --output-volume raise ;;
-      "Volume down") ${pkgs.swayosd}/bin/swayosd-client --output-volume lower ;;
+      "Brightness up") omarchy-brightness-display +5% ;;
+      "Brightness down") omarchy-brightness-display 5%- ;;
+      "Volume up") omarchy-audio-output-volume raise ;;
+      "Volume down") omarchy-audio-output-volume lower ;;
     esac
   '';
 
@@ -608,16 +308,16 @@
     set -euo pipefail
 
     CHOICE=$(echo -e "Terminal\nBrowser\nEditor\nFile manager\nLock screen\nActivity monitor\nKeybindings" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Kebun")
+      omarchy-menu-select "Kebun")
 
     case "$CHOICE" in
       "Terminal") uwsm app -- ${pkgs.alacritty}/bin/alacritty ;;
       "Browser") ${pkgs.google-chrome}/bin/google-chrome ;;
       "Editor") uwsm app -- ${pkgs.neovim}/bin/nvim ;;
       "File manager") uwsm app -- ${pkgs.nautilus}/bin/nautilus --new-window ;;
-      "Lock screen") ${pkgs.hyprlock}/bin/hyprlock ;;
+      "Lock screen") omarchy-system-lock ;;
       "Activity monitor") uwsm app -- ${pkgs.alacritty}/bin/alacritty -e btop ;;
-      "Keybindings") menu-keybindings ;;
+      "Keybindings") omarchy-menu-keybindings ;;
     esac
   '';
 
@@ -626,7 +326,7 @@
     set -euo pipefail
 
     CHOICE=$(echo -e "Rose Pine Dawn\nSolid white\nSolid black\nSolid gray" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Background")
+      omarchy-menu-select "Background")
 
     case "$CHOICE" in
       "Rose Pine Dawn") ${pkgs.swaybg}/bin/swaybg -c '#faf4ed' -m solid_color ;;
@@ -672,7 +372,7 @@
     fi
 
     ${hyprland}/bin/hyprctl keyword monitor "$MONITOR,preferred,auto,$NEXT"
-    ${pkgs.libnotify}/bin/notify-send "Monitor Scale" "$MONITOR → $NEXT"
+    omarchy-notification-send "Monitor Scale" "$MONITOR → $NEXT"
   '';
 
   # ─── File Manager (current directory) ───
@@ -693,13 +393,13 @@
       ${hyprland}/bin/hyprctl keyword general:gaps_out 10
       ${hyprland}/bin/hyprctl keyword general:border_size 2
       rm -f "$STATE_FILE"
-      ${pkgs.libnotify}/bin/notify-send "Layout" "Normal mode"
+      omarchy-notification-send "Layout" "Normal mode"
     else
       ${hyprland}/bin/hyprctl keyword general:gaps_in 0
       ${hyprland}/bin/hyprctl keyword general:gaps_out 0
       ${hyprland}/bin/hyprctl keyword general:border_size 0
       touch "$STATE_FILE"
-      ${pkgs.libnotify}/bin/notify-send "Layout" "Single-window square"
+      omarchy-notification-send "Layout" "Single-window square"
     fi
   '';
 
@@ -742,7 +442,7 @@
       ${pkgs.coreutils}/bin/head -1)
 
     if [ -z "$INTERNAL" ]; then
-      ${pkgs.libnotify}/bin/notify-send "Display" "No internal display found"
+      omarchy-notification-send "Display" "No internal display found"
       exit 1
     fi
 
@@ -768,7 +468,7 @@
         exit 0
       fi
       "$hc" keyword monitor "$INTERNAL,preferred,auto,1"
-      ${pkgs.libnotify}/bin/notify-send "Display" "Internal monitor enabled"
+      omarchy-notification-send "Display" "Internal monitor enabled"
     }
 
     disable_internal() {
@@ -777,11 +477,11 @@
       fi
       if [ "$(enabled_outputs)" -le 1 ]; then
         echo "refusing to disable $INTERNAL: it is the only enabled output" >&2
-        ${pkgs.libnotify}/bin/notify-send "Display" "Keeping $INTERNAL on — it is the only display"
+        omarchy-notification-send "Display" "Keeping $INTERNAL on — it is the only display"
         exit 0
       fi
       "$hc" keyword monitor "$INTERNAL,disable"
-      ${pkgs.libnotify}/bin/notify-send "Display" "Internal monitor disabled"
+      omarchy-notification-send "Display" "Internal monitor disabled"
     }
 
     case "''${1:-}" in
@@ -804,7 +504,7 @@
     COUNT=$(echo "$MONITORS" | ${pkgs.coreutils}/bin/wc -l)
 
     if [ "$COUNT" -lt 2 ]; then
-      ${pkgs.libnotify}/bin/notify-send "Display" "Only one monitor connected"
+      omarchy-notification-send "Display" "Only one monitor connected"
       exit 0
     fi
 
@@ -814,10 +514,10 @@
     CURRENT_MIRROR=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r --arg sec "$SECONDARY" '.[] | select(.name == $sec) | .mirrorOf // empty')
     if [ -n "$CURRENT_MIRROR" ]; then
       ${hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1"
-      ${pkgs.libnotify}/bin/notify-send "Display" "Mirroring disabled"
+      omarchy-notification-send "Display" "Mirroring disabled"
     else
       ${hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1,mirror,$PRIMARY"
-      ${pkgs.libnotify}/bin/notify-send "Display" "Mirroring $PRIMARY to $SECONDARY"
+      omarchy-notification-send "Display" "Mirroring $PRIMARY to $SECONDARY"
     fi
   '';
 
@@ -826,7 +526,7 @@
     set -euo pipefail
 
     CHOICE=$(echo -e "Record region\nRecord screen\nStop recording" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Screen Record")
+      omarchy-menu-select "Screen Record")
 
     case "$CHOICE" in
       "Record region") screenrecord ;;
@@ -834,13 +534,13 @@
         OUTPUT="$HOME/Videos/screenrecord-$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S).mp4"
         ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$OUTPUT")"
         OUTPUT_GEOM=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | "\(.width)x\(.height)+\(.x),\(.y)"')
-        ${pkgs.libnotify}/bin/notify-send "Screen recording started" "Recording to $OUTPUT"
+        omarchy-notification-send "Screen recording started" "Recording to $OUTPUT"
         ${pkgs.wl-screenrec}/bin/wl-screenrec -g "$OUTPUT_GEOM" -f "$OUTPUT"
         ;;
       "Stop recording")
         if ${pkgs.procps}/bin/pgrep -x wl-screenrec > /dev/null; then
           ${pkgs.procps}/bin/pkill -x wl-screenrec
-          ${pkgs.libnotify}/bin/notify-send "Screen recording stopped"
+          omarchy-notification-send "Screen recording stopped"
         fi
         ;;
     esac
@@ -858,7 +558,7 @@
     CAP=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo "N/A")
     STATUS=$(${pkgs.coreutils}/bin/cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
     TIME=$(battery-remaining-time 2>/dev/null || echo "N/A")
-    ${pkgs.libnotify}/bin/notify-send "Battery" "$CAP% ($STATUS)\nRemaining: $TIME"
+    omarchy-notification-send "Battery" "$CAP% ($STATUS)\nRemaining: $TIME"
   '';
 
   # ─── Show Time ───
@@ -866,7 +566,7 @@
     set -euo pipefail
     TIME=$(${pkgs.coreutils}/bin/date "+%I:%M %p")
     DATE=$(${pkgs.coreutils}/bin/date "+%A, %B %d, %Y")
-    ${pkgs.libnotify}/bin/notify-send "Time" "$TIME\n$DATE"
+    omarchy-notification-send "Time" "$TIME\n$DATE"
   '';
 
   # ─── Show Weather ───
@@ -874,7 +574,7 @@
     set -euo pipefail
     LOCATION=$(${pkgs.curl}/bin/curl --max-time 5 --connect-timeout 5 -s "https://ipapi.co/json/" | ${pkgs.jq}/bin/jq -r '.city // "Tokyo"')
     WEATHER=$(${pkgs.curl}/bin/curl --max-time 5 --connect-timeout 5 -s "https://wttr.in/$LOCATION?format=%C+%t+%w" 2>/dev/null || echo "Unable to fetch weather")
-    ${pkgs.libnotify}/bin/notify-send "Weather in $LOCATION" "$WEATHER"
+    omarchy-notification-send "Weather in $LOCATION" "$WEATHER"
   '';
 
   # ─── Reminders ───
@@ -883,30 +583,30 @@
     REMINDER_FILE="$XDG_DATA_HOME/kebun-reminders.txt"
     ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$REMINDER_FILE")"
 
-    INPUT=$(${pkgs.walker}/bin/walker --dmenu -p "Reminder" </dev/null 2>/dev/null || true)
+    INPUT=$(omarchy-menu-input "Reminder" </dev/null 2>/dev/null || true)
     [ -z "$INPUT" ] && exit 0
 
     echo "[$(${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M')] $INPUT" >> "$REMINDER_FILE"
-    ${pkgs.libnotify}/bin/notify-send "Reminder Set" "$INPUT"
+    omarchy-notification-send "Reminder Set" "$INPUT"
   '';
 
   reminder-show = pkgs.writeShellScriptBin "reminder-show" ''
     set -euo pipefail
     REMINDER_FILE="$XDG_DATA_HOME/kebun-reminders.txt"
     if [ ! -f "$REMINDER_FILE" ] || [ ! -s "$REMINDER_FILE" ]; then
-      ${pkgs.libnotify}/bin/notify-send "Reminders" "No reminders set"
+      omarchy-notification-send "Reminders" "No reminders set"
       exit 0
     fi
 
     CONTENT=$(${pkgs.coreutils}/bin/tail -20 "$REMINDER_FILE")
-    ${pkgs.libnotify}/bin/notify-send "Reminders" "$CONTENT"
+    omarchy-notification-send "Reminders" "$CONTENT"
   '';
 
   reminder-clear = pkgs.writeShellScriptBin "reminder-clear" ''
     set -euo pipefail
     REMINDER_FILE="$XDG_DATA_HOME/kebun-reminders.txt"
     [ -f "$REMINDER_FILE" ] && ${pkgs.coreutils}/bin/rm -f "$REMINDER_FILE"
-    ${pkgs.libnotify}/bin/notify-send "Reminders" "All reminders cleared"
+    omarchy-notification-send "Reminders" "All reminders cleared"
   '';
 
   # ─── Dictation ───
@@ -914,9 +614,9 @@
     set -euo pipefail
     if [ -x ${pkgs.hyprwhspr-rs}/bin/hyprwhspr-rs ]; then
       ${pkgs.hyprwhspr-rs}/bin/hyprwhspr-rs record toggle
-      ${pkgs.libnotify}/bin/notify-send "Dictation" "Toggled recording"
+      omarchy-notification-send "Dictation" "Toggled recording"
     else
-      ${pkgs.libnotify}/bin/notify-send "Dictation" "hyprwhspr-rs not installed"
+      omarchy-notification-send "Dictation" "hyprwhspr-rs not installed"
     fi
   '';
 
@@ -925,7 +625,7 @@
     if [ -x ${pkgs.hyprwhspr-rs}/bin/hyprwhspr-rs ]; then
       ${pkgs.hyprwhspr-rs}/bin/hyprwhspr-rs record start
     else
-      ${pkgs.libnotify}/bin/notify-send "Dictation" "hyprwhspr-rs not installed"
+      omarchy-notification-send "Dictation" "hyprwhspr-rs not installed"
     fi
   '';
 
@@ -941,7 +641,7 @@
     set -euo pipefail
 
     CHOICE=$(${pkgs.coreutils}/bin/echo -e "Compress video\nExtract audio\nConvert to MP4\nConvert to WebM" | \
-      ${pkgs.walker}/bin/walker --dmenu -p "Transcode")
+      omarchy-menu-select "Transcode")
 
     # Use active window's working directory or home
     CWD=$(${hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
@@ -950,32 +650,32 @@
 
     case "$CHOICE" in
       "Compress video")
-        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | ${pkgs.walker}/bin/walker --dmenu -p "Select video" || true)
+        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select video" || true)
         [ -z "$FILE" ] \&\& exit 0
         OUTPUT="''${FILE%.*}-compressed.mp4"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -vcodec libx264 -crf 23 -preset fast "$OUTPUT"
-        ${pkgs.libnotify}/bin/notify-send "Transcode" "Compressed: $OUTPUT"
+        omarchy-notification-send "Transcode" "Compressed: $OUTPUT"
         ;;
       "Extract audio")
-        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | ${pkgs.walker}/bin/walker --dmenu -p "Select video" || true)
+        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select video" || true)
         [ -z "$FILE" ] \&\& exit 0
         OUTPUT="''${FILE%.*}.mp3"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -vn -acodec libmp3lame -q:a 2 "$OUTPUT"
-        ${pkgs.libnotify}/bin/notify-send "Transcode" "Audio extracted: $OUTPUT"
+        omarchy-notification-send "Transcode" "Audio extracted: $OUTPUT"
         ;;
       "Convert to MP4")
-        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | ${pkgs.walker}/bin/walker --dmenu -p "Select file" || true)
+        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select file" || true)
         [ -z "$FILE" ] \&\& exit 0
         OUTPUT="''${FILE%.*}.mp4"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -c:v libx264 -c:a aac "$OUTPUT"
-        ${pkgs.libnotify}/bin/notify-send "Transcode" "Converted: $OUTPUT"
+        omarchy-notification-send "Transcode" "Converted: $OUTPUT"
         ;;
       "Convert to WebM")
-        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | ${pkgs.walker}/bin/walker --dmenu -p "Select file" || true)
+        FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select file" || true)
         [ -z "$FILE" ] \&\& exit 0
         OUTPUT="''${FILE%.*}.webm"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -c:v libvpx-vp9 -c:a libopus "$OUTPUT"
-        ${pkgs.libnotify}/bin/notify-send "Transcode" "Converted: $OUTPUT"
+        omarchy-notification-send "Transcode" "Converted: $OUTPUT"
         ;;
     esac
   '';
@@ -985,9 +685,9 @@
     set -euo pipefail
     if ! ${pkgs.procps}/bin/pgrep -x hyprmag > /dev/null; then
       uwsm app -- ${pkgs.hyprmag}/bin/hyprmag
-      ${pkgs.libnotify}/bin/notify-send "Cursor Zoom" "Magnifier enabled"
+      omarchy-notification-send "Cursor Zoom" "Magnifier enabled"
     else
-      ${pkgs.libnotify}/bin/notify-send "Cursor Zoom" "Magnifier already running"
+      omarchy-notification-send "Cursor Zoom" "Magnifier already running"
     fi
   '';
 
@@ -995,7 +695,7 @@
     set -euo pipefail
     if ${pkgs.procps}/bin/pgrep -x hyprmag > /dev/null; then
       ${pkgs.procps}/bin/pkill -x hyprmag
-      ${pkgs.libnotify}/bin/notify-send "Cursor Zoom" "Magnifier disabled"
+      omarchy-notification-send "Cursor Zoom" "Magnifier disabled"
     fi
   '';
 }

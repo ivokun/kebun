@@ -1,10 +1,9 @@
-# Omarchy v4 shell environment — ADR-0007 Stage 2.
+# Omarchy v4 shell environment — ADR-0007 Stage 2, wired in at Stage 4.
 #
 # Ships the vendored QuickShell shell tree + IPC wrappers alongside
-# quickshell, WITHOUT wiring it into autostart: Stage 2 runs parallel to the
-# v3 stack (waybar/walker/…) for manual testing — `omarchy-launch-shell`
-# starts it against the live session; the default shell stays untouched
-# until the Stage 4 stack swap.
+# quickshell. Since the Stage 4 stack swap, the shell is started by the
+# compositor's autostart (uwsm-wrapped `omarchy-launch-shell`) and has
+# replaced the v3 stack (waybar/walker/…).
 {
   config,
   lib,

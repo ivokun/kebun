@@ -23,10 +23,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Walker and its elephant backend come from nixpkgs, which carries them as a
-    # co-maintained pair plus a working services.elephant module. As flake
-    # inputs the two versions had to be paired by hand, and walker's own module
-    # collided with the nixpkgs one over services.elephant.
+    # The v3 launcher stack (walker + elephant) was retired in the ADR-0007
+    # Stage 4 shell swap — do not re-add it; the QuickShell shell replaced it.
 
     # Nix-index database for command-not-found
     nix-index-database = {
@@ -71,7 +69,6 @@
             ./home/sakura.nix
             ./home/features/hyprland.nix
             ./home/features/omarchy-shell.nix
-            ./home/features/waybar.nix
             ./home/features/terminals.nix
             ./home/features/shell.nix
             ./home/features/starship.nix
