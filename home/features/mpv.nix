@@ -2,7 +2,9 @@
   config,
   pkgs,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+in {
   programs.mpv = {
     enable = true;
 
@@ -15,7 +17,7 @@
       force-seekable = "yes";
       osc = "no";
       border = "no";
-      background-color = "#faf4ed";
+      background-color = palette.background;
       screenshot-template = "%F_%P";
       screenshot-directory = "~~desktop/";
     };
@@ -30,13 +32,13 @@
       uosc = {
         font = "CaskaydiaMono Nerd Font";
         font_size = 16;
-        background = "#faf4ed";
-        background_text = "#797593";
-        foreground = "#575279";
-        foreground_text = "#faf4ed";
-        accent = "#56949f";
+        background = palette.background;
+        background_text = palette.subtle;
+        foreground = palette.text;
+        foreground_text = palette.background;
+        accent = palette.foam;
         curve = 0;
-        bar_color = "#56949f";
+        bar_color = palette.foam;
         timeline_size = 30;
         controls = "play_pause,chapter_prev,chapter_next,volume,loop,audio,sub,video,playlist,fullscreen";
       };

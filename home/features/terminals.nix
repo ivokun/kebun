@@ -3,7 +3,17 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+
+  # ANSI slot names, 0–7; bright colors reuse the same names at slots 8–15.
+  ansiNames = ["black" "red" "green" "yellow" "blue" "magenta" "cyan" "white"];
+  ansiColors = offset:
+    lib.listToAttrs (lib.imap0 (
+        i: name: lib.nameValuePair name (builtins.elemAt palette.ansi (i + offset))
+      )
+      ansiNames);
+in {
   # ─── Alacritty (Primary Terminal) ───
   programs.alacritty = {
     enable = true;
@@ -50,61 +60,42 @@
       # Rose Pine Dawn colors
       colors = {
         primary = {
-          background = "#faf4ed";
-          foreground = "#575279";
+          background = palette.background;
+          foreground = palette.text;
         };
 
         cursor = {
-          text = "#faf4ed";
-          cursor = "#cecacd";
+          text = palette.background;
+          cursor = palette.cursor;
         };
 
         "vi_mode_cursor" = {
-          text = "#faf4ed";
-          cursor = "#cecacd";
+          text = palette.background;
+          cursor = palette.cursor;
         };
 
         search.matches = {
-          foreground = "#faf4ed";
-          background = "#ea9d34";
+          foreground = palette.background;
+          background = palette.gold;
         };
 
         search."focused_match" = {
-          foreground = "#faf4ed";
-          background = "#b4637a";
+          foreground = palette.background;
+          background = palette.love;
         };
 
         "footer_bar" = {
-          foreground = "#faf4ed";
-          background = "#575279";
+          foreground = palette.background;
+          background = palette.text;
         };
 
         selection = {
-          text = "#575279";
-          background = "#dfdad9";
+          text = palette.text;
+          background = palette.highlightMed;
         };
 
-        normal = {
-          black = "#f2e9e1";
-          red = "#b4637a";
-          green = "#286983";
-          yellow = "#ea9d34";
-          blue = "#56949f";
-          magenta = "#907aa9";
-          cyan = "#d7827e";
-          white = "#575279";
-        };
-
-        bright = {
-          black = "#9893a5";
-          red = "#b4637a";
-          green = "#286983";
-          yellow = "#ea9d34";
-          blue = "#56949f";
-          magenta = "#907aa9";
-          cyan = "#d7827e";
-          white = "#575279";
-        };
+        normal = ansiColors 0;
+        bright = ansiColors 8;
       };
     };
   };

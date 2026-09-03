@@ -3,7 +3,9 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+in {
   programs.fastfetch = {
     enable = true;
 
@@ -17,8 +19,8 @@
 
       display = {
         color = {
-          keys = "#907aa9";
-          title = "#56949f";
+          keys = palette.iris;
+          title = palette.foam;
         };
         separator = "  ";
       };
@@ -27,8 +29,8 @@
         {
           type = "title";
           color = {
-            user = "#56949f";
-            host = "#907aa9";
+            user = palette.foam;
+            host = palette.iris;
           };
         }
         "break"
@@ -39,57 +41,57 @@
         {
           type = "os";
           key = "  OS";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "kernel";
           key = "  Kernel";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "uptime";
           key = "  Uptime";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "packages";
           key = "  Packages";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "shell";
           key = "  Shell";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "de";
           key = "  DE";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "wm";
           key = "  WM";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "theme";
           key = "  Theme";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "icons";
           key = "  Icons";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "terminal";
           key = "  Terminal";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         {
           type = "font";
           key = "  Font";
-          keyColor = "#56949f";
+          keyColor = palette.foam;
         }
         "break"
         {
@@ -99,43 +101,43 @@
         {
           type = "host";
           key = "  Host";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         {
           type = "cpu";
           key = "  CPU";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         {
           type = "gpu";
           key = "  GPU";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         {
           type = "memory";
           key = "  Memory";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         {
           type = "swap";
           key = "  Swap";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         {
           type = "disk";
           key = "  Disk";
-          keyColor = "#286983";
+          keyColor = palette.pine;
           folders = "/";
         }
         {
           type = "battery";
           key = "  Battery";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         {
           type = "display";
           key = "  Display";
-          keyColor = "#286983";
+          keyColor = palette.pine;
         }
         "break"
         {

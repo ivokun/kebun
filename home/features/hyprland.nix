@@ -6,7 +6,9 @@
   username,
   system,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+in {
   # ─── Hyprland — Lua layer (ADR-0007 Stage 3) ───
   #
   # The compositor config ships as the Lua files emitted below
@@ -536,7 +538,7 @@
         border_size = 2,
 
         col = {
-          active_border = "rgb(56949f)",
+          active_border = "rgb(${palette.strip palette.foam})",
           inactive_border = "rgba(595959aa)",
         },
 
@@ -567,7 +569,7 @@
 
       group = {
         col = {
-          border_active = "rgb(56949f)",
+          border_active = "rgb(${palette.strip palette.foam})",
           border_inactive = "rgba(595959aa)",
         },
 
@@ -642,7 +644,7 @@
         on_focus_under_fullscreen = 1,
 
         -- Rose Pine Dawn background (fallback when no wallpaper image).
-        background_color = "rgb(250,244,237)",
+        background_color = "rgb(${palette.backgroundRgb})",
       },
 
       cursor = {
@@ -676,7 +678,7 @@
     o.launch_on_start("fcitx5")
     -- Wallpaper stays swaybg (solid Rose Pine Dawn) until the Stage 5 theme
     -- engine lands.
-    o.launch_on_start("swaybg -c '#faf4ed' -m solid_color")
+    o.launch_on_start("swaybg -c '${palette.background}' -m solid_color")
   '';
 
   # ─── Idle handling ───

@@ -3,33 +3,8 @@
   lib,
   pkgs,
   ...
-}: let
-  rose-pine-dawn = {
-    background = "#faf4ed";
-    foreground = "#575279";
-    cursor = "#cecacd";
-    selection-bg = "#dfdad9";
-    accent = "#56949f";
-
-    black = "#f2e9e1";
-    red = "#b4637a";
-    green = "#286983";
-    yellow = "#ea9d34";
-    blue = "#56949f";
-    magenta = "#907aa9";
-    cyan = "#d7827e";
-    white = "#575279";
-
-    bright-black = "#9893a5";
-    bright-red = "#b4637a";
-    bright-green = "#286983";
-    bright-yellow = "#ea9d34";
-    bright-blue = "#56949f";
-    bright-magenta = "#907aa9";
-    bright-cyan = "#d7827e";
-    bright-white = "#575279";
-  };
-in {
+}: {
+  # Palette lives in lib/palette.nix (ADR-0007 Stage 5 single-sourcing).
   # ─── Cursor ───
   home.pointerCursor = {
     name = "rose-pine-hyprcursor";

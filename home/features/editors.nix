@@ -4,7 +4,9 @@
   pkgs,
   username,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+in {
   # ─── Neovim ───
   # LazyVim is best managed outside home-manager since it manages its own plugins.
   # We source the full LazyVim starter + custom configs from the repo.
@@ -57,16 +59,16 @@
     enable = true;
     settings = {
       gui.theme = {
-        activeBorderColor = ["#56949f" "bold"];
-        inactiveBorderColor = ["#797593"];
-        optionsTextColor = ["#907aa9"];
-        selectedLineBgColor = ["#f2e9e1"];
-        selectedRangeBgColor = ["#f2e9e1"];
-        cherryPickedCommitBgColor = ["#56949f"];
-        cherryPickedCommitFgColor = ["#faf4ed"];
-        unstagedChangesColor = ["#b4637a"];
-        defaultFgColor = ["#575279"];
-        searchingActiveBorderColor = ["#ea9d34"];
+        activeBorderColor = [palette.foam "bold"];
+        inactiveBorderColor = [palette.subtle];
+        optionsTextColor = [palette.iris];
+        selectedLineBgColor = [palette.overlay];
+        selectedRangeBgColor = [palette.overlay];
+        cherryPickedCommitBgColor = [palette.foam];
+        cherryPickedCommitFgColor = [palette.background];
+        unstagedChangesColor = [palette.love];
+        defaultFgColor = [palette.text];
+        searchingActiveBorderColor = [palette.gold];
       };
     };
   };

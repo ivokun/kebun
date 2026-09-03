@@ -5,7 +5,9 @@
   # Callers pass inputs.hyprland.packages.${system}.hyprland.
   hyprland ? pkgs.hyprland,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+in {
   screenshot = pkgs.writeShellScriptBin "screenshot" ''
     ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.swappy}/bin/swappy -f -
   '';
@@ -329,7 +331,7 @@
       omarchy-menu-select "Background")
 
     case "$CHOICE" in
-      "Rose Pine Dawn") ${pkgs.swaybg}/bin/swaybg -c '#faf4ed' -m solid_color ;;
+      "Rose Pine Dawn") ${pkgs.swaybg}/bin/swaybg -c '${palette.background}' -m solid_color ;;
       "Solid white") ${pkgs.swaybg}/bin/swaybg -c '#ffffff' -m solid_color ;;
       "Solid black") ${pkgs.swaybg}/bin/swaybg -c '#000000' -m solid_color ;;
       "Solid gray") ${pkgs.swaybg}/bin/swaybg -c '#808080' -m solid_color ;;

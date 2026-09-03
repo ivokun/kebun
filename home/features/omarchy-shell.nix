@@ -17,6 +17,7 @@
     inherit pkgs;
     hyprland = inputs.hyprland.packages.${system}.hyprland;
   };
+  theme = import ../../packages/omarchy/theme.nix {inherit pkgs omarchy;};
 in {
   home.packages = [
     omarchy
@@ -28,4 +29,15 @@ in {
   # Hyprland Lua layer all read it. home.sessionVariables lands in both the
   # shell profile and the systemd user environment (environment.d).
   home.sessionVariables.OMARCHY_PATH = "${omarchy}";
+
+  # Stage 5: materialize the staged theme the shell reads at startup (Color.qml
+  # reads exactly these two files, watchChanges: false). Both are rendered at
+  # build time by the vendored upstream template engine — rebuild to retheme,
+  # then restart the shell (omarchy-restart-shell) or relogin. HM deliberately
+  # owns this generated state because multi-theme switching is out of scope
+  # (ADR-0007 Stage 5): if omarchy-theme-set is ever run manually, HM restores
+  # these files on the next switch (pre-existing copies get the hm-backup
+  # suffix).
+  home.file.".local/state/omarchy/current/theme/colors.toml".source = "${theme}/colors.toml";
+  home.file.".local/state/omarchy/current/theme/shell.toml".source = "${theme}/shell.toml";
 }

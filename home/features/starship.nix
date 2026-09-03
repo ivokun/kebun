@@ -2,7 +2,9 @@
   config,
   pkgs,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+in {
   programs.starship = {
     enable = true;
     enableTransience = true;
@@ -11,15 +13,17 @@
       palette = "rose_pine_dawn";
 
       palettes.rose_pine_dawn = {
-        overlay = "#f2e9e1";
-        love = "#b4637a";
-        gold = "#ea9d34";
-        rose = "#d7827e";
-        pine = "#286983";
-        foam = "#56949f";
-        iris = "#907aa9";
-        text = "#575279";
-        muted = "#797593";
+        overlay = palette.overlay;
+        love = palette.love;
+        gold = palette.gold;
+        rose = palette.rose;
+        pine = palette.pine;
+        foam = palette.foam;
+        iris = palette.iris;
+        text = palette.text;
+        # starship's "muted" is Dawn's subtle #797593 — NOT palette.muted
+        # (dark_foreground) or palette.mutedText (inactive_fg). Name clash noted.
+        muted = palette.subtle;
       };
 
       add_newline = true;

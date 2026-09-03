@@ -3,39 +3,42 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  palette = import ../../lib/palette.nix;
+
+  # ANSI slots 0–15 as kitty's color0..color15 keys.
+  kittyAnsi = builtins.listToAttrs (
+    lib.imap0 (i: c: lib.nameValuePair "color${toString i}" c) palette.ansi
+  );
+in {
   programs.kitty = {
     enable = true;
 
     settings = {
       # Rose Pine Dawn colors
-      background = "#faf4ed";
-      foreground = "#575279";
-      cursor = "#cecacd";
-      cursor_text_color = "#faf4ed";
-      selection_background = "#dfdad9";
-      selection_foreground = "#575279";
-      url_color = "#56949f";
+      background = palette.background;
+      foreground = palette.text;
+      cursor = palette.cursor;
+      cursor_text_color = palette.background;
+      selection_background = palette.highlightMed;
+      selection_foreground = palette.text;
+      url_color = palette.foam;
 
       # Normal colors
-      color0 = "#f2e9e1";
-      color1 = "#b4637a";
-      color2 = "#286983";
-      color3 = "#ea9d34";
-      color4 = "#56949f";
-      color5 = "#907aa9";
-      color6 = "#d7827e";
-      color7 = "#575279";
+      inherit (kittyAnsi) color0 color1 color2 color3 color4 color5 color6 color7;
 
       # Bright colors
-      color8 = "#9893a5";
-      color9 = "#b4637a";
-      color10 = "#286983";
-      color11 = "#ea9d34";
-      color12 = "#56949f";
-      color13 = "#907aa9";
-      color14 = "#d7827e";
-      color15 = "#575279";
+      inherit
+        (kittyAnsi)
+        color8
+        color9
+        color10
+        color11
+        color12
+        color13
+        color14
+        color15
+        ;
 
       # Font
       font_family = "CaskaydiaMono Nerd Font";
@@ -57,10 +60,10 @@
       # Tab bar
       tab_bar_style = "powerline";
       tab_powerline_style = "slanted";
-      active_tab_background = "#56949f";
-      active_tab_foreground = "#faf4ed";
-      inactive_tab_background = "#f2e9e1";
-      inactive_tab_foreground = "#575279";
+      active_tab_background = palette.foam;
+      active_tab_foreground = palette.background;
+      inactive_tab_background = palette.overlay;
+      inactive_tab_foreground = palette.text;
 
       # Cursor
       cursor_shape = "block";
