@@ -10,6 +10,11 @@ backlog is now the migration checklist plus the port items that survive each sta
 the stage plan is in ADR-0007 and the port requirements in
 `docs/omarchy/quattro-port-inventory.md`.
 
+**Migration complete (2026-09-03): all six ADR-0007 stages shipped.** Statuses below
+are updated per stage; the runtime caveats that survive the migration are collected
+in the post-migration addendum at the bottom. What remains here is post-port
+improvement work, not migration work.
+
 Items marked **blocked** need a decision or a hardware step only you can take.
 Items marked *unverified* are plausible but were not reproduced.
 
@@ -29,41 +34,56 @@ Items marked *unverified* are plausible but were not reproduced.
 
 ## 0. Defects found 2026-09-01 — small, independent
 
-All confirmed in-tree during the re-inventory. Stack-independent items (1, 4) fix now;
-items touching v3 components (2, 3, 5, 6, 7) are only worth fixing if the current stack
-still ships after the ADR-0007 Stage 4 stack swap — check the stage status first.
+All confirmed in-tree during the re-inventory. Post-migration status (2026-09-03):
+1 and 4 fixed in Stage 6; 3, 5, and 7 fixed in Stage 4 as planned; 2 superseded by
+waybar's removal; 6 confirmed deliberate. Per-item notes below.
 
 1. **Browser flags written to the wrong path.** `home/common.nix:246,252` —
    `home.file."config/brave-flags.conf"` writes `~/config/brave-flags.conf`; Chromium
    reads `~/.config/brave-flags.conf`. Change both keys to `.config/...`. The Wayland/IME
    flags have never been applied.
+   → **Fixed in Stage 6** (both keys now write `~/.config/brave-flags.conf`; verify the
+   Wayland/IME flags actually apply on first switch — they have never been active).
 2. **Waybar `custom/idle` can never render.** `home/features/waybar.nix:162` gates on
    `test -f /tmp/hypridle-disabled`, which nothing creates. Either have the idle toggle
    (currently `hypridle --toggle`, SUPER+CTRL+I / `menu-toggle`) write that file, or
    delete the module.
+   → **Superseded (Stage 4, `15e1f64`)** — waybar retired with the stack swap; idle
+   locking/toggles are the shell's idle plugin and `omarchy-toggle-idle` now.
 3. **SUPER+XF86AudioMute mislabeled.** `home/features/hyprland.nix:404` — description
    "Switch audio output", command `pamixer --default-source toggle` (source *mute*).
    Fix the description, or point it at a real sink switcher (`volume-toggle` exists but
    is currently dead weight — see item 7).
+   → **Fixed in Stage 4** — the bind now points at the shell's `omarchy-audio-output-switch`
+   and the description matches.
 4. **X webapp never focuses.** `home/features/webapps.nix:59` — `match = "//x.com"` is not
    a substring of app_id `chrome-x.com__-Default`. Change to `match = "x.com"`.
+   → **Fixed in Stage 6** (`match = "x.com"`).
 5. **`menu-omarchy` "Lock screen" bypasses `hyprlock-guard`.**
    `packages/scripts/default.nix` — the menu entry execs bare `hyprlock`; route it through
    `hyprlock-guard` like SUPER+CTRL+L does.
+   → **Fixed in Stage 4** — the entry execs `omarchy-system-lock` (the shell's lock path);
+   `hyprlock-guard` retired with hyprlock.
 6. **SUPER+SHIFT+RETURN duplicates Browser** (`home/features/hyprland.nix`, launcher
    block). v4 also maps this combo to browser, so this may be deliberate — confirm intent;
    if deliberate, no change.
+   → **Confirmed deliberate, no change** (2026-09-03): kebun's `bindings.lua` maps
+   SUPER+SHIFT+RETURN → Browser exactly as upstream's
+   `default/hypr/bindings/applications.lua` does.
 7. **Battery/audio dead weight.** Consolidate: keep waybar's native `battery` module +
    `battery-monitor` + `show-battery`; drop or rewire `battery-status`,
    `battery-capacity`, `battery-remaining` (no callers), and the unreferenced
    `volume-toggle`, `brightness-toggle`, `audio-switch`, `mic-mute`,
    `launch-floating-terminal`. If any are kept, wire them into a binding or menu.
+   → **Done in Stage 4** — all the dead-weight scripts listed are retired; battery
+   warnings come from the shell's UPower plugin (10% threshold → `omarchy-battery-low`),
+   and `show-battery`/`battery-remaining-time` remain as kebun's manual readouts.
 
 ---
 
 ## 1. Decide first — these gate other work
 
-### 1.1 Omarchy 4 / Quattro — **DECIDED: migrate, staged (ADR-0007 accepted 2026-09-01)**
+### 1.1 Omarchy 4 / Quattro — **DONE: migration complete (ADR-0007 stages 1–6, 2026-09-03)**
 
 The user accepted option 2, overriding the draft's hybrid recommendation (which rested
 on a shared-$HOME premise that turned out false — the reference install is a separate
@@ -73,7 +93,7 @@ cleanup. Retained divergences: iwd (ADR-0002), Rose Pine Dawn palette, ghostty/k
 kebun's own script set, UWSM mandate. Port requirements:
 `docs/omarchy/quattro-port-inventory.md`.
 
-### 1.2 Hyprland version skew — **being fixed in Stage 1**
+### 1.2 Hyprland version skew — **done (Stage 1, `0d37faa`)**
 
 Verified by `nix eval` on 2026-09-01: compositor `0.54.0+date=2026-04-30_2ff5988` (flake
 lock frozen since April); `pkgs.hyprland` **0.56.0** for all ~60 `hyprctl` call sites.
@@ -86,20 +106,24 @@ re-validate the ADR-0004 lock guard and the ADR-0006 suspend path; the opacity r
 
 ## 2. Coupled to a Hyprland 0.56 bump — do NOT apply in isolation
 
-### 2.1 Opacity retune
+Both items below landed with the migration; kept as a record.
+
+### 2.1 Opacity retune — **done (Stage 1; values now in `looknfeel.lua`)**
 
 | `home/features/hyprland.nix` | now (0.54) | on 0.56+ |
 |---|---|---|
 | line ~199 (catch-all) | `0.97 0.9` | `0.985 0.96` |
 | lines ~212-213 (browsers) | `1 0.97` | `1.0 0.985` |
 
-### 2.2 `menu-keybindings` JSON fragility
+### 2.2 `menu-keybindings` JSON fragility — **done (Stage 3/4)**
 
 `packages/scripts/default.nix` uses `hyprctl -j binds | jq` under `set -euo pipefail`.
 Hyprland 0.56.0/0.56.1 emitted invalid JSON; 0.56.2 is fine (verified live on the Arch
 side). A `|| true` fallback makes the script fail soft regardless. While in there: add
 `xkbcli compile-keymap` resolution of `code:NN` bindings (v4's version does this) —
 kebun's own workspace binds use `code:10..19` and currently display raw codes.
+Resolved by adopting the vendored upstream `omarchy-menu-keybindings` (hyprctl binds +
+Lua dofile of `hyprland.lua`, xkbcli keyname resolution; SUPER+K), on the pinned v0.56.2.
 
 ---
 
@@ -121,11 +145,13 @@ kept as a record of the correction.
 disabled) — irrelevant to sakura. Whether `home/sakura.nix` is stale can only be
 checked on sakura itself; do that before editing.
 
-### 3.2 Fingerprint unlock
+### 3.2 Fingerprint unlock — still open (shape changed by Stage 4)
 
-Unchanged, three steps: `services.fprintd.enable = true` in `hosts/sakura/default.nix` →
-rebuild + `fprintd-enroll` → flip `fingerprint.enabled = true` in `hyprland.nix`. The X13
-Gen 1's Synaptics `06cb:00bd` may need `libfprint-tod`.
+Still three steps, now on the shell lock plugin: `services.fprintd.enable = true` in
+`hosts/sakura/default.nix` → rebuild + `fprintd-enroll` → add an
+`omarchy-lock-fingerprint` PAM service beside `security.pam.services."omarchy-lock-password"`
+in `hosts/common/desktop.nix`. The X13 Gen 1's Synaptics `06cb:00bd` may need
+`libfprint-tod`.
 
 ### 3.3 Renamed NixOS options (warnings on every eval)
 
@@ -156,6 +182,11 @@ version. Under the accepted migration these port as the Stage 4/5 script layer; 
    `helix.nix`, `starship.nix`, `fastfetch.nix`, `mpv.nix`, `editors.nix`,
    `home/nvim/lua/`, and the scripts in `packages/scripts/default.nix`. Accept
    rebuild-to-retheme (already true today); multi-theme *switching* stays out of scope.
+   → **Done (Stage 5, `2953acc`)** — single-sourced in `lib/palette.nix`; the consumers
+   that import it now: hyprland, terminals, ghostty, kitty, btop, starship, fastfetch,
+   mpv, editors, theme-rose-pine, and the scripts. helix/nvim (plugin palettes) and the
+   GTK/Qt side stay separate deliberately. Rebuild-to-retheme accepted; the shell theme
+   renders at build time (`packages/omarchy/theme.nix`).
 3. **Lock-before-suspend with a budget.** Port the `omarchy-system-sleep-lock` pattern:
    `systemd-inhibit --what=sleep --mode=delay` watcher on logind `PrepareForSleep`,
    request lock, poll until secure, budget derived from logind's `InhibitDelayMaxUSec`,
@@ -182,9 +213,20 @@ version. Under the accepted migration these port as the Stage 4/5 script layer; 
 10. **Suspend-inhibit ("caffeine") toggle.** v4's `omarchy-toggle-idle` is a flag file
     the shell watches. kebun shape: flag file + `hypridle` listener skip, plus fix the
     waybar indicator (item 0.2) to read the same flag.
+    → **Mostly delivered by the Stage 4 stack** — `omarchy-toggle-idle` (vendored verb,
+    SUPER+CTRL+I, `menu-toggle` → "Idle locking") writes
+    `~/.local/state/omarchy/indicators/stay-awake` and the shell's idle plugin consumes
+    it; the waybar indicator half is moot. Remaining slice, if wanted: true *suspend*
+    inhibition (a logind inhibitor) — the verb only gates the shell's idle
+    locking/screensaver, not system suspend.
 11. **Wallpaper images.** `menu-background` offers four solid colors; no image support;
     `home/sakura.nix:107` wiring still commented out. Self-contained slice of the
     theming gap; pairs naturally with item 2.
+    → **Re-scoped to the current stack (2026-09-03)** — `menu-background` is now an
+    `omarchy-menu-select` menu driving `swaybg` (still solid colors only); upstream's
+    answer is the shell background plugin staging images under
+    `~/.local/state/omarchy/current/background`. `home/sakura.nix:107` still commented
+    out.
 12. **Terminal config catch-up.** ghostty: `async-backend = epoll`, `window-theme =
     ghostty`, `shell-integration-features = ssh-env`. kitty: `cursor_blink_interval 0`,
     `shell_integration no-cursor`. Optional v4 addition: uniform CSI-u Shift+Enter
@@ -238,9 +280,6 @@ version. Under the accepted migration these port as the Stage 4/5 script layer; 
 - **`system-sleep/unmount-fuse` hook** *(unverified)* — lazy-unmount `fuse.gvfsd-fuse`
   before sleep, restart `gvfs-daemon` after. Plausible contributor to the documented
   suspend/resume fragility (ADR-0006). v4 ships this same hook.
-- Waybar indicators poll every 2s with `exec-if` where upstream pushes via `"signal": N` +
-  `pkill -RTMIN+N waybar`. Functionally equivalent, but three `pgrep`/`makoctl` calls
-  every two seconds, forever.
 
 ---
 
@@ -254,14 +293,40 @@ version. Under the accepted migration these port as the Stage 4/5 script layer; 
 - **`omarchy-hibernation-*`** — kebun's hibernation is deliberately off (8.8 GiB LUKS
   swap < 30.6 GiB RAM; see `hosts/sakura/default.nix`); if re-enabled it's declarative.
 - **`aether` / `tensaku` as packages** — not in nixpkgs, and aether targets the v3 app
-  set anyway; Stage 5 ports omarchy's own theme-template engine (colors.toml + *.tpl)
-  instead. herdr/voxtype/gpu-screen-recorder *are* packaged — evaluate individually
-  (items 15, 19).
+  set anyway; Stage 5 ported omarchy's own theme-template engine (colors.toml + *.tpl,
+  now `packages/omarchy/theme.nix`) instead. herdr/voxtype/gpu-screen-recorder *are*
+  packaged — evaluate individually (items 15, 19).
 - **`initramfs_async=0`** — kernel 7.1 race; kebun is on 6.18.40. Revisit at 7.1.
-- **`pkill -9` for waybar** — kebun's user service escalates on its own.
+- **`pkill -9` for waybar** — superseded: waybar retired in Stage 4 (`15e1f64`).
 - **`cx`/`cy` permission-bypass aliases** — do not port. Upstream softened this itself in
   v4.0.1 (auto-review, not bypass).
 - **App-launcher keybindings** — kebun matches your live scheme, not upstream's template.
 - **Bootloader, firewall mechanism, snapshots, `install-*` scripts** — systemd-boot +
   generations, declarative nftables, `/home`-only snapper, and module options remain
   correct NixOS substitutions.
+
+---
+
+## Post-migration addendum (2026-09-03)
+
+The migration shipped (ADR-0007 stages 1–6); none of the items below blocked an eval,
+but all need a real sakura deploy or a follow-up decision:
+
+- **`wake-display` is consumerless.** Kept in the script set (`home/common.nix`) but
+  nothing calls it — the v3 lock/suspend wrappers that consumed it are gone (Stage 4).
+  At deploy, revalidate the ADR-0004/0006 consumers on the shell's lock/suspend path and
+  wire it back in, or retire the script.
+- **quickshell 0.3.0 (nixpkgs) vs 0.3.1 (reference).** The vendored plugin tree was
+  staged against the reference machine's 0.3.1; nixpkgs pins 0.3.0. Watch for plugin
+  incompatibilities at first deploy; bump via nixpkgs or a quickshell flake if the shell
+  misbehaves.
+- **pamixer has no consumers at HEAD `2953acc`.** Zero callers in bindings or scripts
+  (the v3 volume binds went to shell verbs), but it is still installed
+  (`home/common.nix`, `hosts/common/desktop.nix`). Drop it once that stays true.
+- **v3's 900s idle-suspend is not carried.** Idle is the shell plugin now: screensaver
+  150s / lock 300s from the vendored `shell.json` — no system suspend on idle at all.
+  Confirm that's acceptable on the laptop, or port a suspend listener.
+- **Battery warnings are UPower-based now.** The shell's battery plugin warns at 10% via
+  `omarchy-battery-low`; the manual readouts (`show-battery`, `battery-remaining-time`)
+  are still kebun's raw-`/sys` scripts — §4.7 (full upower port with health/time-to-empty)
+  remains open.

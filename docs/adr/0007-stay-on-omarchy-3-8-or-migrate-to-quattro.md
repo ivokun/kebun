@@ -168,3 +168,34 @@ for launched apps.
   recommendation**
 - Proposed by: Salahuddin Muhammad Iqbal (with Claude Code)
 - Accepted by: Salahuddin Muhammad Iqbal
+
+### Outcome (2026-09-03)
+
+All six stages shipped: `f55ead0` (ADR accepted), `183fe3a` (port inventory),
+`0d37faa` (Stage 1 — compositor pin + hyprctl routing), `f071a0d` (Stage 2 — vendored
+shell environment), `9eeebc5` (Stage 3 — Hyprland Lua port), `15e1f64` (Stage 4 —
+stack swap), `2953acc` (Stage 5 — palette single-sourcing + build-time theme render),
+plus the Stage 6 cleanup/docs commit.
+
+Deviations discovered during implementation, all recorded in the tree:
+
+- **Idle-suspend listener dropped.** v3's hypridle 900s suspend listener was not
+  carried; idle is the shell plugin now (screensaver 150s / lock 300s from shell.json).
+- **makoctl restore bind → history.** The v4 shell IPC has no "restore last
+  notification" verb; the SUPER+SHIFT+ALT+comma bind surfaces history instead
+  (`hyprland.nix`, bindings.lua).
+- **DND carve-out behavior change** — the mako notify-send carve-out is gone with mako;
+  silencing state moved to the shell (`~/.local/state/omarchy/notifications.json`).
+- **`wake-display` is consumerless** pending ADR-0006 revalidation at deploy — its v3
+  consumers were retired with the stack swap.
+- **Menu sinks are `omarchy-menu-select`/`-input`** (the shell menu's dmenu mode);
+  upstream's JSONC route tree is used for the shell's own system menus only.
+- **Theme staged at build time**, byte-identical to the reference machine's staged
+  shell.toml (vendored renderer in `packages/omarchy/theme.nix`, palette in
+  `lib/palette.nix`).
+
+Deploy caveat: verification so far is eval-only from the HTPC — the Stage 3+4 runtime
+gates (shell renders, PAM unlock, idle timings, ADR-0004/0006 revalidation) are still
+pending on sakura. Also note upstream's `version` file is stale: it reads
+`4.0.0.alpha` even at tag `v4.0.2` (verified on the reference machine), so don't use
+it to verify a bumped vendored tree — check the upstream git tag instead.

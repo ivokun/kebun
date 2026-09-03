@@ -1,5 +1,11 @@
 # Omarchy → NixOS (Kebun) Discrepancy Analysis
 
+**Status (2026-09-03):** this document is the audit snapshot of 2026-09-01 that fed
+ADR-0007. The Quattro migration has since **completed** per ADR-0007 — see the ADR's
+Outcome note and the post-migration addendum in `docs/omarchy-parity-backlog.md` for
+current state. Sections describing the v3 stack (waybar, walker/elephant, mako,
+hyprlock/hypridle, the `bindd` list) are historical.
+
 **Last updated:** 2026-09-01
 **Omarchy reference:** **v4.0.2** (`omarchy 4.0.2-1` pacman package at `/usr/share/omarchy`),
 live on **IVOKUN-HTPC** (hostname `ivokun-htpc`, a B550M desktop running Arch — a

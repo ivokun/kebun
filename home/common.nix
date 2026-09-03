@@ -74,7 +74,6 @@ in {
 
       # Multimedia
       playerctl
-      pamixer
       brightnessctl
       imv
       spotify
@@ -231,13 +230,15 @@ in {
     ]);
 
   # ─── Browser flags for Wayland ───
-  home.file."config/brave-flags.conf".text = ''
+  # Chromium-family browsers read these from ~/.config/ (backlog §0.1 — they
+  # lived under ~/config/ for years, so the flags never applied).
+  home.file.".config/brave-flags.conf".text = ''
     --ozone-platform=wayland
     --enable-features=WaylandWindowDecorations
     --enable-wayland-ime
   '';
 
-  home.file."config/chrome-flags.conf".text = ''
+  home.file.".config/chrome-flags.conf".text = ''
     --ozone-platform=wayland
     --enable-features=WaylandWindowDecorations
     --enable-wayland-ime

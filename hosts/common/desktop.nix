@@ -173,7 +173,6 @@ in {
     polkit
 
     # Audio controls
-    pamixer
     playerctl
 
     # Bluetooth

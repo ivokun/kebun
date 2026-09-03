@@ -56,7 +56,9 @@
     {
       name = "X";
       url = "https://x.com";
-      match = "//x.com";
+      # Chromium --app app_id is `chrome-<host>__-Default`; the host substring
+      # is the focus key (backlog §0.4 — "//x.com" never matched).
+      match = "x.com";
     }
     {
       name = "GitHub";
