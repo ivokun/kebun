@@ -7,9 +7,12 @@
 # "/default/…". Verified against the v4.0.2 reference install: nothing
 # hardcodes /usr/share/omarchy, everything resolves through $OMARCHY_PATH.
 #
-# Only the entry scripts kebun invokes are wrapped with a store-path PATH
-# prefix; the remaining upstream bin scripts are copied verbatim (inert on
-# NixOS until the Stage 4 stack swap decides what to prune).
+# The entry scripts kebun invokes are wrapped with a store-path PATH prefix;
+# the remaining upstream bin scripts are copied verbatim — but since the
+# Stage 4 stack swap they are NOT inert: the shell's QML spawns them by name
+# for widget data and IPC, so they are live runtime dependencies. Their
+# upstream shebangs assume Arch (/bin/bash, /usr/bin/python3) and are
+# rewritten to store paths below.
 {
   pkgs,
   # The compositor's own hyprctl (the flake input), not nixpkgs'.
@@ -34,10 +37,12 @@
     gawk
     gnugrep
     gnused
+    gpu-screen-recorder # omarchy-capture-screenrecording*
     hyprland
     inotify-tools
     jq
     libxkbcommon # xkbcli, keyname resolution in omarchy-menu-keybindings
+    localsend # omarchy-menu-share / trigger.share.receive
     lua # omarchy-menu-keybindings' Lua-dofile cache step
     perl # omarchy-menu-select builds JSON with perl JSON::PP
     procps
@@ -46,6 +51,8 @@
     systemd
     util-linux
     wireplumber # wpctl, needed by omarchy-audio-input-mute
+    xdg-terminal-exec # omarchy-launch-floating-terminal-with-presentation
+    zbar # zbarimg, omarchy-capture-qr
   ];
 
   # Entry scripts (plus their repo-internal callees) that get wrapped.
@@ -96,6 +103,21 @@ in
     rm -rf $out/.github $out/test $out/install $out/docs $out/manual $out/migrations
 
     chmod +x $out/bin/* 2>/dev/null || true
+
+    # Upstream targets Arch, where /bin/bash and /usr/bin/python3 exist. NixOS
+    # has no /bin, so the kernel ENOENTs on exec and every script dies with
+    # "bad interpreter" — silently: the shell's QProcess reports "binary could
+    # not be found", and a dead launcher produces no log at all. Rewrite the
+    # shebangs across the whole tree (bin/, shell/ plugins, default/ helpers)
+    # BEFORE wrapProgram: it relocates the original verbatim to .name-wrapped
+    # and a broken shebang there survives the wrap. python3 needs PyGObject
+    # for omarchy-file-select's D-Bus portal client.
+    for f in $(grep -RIl '^#!/bin/bash' $out 2>/dev/null); do
+      sed -i "1s|^#!/bin/bash|#!${pkgs.bash}/bin/bash|" "$f"
+    done
+    for f in $(grep -RIl '^#!/usr/bin/python3' $out 2>/dev/null); do
+      sed -i "1s|^#!/usr/bin/python3|#!${pkgs.python3.withPackages (p: [p.pygobject3])}/bin/python3|" "$f"
+    done
 
     # Wrap the entry scripts so their external commands resolve from the
     # closure, including repo-internal callees via $out/bin.
