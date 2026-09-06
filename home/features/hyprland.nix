@@ -174,17 +174,20 @@ in {
     end
 
     -- ─── Application Launchers ───
-    o.bind("SUPER + RETURN", "Terminal", "uwsm app -- alacritty --working-directory=\"$(pwd)\"")
+    o.bind("SUPER + RETURN", "Terminal", "uwsm app -- alacritty")
     o.bind("SUPER + SHIFT + F", "File manager", "uwsm app -- nautilus --new-window")
-    o.bind("SUPER + B", "Browser", "google-chrome")
-    o.bind("SUPER + SHIFT + B", "Browser (private)", "google-chrome --private")
-    o.bind("SUPER + N", "Editor", "uwsm app -- nvim")
+    o.bind("SUPER + B", "Browser", "uwsm app -- google-chrome")
+    o.bind("SUPER + SHIFT + B", "Browser (private)", "uwsm app -- google-chrome --private")
+    o.bind("SUPER + N", "Editor", "uwsm app -- alacritty -e nvim")
     o.bind("SUPER + D", "Docker", "uwsm app -- alacritty -e lazydocker")
     o.bind("SUPER + O", "Obsidian", "uwsm app -- obsidian -disable-gpu --enable-wayland-ime")
     o.bind("SUPER + SHIFT + O", "Pop window", "window-pop")
 
     -- ─── Menus ───
-    o.bind("SUPER + SPACE", "Launch apps", "omarchy-menu toggle apps")
+    -- Upstream parity: SUPER + SPACE opens the root menu (default/hypr/
+    -- bindings/utilities.lua); the Apps submenu lives on SUPER + ALT + SPACE
+    -- upstream, which kebun uses for its own Kebun menu instead.
+    o.bind("SUPER + SPACE", "Omarchy menu", "omarchy-menu toggle")
     o.bind("SUPER + CTRL + E", "Emoji picker", "omarchy-shell shell toggle omarchy.emojis")
     -- SUPER CTRL SPACE belongs to the Background menu further down.
     o.bind("SUPER + ESCAPE", "System menu", "omarchy-menu toggle system")
@@ -377,7 +380,7 @@ in {
     o.bind("SUPER + CTRL + T", "Activity", "uwsm app -- alacritty -e btop")
 
     -- ─── Additional App Launchers ───
-    o.bind("SUPER + SHIFT + RETURN", "Browser", "google-chrome")
+    o.bind("SUPER + SHIFT + RETURN", "Browser", "uwsm app -- google-chrome")
     o.bind("SUPER + ALT + SHIFT + F", "File manager (current directory)", "file-manager-cwd")
 
     -- ─── Window Management (extended) ───

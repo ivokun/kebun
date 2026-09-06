@@ -315,7 +315,7 @@ in {
     case "$CHOICE" in
       "Terminal") uwsm app -- ${pkgs.alacritty}/bin/alacritty ;;
       "Browser") ${pkgs.google-chrome}/bin/google-chrome ;;
-      "Editor") uwsm app -- ${pkgs.neovim}/bin/nvim ;;
+      "Editor") uwsm app -- ${pkgs.alacritty}/bin/alacritty -e ${pkgs.neovim}/bin/nvim ;;
       "File manager") uwsm app -- ${pkgs.nautilus}/bin/nautilus --new-window ;;
       "Lock screen") omarchy-system-lock ;;
       "Activity monitor") uwsm app -- ${pkgs.alacritty}/bin/alacritty -e btop ;;
