@@ -40,9 +40,10 @@
     ];
 
     # ─── Plymouth boot splash ───
-    # Custom kebun theme with ivokun branding (cyan bg + yellow accents).
-    # When TPM2 auto-unlock fails, Plymouth shows a styled password prompt
-    # instead of dropping to a raw TTY.
+    # Kebun theme re-skinned at build time from lib/palette.nix: Rose Pine
+    # Dawn light base, IVOKUN wordmark (same derivation as the SDDM
+    # greeter's). When TPM2 auto-unlock fails, Plymouth shows the styled
+    # password prompt instead of dropping to a raw TTY.
     plymouth = {
       enable = true;
       theme = "kebun";
