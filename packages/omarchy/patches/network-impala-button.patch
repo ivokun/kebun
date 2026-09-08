@@ -1,0 +1,66 @@
+diff -Naur a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/network/Panel.qml
+--- a/shell/plugins/panels/network/Panel.qml	2026-09-08 12:35:53.893376210 +0900
++++ b/shell/plugins/panels/network/Panel.qml	2026-09-08 12:35:53.909253777 +0900
+@@ -133,10 +133,15 @@
+   readonly property int qrHeaderIndex: canShareWifi ? 0 : -1
+   readonly property int speedHeaderIndex: canRunSpeedTest ? (canShareWifi ? 1 : 0) : -1
+   readonly property int toggleHeaderIndex: canToggleWifi ? (canShareWifi ? 1 : 0) + (canRunSpeedTest ? 1 : 0) : -1
+-  readonly property int headerActionCount: (canShareWifi ? 1 : 0) + (canRunSpeedTest ? 1 : 0) + (canToggleWifi ? 1 : 0)
++  // Kebun (iwd): with no NetworkManager backend the panel cannot connect or
++  // scan, so offer the Wi-Fi manager TUI instead of dead controls.
++  readonly property bool canLaunchImpala: !networkManagerAvailable
++  readonly property int impalaHeaderIndex: canLaunchImpala ? (canShareWifi ? 1 : 0) + (canRunSpeedTest ? 1 : 0) + (canToggleWifi ? 1 : 0) : -1
++  readonly property int headerActionCount: (canShareWifi ? 1 : 0) + (canRunSpeedTest ? 1 : 0) + (canToggleWifi ? 1 : 0) + (canLaunchImpala ? 1 : 0)
+   readonly property bool qrHeaderHasCursor: cursorActive && focusSection === "header" && headerIndex === qrHeaderIndex
+   readonly property bool speedHeaderHasCursor: cursorActive && focusSection === "header" && headerIndex === speedHeaderIndex
+   readonly property bool toggleHeaderHasCursor: cursorActive && focusSection === "header" && headerIndex === toggleHeaderIndex
++  readonly property bool impalaHeaderHasCursor: cursorActive && focusSection === "header" && headerIndex === impalaHeaderIndex
+   readonly property string toggleHint: Networking.wifiEnabled ? "Turn Wi-Fi off" : "Turn Wi-Fi on"
+   readonly property var dnsProviders: ["DHCP", "Cloudflare", "Google", "Custom"]
+   property int dnsIndex: 0
+@@ -226,6 +231,7 @@
+     if (headerIndex === qrHeaderIndex) summonWifiQr()
+     else if (headerIndex === speedHeaderIndex) summonSpeedTest()
+     else if (headerIndex === toggleHeaderIndex) toggleNetwork()
++    else if (headerIndex === impalaHeaderIndex) summonImpala()
+   }
+ 
+   function setHeaderCursor(index) {
+@@ -658,6 +664,14 @@
+     bar.shell.summon("omarchy.speedtest", connection ? JSON.stringify({ connection: connection }) : "{}")
+   }
+ 
++  // Kebun (iwd): the Wi-Fi manager TUI is the scan/connect/forget surface --
++  // launch-wifi's launch-or-focus handles focus-vs-launch and wraps uwsm, and
++  // the panel closes so it doesn't sit behind the floating terminal.
++  function summonImpala() {
++    Quickshell.execDetached(["launch-wifi"])
++    root.close()
++  }
++
+   function dnsCommand(provider) {
+     var command = "omarchy-dns"
+     if (provider) command += " " + Util.shellQuote(provider)
+@@ -1140,6 +1154,22 @@
+             onClicked: root.summonSpeedTest()
+           }
+ 
++          Button {
++            id: impalaAction
++            visible: root.canLaunchImpala
++            iconText: "󰆍"
++            tooltipText: "Open impala (Wi-Fi manager)"
++            foreground: root.bar.foreground
++            fontFamily: root.bar.fontFamily
++            iconSize: Style.font.subtitle * 1.5
++            horizontalPadding: Style.space(5)
++            verticalPadding: Style.space(2)
++            hasCursor: root.impalaHeaderHasCursor
++            Layout.alignment: Qt.AlignVCenter
++            onHovered: function(on) { if (on) root.setHeaderCursor(root.impalaHeaderIndex) }
++            onClicked: root.summonImpala()
++          }
++
+           ToggleSwitch {
+             id: powerSwitch
+             visible: root.canToggleWifi

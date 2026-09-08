@@ -131,8 +131,10 @@ in
 
     # Kebun divergence patches on top of the pinned upstream tree (ADR-0012):
     # the network panel's connection state has no iwd backend in Quickshell,
-    # so fall back to omarchy-network-status's script data.
+    # so fall back to omarchy-network-status's script data; also offer an
+    # impala launcher as the panel's Wi-Fi management affordance.
     patch -d $out -p1 < ${./patches/network-iwd-state.patch}
+    patch -d $out -p1 < ${./patches/network-impala-button.patch}
 
     # Wrap the entry scripts so their external commands resolve from the
     # closure, including repo-internal callees via $out/bin.
