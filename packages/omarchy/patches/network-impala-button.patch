@@ -48,7 +48,7 @@ diff -Naur a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/netwo
 +          Button {
 +            id: impalaAction
 +            visible: root.canLaunchImpala
-+            iconText: "󰆍"
++            iconText: ""
 +            tooltipText: "Open impala (Wi-Fi manager)"
 +            foreground: root.bar.foreground
 +            fontFamily: root.bar.fontFamily
