@@ -286,7 +286,10 @@ version. Under the accepted migration these port as the Stage 4/5 script layer; 
 ## 6. Explicitly not doing
 
 - **NetworkManager migration.** v4 moved to NM; kebun stays on iwd (ADR-0002). NM-bound
-  `omarchy-network-*` commands are not portable as-is.
+  `omarchy-network-*` commands are not portable as-is. ADR-0012 patched the network
+  panel's *state* at build time to derive from `omarchy-network-status` script data
+  instead; NM-bound *actions* — panel-side Wi-Fi connect/forget, the QR share,
+  band-set, DNS-set — remain non-portable.
 - **v4 packaging/channel machinery** (`omarchy-update-*`, `pkg-*`, `channel-*`,
   `migrate`, `upgrade-to-quattro`, factory reset, provisioning) — pacman/ALPM concerns,
   no NixOS meaning.
