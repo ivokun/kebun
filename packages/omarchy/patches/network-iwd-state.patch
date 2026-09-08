@@ -1,0 +1,100 @@
+diff -Naur a/shell/plugins/panels/network/Model.js b/shell/plugins/panels/network/Model.js
+--- a/shell/plugins/panels/network/Model.js	2026-09-06 12:21:55.737703950 +0900
++++ b/shell/plugins/panels/network/Model.js	2026-09-06 12:22:26.499412316 +0900
+@@ -14,6 +14,16 @@
+   return icons[index]
+ }
+ 
++// Kebun (iwd): the script layer reports signal in dBm while Quickshell's
++// NetworkManager backend reports a 0-1 fraction, so convert dBm onto the
++// 0-100 percent scale wifiIconFor expects. Classic wireless-tools mapping:
++// -100 dBm reads as 0, -50 dBm (and anything hotter) as 100.
++function signalPercentFromDbm(dbm) {
++  var value = parseFloat(dbm)
++  if (!isFinite(value)) return -1
++  return Math.max(0, Math.min(100, Math.round((value + 100) * 2)))
++}
++
+ function connectionIcon(kind, signalStrength) {
+   if (kind === "wifi") return wifiIconFor(signalStrength)
+   if (kind === "ethernet") return "󰈀"
+@@ -351,6 +361,7 @@
+   module.exports = {
+     parseNetworkStatus: parseNetworkStatus,
+     wifiIconFor: wifiIconFor,
++    signalPercentFromDbm: signalPercentFromDbm,
+     connectionIcon: connectionIcon,
+     formatHeaderSpeed: formatHeaderSpeed,
+     formatHeaderFreq: formatHeaderFreq,
+diff -Naur a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/network/Panel.qml
+--- a/shell/plugins/panels/network/Panel.qml	2026-09-06 12:21:55.737703950 +0900
++++ b/shell/plugins/panels/network/Panel.qml	2026-09-06 12:22:26.505946879 +0900
+@@ -123,7 +123,10 @@
+   // within header actions, band pills, or DNS providers.
+   property string focusSection: "dns"  // "header" | "band" | "dns" | "wifi"
+   property int headerIndex: 0
++  // Kebun (iwd): without NetworkManager the wifi list is empty, so gate the
++  // hero phrase on the script-detected link instead of a connected network.
+   readonly property bool canDisconnect: !!connectedWifiNetwork
++    || (!networkManagerAvailable && !!info.type)
+   readonly property bool headerHasDisconnect: false
+   readonly property bool canShareWifi: info.type === "wifi" && canShareNetwork(connectedWifiNetwork)
+   // The hero switch is the Wi-Fi radio, so it only exists when there is a
+@@ -437,13 +440,25 @@
+   // when both are up, matching the default-route device.
+   readonly property var wiredDevice: findDevice(DeviceType.Wired)
+   readonly property string kind: {
+-    if (wiredDevice && wiredDevice.connected) return "ethernet"
+-    if (connectedWifiNetwork) return "wifi"
++    // Kebun (iwd, ADR-0002): with no NetworkManager backend, devices and
++    // networks are always empty and the stock logic reads "disconnected" even
++    // on a live link. Fall back to omarchy-network-status's script data, which
++    // reports the default route's interface without NetworkManager.
++    if (networkManagerAvailable) {
++      if (wiredDevice && wiredDevice.connected) return "ethernet"
++      if (connectedWifiNetwork) return "wifi"
++      return "disconnected"
++    }
++    // info carries a type only while the default route is up.
++    if (info.type === "wifi") return "wifi"
++    if (info.type === "ethernet") return "ethernet"
+     return "disconnected"
+   }
+   readonly property int signalStrength: connectedWifiNetwork
+     ? Math.round((connectedWifiNetwork.signalStrength || 0) * 100)
+-    : -1
++    : (!networkManagerAvailable && kind === "wifi"
++        ? Model.signalPercentFromDbm(info.signal_dbm)
++        : -1)
+ 
+   function copyToClipboard(value) {
+     if (!value || !root.bar) return
+@@ -890,11 +905,15 @@
+ 
+   // Poll details while the panel is open so the IP/route header catches up
+   // as soon as NetworkManager finishes activating a connection.
++  //
++  // Kebun (iwd): with no NetworkManager there are no state-change signals,
++  // so keep polling (slower) while closed too -- kind, the bar icon and the
++  // hero SSID all hang off this stream.
+   Timer {
+     id: detailsPoll
+-    interval: 1500
++    interval: root.opened ? 1500 : 5000
+     repeat: true
+-    running: root.opened
++    running: true
+     onTriggered: if (!detailsProc.running) detailsProc.running = true
+   }
+ 
+@@ -1095,7 +1114,9 @@
+           color: root.bar.foreground
+           font.family: root.bar.fontFamily
+           font.pixelSize: Style.font.display
+-          opacity: root.networkManagerAvailable ? 1.0 : 0.5
++          // Kebun (iwd): the icon tracks the script-detected state, so the
++          // missing backend no longer means a dimmed, untrustworthy glyph.
++          opacity: 1.0
+           anchors.left: parent.left
+           anchors.verticalCenter: parent.verticalCenter
+         }

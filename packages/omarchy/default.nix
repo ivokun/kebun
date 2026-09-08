@@ -40,6 +40,9 @@
     gpu-screen-recorder # omarchy-capture-screenrecording*
     hyprland
     inotify-tools
+    iw # omarchy-network-status reads SSID/signal/freq via `iw dev … link`
+    iproute2 # omarchy-network-status resolves the default-route interface
+    iputils # omarchy-network-status pings gateway/internet for latency
     jq
     libxkbcommon # xkbcli, keyname resolution in omarchy-menu-keybindings
     localsend # omarchy-menu-share / trigger.share.receive
@@ -84,10 +87,14 @@
     "omarchy-brightness-display"
     "omarchy-toggle-nightlight"
     "omarchy-notification-battery"
+    # Network panel data — the shell's QML spawns it by name on a timer, and
+    # its iw/ip/ping/jq calls must resolve from the closure, not session PATH
+    # (the panel patches derive bar/panel state from this script's output).
+    "omarchy-network-status"
   ];
 in
   pkgs.runCommand "omarchy-shell-env-4.0.2" {
-    nativeBuildInputs = [pkgs.makeWrapper];
+    nativeBuildInputs = [pkgs.makeWrapper pkgs.patch];
   } ''
     mkdir -p $out
 
@@ -112,12 +119,20 @@ in
     # BEFORE wrapProgram: it relocates the original verbatim to .name-wrapped
     # and a broken shebang there survives the wrap. python3 needs PyGObject
     # for omarchy-file-select's D-Bus portal client.
+    #
+    # On top of shebang fixes, kebun divergence patches in patches/ are
+    # applied (currently: network panel iwd state fallback — see ADR-0012).
     for f in $(grep -RIl '^#!/bin/bash' $out 2>/dev/null); do
       sed -i "1s|^#!/bin/bash|#!${pkgs.bash}/bin/bash|" "$f"
     done
     for f in $(grep -RIl '^#!/usr/bin/python3' $out 2>/dev/null); do
       sed -i "1s|^#!/usr/bin/python3|#!${pkgs.python3.withPackages (p: [p.pygobject3])}/bin/python3|" "$f"
     done
+
+    # Kebun divergence patches on top of the pinned upstream tree (ADR-0012):
+    # the network panel's connection state has no iwd backend in Quickshell,
+    # so fall back to omarchy-network-status's script data.
+    patch -d $out -p1 < ${./patches/network-iwd-state.patch}
 
     # Wrap the entry scripts so their external commands resolve from the
     # closure, including repo-internal callees via $out/bin.
