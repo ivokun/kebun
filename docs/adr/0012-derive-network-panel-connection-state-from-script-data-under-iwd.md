@@ -67,6 +67,15 @@ Five edits, each marked `// Kebun (iwd)`:
 - `omarchy-network-status` joins `wrappedScripts`, so its iw/ip/ping/jq calls
   resolve from the closure PATH instead of the session PATH
 
+### 4. Panel affordance: launch the Wi-Fi manager
+
+`packages/omarchy/patches/network-impala-button.patch` adds a header action
+button to the panel, visible only without a NetworkManager backend: it runs
+kebun's `launch-wifi` (floating impala via `launch-or-focus`) and closes the
+panel. The button rides the existing header-action machinery — index
+arithmetic, cursor highlight and Enter activation follow the QR and
+speed-test buttons — so it is keyboard-reachable like the rest of the panel.
+
 Verification: `nixos-rebuild build --flake .#sakura` passes; the patched env
 emits `ssid KAMISAMA`, `signal_dbm -46`, `freq 5180.0` from
 `omarchy-network-status --verbose`; a node test of `Model.js` maps -46 dBm →
@@ -89,7 +98,8 @@ emits `ssid KAMISAMA`, `signal_dbm -46`, `freq 5180.0` from
   (`omarchy-network-band` sets bands via nmcli — its read path returns nothing
   without NM, so the section stays hidden) and the DNS provider *setter* pills
   (`omarchy-dns` write path needs root + NM; its *read* path is NM-free and
-  works, falling back to `/etc/systemd/resolved.conf`). Use impala or iwctl.
+  works, falling back to `/etc/systemd/resolved.conf`). Wi-Fi management is
+  the panel's impala button, SUPER+CTRL+W, the controls menu, or iwctl.
 - The closed-panel poll is permanent: one extra `omarchy-network-status
   --verbose` sample every 5s (two ~1s-budget pings + ip + iw reads) —
   negligible CPU, but always on
@@ -106,6 +116,7 @@ emits `ssid KAMISAMA`, `signal_dbm -46`, `freq 5180.0` from
 
 - ADR-0002 (standalone iwd), ADR-0009 (build-time patch pattern)
 - `packages/omarchy/patches/network-iwd-state.patch`,
+  `packages/omarchy/patches/network-impala-button.patch`,
   `packages/omarchy/default.nix`
 - Upstream: omacom/omarchy v4.0.2 (rev `346e69e`),
   `shell/plugins/panels/network/`
