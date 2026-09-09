@@ -33,12 +33,15 @@
     bash
     brightnessctl # omarchy-brightness-display
     coreutils
+    ffmpeg-headless # omarchy-capture-screenrecording thumbnails + finalize pass (ffmpeg/ffprobe)
     findutils
     gawk
     gnugrep
     gnused
     gpu-screen-recorder # omarchy-capture-screenrecording*
+    grim # omarchy-capture-screenshot/text/qr
     hyprland
+    hyprpicker # omarchy-capture-region's screen freeze (and capture color picker)
     inotify-tools
     iw # omarchy-network-status reads SSID/signal/freq via `iw dev … link`
     iproute2 # omarchy-network-status resolves the default-route interface
@@ -47,13 +50,22 @@
     libxkbcommon # xkbcli, keyname resolution in omarchy-menu-keybindings
     localsend # omarchy-menu-share / trigger.share.receive
     lua # omarchy-menu-keybindings' Lua-dofile cache step
+    # mpv-unwrapped, NOT mpv: plain pkgs.mpv wraps yt-dlp, which builds-depends
+    # on deno — and flake.nix's deno overlay (skipped flaky test) rehashes it,
+    # so every rebuild would compile deno from source (~1h on sakura). The
+    # webcam overlay and notification click-to-play only need local playback.
+    mpv-unwrapped
     perl # omarchy-menu-select builds JSON with perl JSON::PP
     procps
     pulseaudio # pactl, needed by omarchy-audio-output-volume
     quickshell
+    slurp # omarchy-capture-region
     systemd
+    tesseract # omarchy-capture-text (OCR)
     util-linux
+    v4l-utils # v4l2-ctl, omarchy-capture-webcam-list/resolution probing
     wireplumber # wpctl, needed by omarchy-audio-input-mute
+    wl-clipboard # wl-copy, omarchy-capture-screenshot/text/qr
     xdg-terminal-exec # omarchy-launch-floating-terminal-with-presentation
     zbar # zbarimg, omarchy-capture-qr
   ];
@@ -91,6 +103,21 @@
     # its iw/ip/ping/jq calls must resolve from the closure, not session PATH
     # (the panel patches derive bar/panel state from this script's output).
     "omarchy-network-status"
+    # Capture pipeline (upstream parity — backlog item 15): the PRINT /
+    # ALT+PRINT / SUPER+CTRL+PRINT binds and the shell's capture menu routes
+    # spawn these by name. The hyprpicker freeze + smart slurp picker live in
+    # omarchy-capture-region; gpu-screen-recorder is the recording backend.
+    "omarchy-capture-screenshot"
+    "omarchy-capture-region"
+    "omarchy-capture-text"
+    "omarchy-capture-qr"
+    "omarchy-capture-screenrecording"
+    "omarchy-capture-screenrecording-with-webcam"
+    "omarchy-capture-webcam-list"
+    "omarchy-capture-webcam-resize"
+    "omarchy-hyprland-monitor-focused"
+    # Menu `when` clause for the webcam screenrecord route.
+    "omarchy-hw-webcam"
   ];
 in
   pkgs.runCommand "omarchy-shell-env-4.0.2" {

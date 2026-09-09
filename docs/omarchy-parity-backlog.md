@@ -237,9 +237,18 @@ version. Under the accepted migration these port as the Stage 4/5 script layer; 
     Google Meet); 1Password `no_screen_share`; terminal tag matches only `Alacritty` —
     extend to ghostty/kitty/foot so the SUPER+C/V/X clipboard binds go terminal-aware
     everywhere.
-15. **Richer capture.** `screenrecord` is silent; upstream supports desktop audio + mic +
-    webcam overlay via **gpu-screen-recorder** (`gpu-screen-recorder` 6.0.1 is in
-    nixpkgs — evaluate switching backends from wl-screenrec at the same time).
+ 15. **Richer capture.** `screenrecord` is silent; upstream supports desktop audio + mic +
+     webcam overlay via **gpu-screen-recorder** (`gpu-screen-recorder` 6.0.1 is in
+     nixpkgs — evaluate switching backends from wl-screenrec at the same time).
+     → **Delivered (2026-09-09)** — the vendored `omarchy-capture-*` verbs are
+     wrapped (ADR-0009 two-step) and kebun's `screenshot`/`screenshot-clipboard`/
+     `screenshot-ocr`/`screenrecord`/`screenrecord-menu`/`menu-capture` scripts are
+     deleted. PRINT/SHIFT+PRINT/SUPER+CTRL+PRINT/ALT+PRINT/SUPER+CTRL+C now drive
+     the upstream pipeline: hyprpicker freeze + smart picker, gpu-screen-recorder
+     (kms) with audio/webcam options via the shell's `trigger.capture.screenrecord`
+     menu, SIGINT stop, loudnorm finalize pass, and the shell capture menu at
+     SUPER+CTRL+C. `OMARCHY_SCREENSHOT_EDITOR=screenshot-edit` (swappy wrapper)
+     stands in for unpackaged tensaku.
 16. **Webapp icons.** Fetch per-site icons into hicolor at build time instead of
     `icon = "google-chrome"` for all ten entries.
 17. **Wi-Fi QR / password show.** iwd port of `omarchy-network-qr`: read the PSK from

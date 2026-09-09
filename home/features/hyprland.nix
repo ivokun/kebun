@@ -350,8 +350,12 @@ in {
     o.bind("SUPER + CTRL + N", "Toggle nightlight", "omarchy-toggle-nightlight")
 
     -- ─── Screenshots ───
-    o.bind("PRINT", "Screenshot with editing", "grim -g \"$(slurp)\" - | swappy -f -")
-    o.bind("SHIFT + PRINT", "Screenshot to clipboard", "grim -g \"$(slurp)\" - | wl-copy")
+    -- Upstream capture pipeline (vendored omarchy-capture-*, backlog item 15):
+    -- hyprpicker screen freeze, smart region/window/monitor picker, save to
+    -- XDG_PICTURES_DIR + clipboard + toast with click-to-edit.
+    o.bind("PRINT", "Screenshot", "omarchy-capture-screenshot")
+    -- Kebun addition (upstream has no SHIFT+PRINT): same pipeline, clipboard only.
+    o.bind("SHIFT + PRINT", "Screenshot to clipboard", "omarchy-capture-screenshot smart copy")
     o.bind("SUPER + PRINT", "Color picker", "pkill hyprpicker || hyprpicker -a")
 
     -- ─── Battery ───
@@ -364,7 +368,7 @@ in {
     o.bind("SUPER + CTRL + M", "Toggle layout dwindle/master", "toggle-layout")
 
     -- ─── Screenshot OCR ───
-    o.bind("SUPER + CTRL + PRINT", "Screenshot OCR", "screenshot-ocr")
+    o.bind("SUPER + CTRL + PRINT", "Extract text (OCR) from screenshot", "omarchy-capture-text")
 
     -- ─── Lock Screen ───
     -- Lock goes through the shell's ext-session-lock plugin
@@ -389,7 +393,7 @@ in {
     o.bind("SUPER + slash", "Cycle monitor scaling", "cycle-monitor-scaling")
 
     -- ─── Menus (extended) ───
-    o.bind("SUPER + CTRL + C", "Capture menu", "menu-capture")
+    o.bind("SUPER + CTRL + C", "Capture menu", "omarchy-menu toggle capture")
     o.bind("SUPER + CTRL + O", "Toggle menu", "menu-toggle")
     o.bind("SUPER + CTRL + H", "Hardware menu", "menu-hardware")
     o.bind("SUPER + ALT + SPACE", "Kebun menu", "menu-omarchy")
@@ -406,7 +410,54 @@ in {
     o.bind("SUPER + CTRL + ALT + DELETE", "Toggle display mirroring", "toggle-mirror-display")
 
     -- ─── Captures (extended) ───
-    o.bind("ALT + PRINT", "Screen recording menu", "screenrecord-menu")
+    -- Upstream verb pair (utilities.lua): stop the active gpu-screen-recorder
+    -- recording, else open the shell's screenrecord menu (audio/webcam options).
+    o.bind("ALT + PRINT", "Screenrecording", "omarchy-capture-screenrecording --stop-recording || omarchy-menu toggle trigger.capture.screenrecord")
+    o.bind("SUPER + ALT + code:34", "Make webcam overlay smaller", "omarchy-capture-webcam-resize smaller")
+    o.bind("SUPER + ALT + code:35", "Make webcam overlay larger", "omarchy-capture-webcam-resize larger")
+
+    -- Keyboard control for the slurp region picker, ported verbatim from
+    -- upstream default/hypr/bindings/utilities.lua (kebun keeps
+    -- omarchy_default_bindings = false, so the module is not loaded; see
+    -- omarchy-capture-region for the modes these binds invoke).
+    -- The binds live exactly as long as a selection layer is on screen (slurp
+    -- opens one per monitor), so they cannot leak or get stuck.
+    -- Unbinding by key would take a same-key binding out of the user's own config
+    -- with it, so each handle is kept and removed individually.
+    local selection_layers = 0
+    local selection_binds = {}
+
+    hl.on("layer.opened", function(layer)
+      if layer.namespace == "selection" then
+        selection_layers = selection_layers + 1
+        if selection_layers == 1 then
+          selection_binds = {
+            hl.bind("RETURN", hl.dsp.exec_cmd("omarchy-capture-region --take-window"), { description = "Capture highlighted window" }),
+            hl.bind("CTRL + RETURN", hl.dsp.exec_cmd("omarchy-capture-region --take-fullscreen"), { description = "Capture entire screen" }),
+            hl.bind("TAB", hl.dsp.exec_cmd("omarchy-capture-region --select-window next"), { description = "Select next window to capture" }),
+            hl.bind("CTRL + TAB", hl.dsp.exec_cmd("omarchy-capture-region --select-window prev"), { description = "Select previous window to capture" }),
+          }
+          for _, direction in ipairs({ "left", "right", "up", "down" }) do
+            table.insert(
+              selection_binds,
+              hl.bind(direction:upper(), hl.dsp.exec_cmd("omarchy-capture-region --select-window " .. direction), { description = "Select window to capture" })
+            )
+          end
+        end
+      end
+    end)
+
+    hl.on("layer.closed", function(layer)
+      if layer.namespace == "selection" and selection_layers > 0 then
+        selection_layers = selection_layers - 1
+        if selection_layers == 0 then
+          for _, keybind in ipairs(selection_binds) do
+            keybind:unbind()
+          end
+          selection_binds = {}
+        end
+      end
+    end)
 
     -- ─── Sharing ───
     o.bind("SUPER + CTRL + S", "Share (LocalSend)", "localsend-share")

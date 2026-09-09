@@ -35,6 +35,12 @@ in {
   # shell profile and the systemd user environment (environment.d).
   home.sessionVariables.OMARCHY_PATH = "${omarchy}";
 
+  # Screenshot editor for omarchy-capture-screenshot's click-to-edit toast.
+  # Upstream defaults to tensaku-edit (unpackaged in nixpkgs); the override
+  # must be a single-word executable — notification --exec argv is never
+  # re-parsed, so "swappy -f" would not word-split.
+  home.sessionVariables.OMARCHY_SCREENSHOT_EDITOR = "screenshot-edit";
+
   # Stage 5: materialize the staged theme the shell reads at startup (Color.qml
   # reads exactly these two files, watchChanges: false). Both are rendered at
   # build time by the vendored upstream template engine — rebuild to retheme,

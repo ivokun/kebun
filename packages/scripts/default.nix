@@ -8,12 +8,13 @@
 }: let
   palette = import ../../lib/palette.nix;
 in {
-  screenshot = pkgs.writeShellScriptBin "screenshot" ''
-    ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.swappy}/bin/swappy -f -
-  '';
-
-  screenshot-clipboard = pkgs.writeShellScriptBin "screenshot-clipboard" ''
-    ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" - | ${pkgs.wl-clipboard}/bin/wl-copy
+  # Screenshot annotation editor, invoked as OMARCHY_SCREENSHOT_EDITOR by the
+  # vendored omarchy-capture-screenshot. Upstream defaults to tensaku-edit,
+  # which is unpackaged in nixpkgs; swappy preserves kebun's previous editor.
+  # Must be a single-word executable: omarchy-notification-send --exec takes
+  # argv verbatim, so "swappy -f" as the env value would not word-split.
+  screenshot-edit = pkgs.writeShellScriptBin "screenshot-edit" ''
+    exec ${pkgs.swappy}/bin/swappy -f "$@"
   '';
 
   # Bring the panel back after resume, and *prove* that it came back.
@@ -106,20 +107,6 @@ in {
     echo "To update: nix flake update"
   '';
 
-  # Screen recording with wl-screenrec
-  screenrecord = pkgs.writeShellScriptBin "screenrecord" ''
-    OUTPUT="$HOME/Videos/screenrecord-$(date +%Y%m%d-%H%M%S).mp4"
-    mkdir -p "$(dirname "$OUTPUT")"
-
-    if ${pkgs.procps}/bin/pgrep -x wl-screenrec > /dev/null; then
-      ${pkgs.procps}/bin/pkill -x wl-screenrec
-      omarchy-notification-send "Screen recording saved" "$OUTPUT"
-    else
-      omarchy-notification-send "Screen recording started" "Recording to $OUTPUT"
-      ${pkgs.wl-screenrec}/bin/wl-screenrec -g "$(${pkgs.slurp}/bin/slurp)" -f "$OUTPUT"
-    fi
-  '';
-
   # Battery remaining time estimate
   battery-remaining-time = pkgs.writeShellScriptBin "battery-remaining-time" ''
     set -euo pipefail
@@ -189,17 +176,6 @@ in {
     fi
   '';
 
-  # Screenshot OCR
-  screenshot-ocr = pkgs.writeShellScriptBin "screenshot-ocr" ''
-    set -euo pipefail
-    TMPDIR="''${XDG_RUNTIME_DIR:-/tmp}"
-    TMPFILE=$(${pkgs.coreutils}/bin/mktemp -p "$TMPDIR" ocr-XXXXXX.png)
-    trap '${pkgs.coreutils}/bin/rm -f "$TMPFILE"' EXIT
-    ${pkgs.grim}/bin/grim -g "$(${pkgs.slurp}/bin/slurp)" "$TMPFILE"
-    ${pkgs.tesseract}/bin/tesseract "$TMPFILE" stdout | ${pkgs.wl-clipboard}/bin/wl-copy
-    omarchy-notification-send "OCR" "Text copied to clipboard — may persist in clipboard history"
-  '';
-
   # ─── TUI Launch System (inspired by Omarchy) ───
   # Smart focus-or-launch for TUI applications.
   # Prevents duplicate windows: if a window with the given class/title exists,
@@ -247,22 +223,6 @@ in {
   # Launch or focus btop (system activity TUI)
   launch-activity = pkgs.writeShellScriptBin "launch-activity" ''
     exec launch-or-focus "org.kebun.btop" ${pkgs.alacritty}/bin/alacritty --class org.kebun.btop -e btop
-  '';
-
-  # ─── Capture Menu ───
-  menu-capture = pkgs.writeShellScriptBin "menu-capture" ''
-    set -euo pipefail
-
-    CHOICE=$(echo -e "Screenshot (edit)\nScreenshot (clipboard)\nScreenshot (OCR)\nColor picker\nScreen recording" | \
-      omarchy-menu-select "Capture")
-
-    case "$CHOICE" in
-      "Screenshot (edit)") screenshot ;;
-      "Screenshot (clipboard)") screenshot-clipboard ;;
-      "Screenshot (OCR)") screenshot-ocr ;;
-      "Color picker") color-picker ;;
-      "Screen recording") screenrecord ;;
-    esac
   '';
 
   # ─── Toggle Menu ───
@@ -521,31 +481,6 @@ in {
       ${hyprland}/bin/hyprctl keyword monitor "$SECONDARY,preferred,auto,1,mirror,$PRIMARY"
       omarchy-notification-send "Display" "Mirroring $PRIMARY to $SECONDARY"
     fi
-  '';
-
-  # ─── Screen Recording Menu ───
-  screenrecord-menu = pkgs.writeShellScriptBin "screenrecord-menu" ''
-    set -euo pipefail
-
-    CHOICE=$(echo -e "Record region\nRecord screen\nStop recording" | \
-      omarchy-menu-select "Screen Record")
-
-    case "$CHOICE" in
-      "Record region") screenrecord ;;
-      "Record screen")
-        OUTPUT="$HOME/Videos/screenrecord-$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S).mp4"
-        ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "$OUTPUT")"
-        OUTPUT_GEOM=$(${hyprland}/bin/hyprctl monitors -j | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | "\(.width)x\(.height)+\(.x),\(.y)"')
-        omarchy-notification-send "Screen recording started" "Recording to $OUTPUT"
-        ${pkgs.wl-screenrec}/bin/wl-screenrec -g "$OUTPUT_GEOM" -f "$OUTPUT"
-        ;;
-      "Stop recording")
-        if ${pkgs.procps}/bin/pgrep -x wl-screenrec > /dev/null; then
-          ${pkgs.procps}/bin/pkill -x wl-screenrec
-          omarchy-notification-send "Screen recording stopped"
-        fi
-        ;;
-    esac
   '';
 
   # ─── LocalSend Share ───

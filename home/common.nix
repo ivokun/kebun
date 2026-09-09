@@ -169,18 +169,15 @@ in {
       # Custom scripts
     ]
     ++ (with scripts; [
-      screenshot
-      screenshot-clipboard
+      screenshot-edit
       wake-display
       color-picker
       window-pop
       check-updates
-      screenrecord
       battery-remaining-time
       toggle-gaps
       toggle-layout
       toggle-power-profile
-      screenshot-ocr
       launch-or-focus
       launch-tui
       launch-audio
@@ -189,7 +186,6 @@ in {
       launch-activity
 
       # Menus
-      menu-capture
       menu-toggle
       menu-hardware
       menu-omarchy
@@ -207,7 +203,6 @@ in {
       toggle-mirror-display
 
       # Media & capture
-      screenrecord-menu
       localsend-share
       transcode
 
