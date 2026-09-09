@@ -31,6 +31,7 @@
 
   runtimeDeps = with pkgs; [
     bash
+    bluez # bluetoothctl, omarchy-bluetooth-device/power
     brightnessctl # omarchy-brightness-display
     coreutils
     ffmpeg-headless # omarchy-capture-screenrecording thumbnails + finalize pass (ffmpeg/ffprobe)
@@ -118,6 +119,12 @@
     "omarchy-hyprland-monitor-focused"
     # Menu `when` clause for the webcam screenrecord route.
     "omarchy-hw-webcam"
+    # Bluetooth panel actions — the QML spawns these by name (toggle, pair,
+    # connect, disconnect, forget); unwrapped they depend on bluetoothctl and
+    # rfkill happening to sit on the session PATH.
+    "omarchy-bluetooth-device"
+    "omarchy-bluetooth-power"
+    "omarchy-restart-bluetooth"
   ];
 in
   pkgs.runCommand "omarchy-shell-env-4.0.2" {
