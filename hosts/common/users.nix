@@ -13,6 +13,9 @@
       "docker"
       "input"
       "storage"
+      # Cowork (claude-desktop's QEMU VM) opens /dev/kvm and /dev/vhost-vsock,
+      # both owned by group kvm.
+      "kvm"
     ];
     shell = pkgs.fish;
     initialPassword = "changeme";

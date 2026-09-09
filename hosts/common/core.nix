@@ -17,7 +17,8 @@
       kernelModules = ["amdgpu" "kvm-amd"];
     };
 
-    kernelModules = ["amdgpu" "kvm-amd" "btusb" "thinkpad_acpi"];
+    # vhost_vsock: Cowork (claude-desktop's VM) needs /dev/vhost-vsock.
+    kernelModules = ["amdgpu" "kvm-amd" "btusb" "thinkpad_acpi" "vhost_vsock"];
 
     supportedFilesystems = ["btrfs" "vfat" "exfat" "nfs"];
 

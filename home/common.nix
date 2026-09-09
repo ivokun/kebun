@@ -90,6 +90,8 @@ in {
 
       # AI
       claude-code
+      # Official Linux beta repackaged from Anthropic's .deb (packages/claude-desktop)
+      (pkgs.callPackage ../packages/claude-desktop {})
 
       # System info
       inxi
@@ -253,6 +255,8 @@ in {
       "x-scheme-handler/http" = "google-chrome.desktop";
       "x-scheme-handler/https" = "google-chrome.desktop";
       "x-scheme-handler/mailto" = "google-chrome.desktop";
+      # claude-desktop deep links (desktop actions, auth callbacks)
+      "x-scheme-handler/claude" = "com.anthropic.Claude.desktop";
     };
   };
 
