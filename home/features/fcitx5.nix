@@ -20,6 +20,16 @@
     Always set layout to the default layout only=False
   '';
 
+  # IME toggle trigger: Alt+Space instead of the fcitx5 default Ctrl+Space.
+  # Declaring TriggerKeys replaces the defaults outright. Plain ALT+SPACE is
+  # unbound in both kebun's and upstream's Hyprland bindings, and on Wayland
+  # the trigger is handled by fcitx5 via input-method-v2 before apps see it.
+  xdg.configFile."fcitx5/config".text = ''
+    [Hotkey]
+    TriggerKeys=
+    0=Alt+space
+  '';
+
   xdg.configFile."fcitx5/profile".text = ''
     [Groups/0]
     Name=Default
