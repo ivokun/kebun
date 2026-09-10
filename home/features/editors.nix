@@ -86,13 +86,6 @@ in {
         '';
       }
       {
-        plugin = continuum;
-        extraConfig = ''
-          set -g @continuum-restore on
-          set -g @continuum-save-interval 10
-        '';
-      }
-      {
         plugin = rose-pine;
         extraConfig = ''
           set -g @rose_pine_variant 'dawn'
@@ -103,6 +96,16 @@ in {
       yank
       battery
       vim-tmux-navigator
+      # continuum must load last: it prepends its save script to status-right,
+      # and any status-setting plugin loaded after it (rose-pine) would clobber
+      # the interpolation, silently disabling auto-save.
+      {
+        plugin = continuum;
+        extraConfig = ''
+          set -g @continuum-restore on
+          set -g @continuum-save-interval 10
+        '';
+      }
     ];
 
     extraConfig = ''
