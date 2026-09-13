@@ -49,15 +49,47 @@ from den d50f0fce docs and source, and re-verified by a full topology eval.
 
 ## Consequences
 
-- Verified by derivation closure comparison: package set identical
-  (224 = 224), systemd unit list identical, and the residual toplevel drv
-  difference is bounded to the home-manager user-env layer (man-paths,
-  fish-completions, fontconfig xml, hm_files, activation chain) caused by
-  Den's DAG ordering the merged lists — a benign, semantics-preserving
-  delta. Deploying on sakura exercises every runtime path in one rebuild.
-- `flake.nix` no longer maintains parallel wiring lists; adding a host
-  concern is an aspect include, and adding a home feature is one import in
-  the ivokun aspect.
-- Buffers for later: expose `system`/`hostname` via context (host schema)
-  rather than hardcoded `_module.args`; consider `den.batteries.unfree`
-  to replace `nixpkgs.config.allowUnfree` per aspect.
+### Equivalence verification (post-merge, 2026-09-13)
+
+Both toplevels were built with `nix build --no-link --json` and compared at
+the built outputs:
+
+- **A** (pre-Den, `daac5ed`): drv `kh37knmg…`, out `c5gpwjll…`
+- **B** (Den, main `4586c35`): drv `w8amlw04…`, out `x4anw5ri…`
+
+Identical (semantics-preserving):
+
+- **Kernel and initrd** resolve to the same store paths (6.18.40,
+  `2l5dzw…bzImage` / `sjak6zw…initrd`).
+- **`boot.json`** differs only in its `init`/`toplevel` self-references —
+  zero semantic unit differences (unit list already verified identical).
+- **HM binaries**: 696/703 bin entries in `home-manager-path` are identical
+  by name and resolved package identity.
+
+Path-swap-only noise (expected on every rebuild): `dbus session.conf`,
+`dbus-broker` overrides, and `mandb.service` differ only in embedded store
+hashes (`system-path`, `man-paths`), not in content semantics.
+
+Residual 7-binary delta attributed to upstream, not Den: `cc35d92`
+("route capture through the vendored upstream pipeline") replaced
+`screenshot`, `screenshot-clipboard`, `screenshot-ocr`, `screenrecord`,
+`screenrecord-menu`, `menu-capture` with `screenshot-edit` — a commit on
+main between `daac5ed` and the merge that sakura has not deployed yet. The
+equivalence claim is therefore: the Den migration itself introduces no
+behavior change beyond the ordinary drift of the advancing nixpkgs input,
+independent of the framework.
+
+`flake.nix` no longer maintains parallel wiring lists; adding a host
+concern is an aspect include, and adding a home feature is one import in
+the ivokun aspect.
+
+Follow-ups (deliberately deferred):
+
+- Expose `system`/`hostname` via context (host schema) rather than the
+  hardcoded `_module.args` bridges (`modules/aspects.nix`, `modules/users.nix`).
+- Consider `den.batteries.unfree` to replace the blanket
+  `nixpkgs.config.allowUnfree` with per-aspect unfree lists.
+- The vendored scripts' two-step wiring (define in
+  `packages/scripts/default.nix`, add to `home/common.nix`) is unchanged;
+  a future quirk/pipe pass could make script registration single-step.
+
