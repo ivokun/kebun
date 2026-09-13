@@ -33,6 +33,21 @@
         "type": "github"
       }
     },
+    "den": {
+      "locked": {
+        "lastModified": 1788557660,
+        "narHash": "sha256-d+MZh9bFT8FrI6FCCEKr/Jar0ipVbX0lm2/1/7wjFQI=",
+        "owner": "denful",
+        "repo": "den",
+        "rev": "d50f0fce6fc1a8ba00fd0d310746d0e8ecc2f70d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "denful",
+        "repo": "den",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -472,6 +487,7 @@
     },
     "root": {
       "inputs": {
+        "den": "den",
         "home-manager": "home-manager",
         "hyprland": "hyprland",
         "nh": "nh",
