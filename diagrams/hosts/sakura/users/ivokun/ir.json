@@ -1,0 +1,396 @@
+{
+  "direction": "LR",
+  "edges": [
+    {
+      "from": "den__batteries__define_user",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__define_user__ivokun_sakura"
+    },
+    {
+      "from": "ivokun",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__define_user"
+    },
+    {
+      "from": "ivokun",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__primary_user_ivokun_sakura_"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "_policy_hm_user_detect__0_"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "n_default"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "ivokun"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "user__resolve_user_"
+    }
+  ],
+  "entityEdges": [],
+  "entityInstances": [
+    {
+      "id": "ctx_user_ivokun",
+      "kind": "user",
+      "label": "user: ivokun",
+      "name": "ivokun"
+    }
+  ],
+  "entityKinds": [
+    {
+      "ctxKeys": [
+        "host",
+        "system",
+        "user"
+      ],
+      "id": "ctx_user",
+      "name": "user"
+    }
+  ],
+  "nodes": [
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "<policy:hm-user-detect>[0]",
+      "hasClass": false,
+      "id": "_policy_hm_user_detect__0_",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "<policy:hm-user-detect>[0]",
+      "pathKey": "<policy:hm-user-detect>[0]",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "default",
+      "hasClass": true,
+      "id": "n_default",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "default",
+      "pathKey": "default",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "den/batteries/define-user",
+      "hasClass": false,
+      "id": "den__batteries__define_user",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/define-user",
+      "pathKey": "den/batteries/define-user",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "trapezoid",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [
+        "host",
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "den/batteries/define-user/ivokun@sakura",
+      "hasClass": true,
+      "id": "den__batteries__define_user__ivokun_sakura",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/define-user/ivokun@sakura",
+      "pathKey": "den/batteries/define-user/ivokun@sakura",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": "user",
+      "fullLabel": "hm-user-detect",
+      "hasClass": false,
+      "id": "hm_user_detect",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "hm-user-detect",
+      "pathKey": "hm-user-detect",
+      "perClass": {},
+      "policyName": "hm-user-detect",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "ivokun",
+      "hasClass": true,
+      "id": "ivokun",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "ivokun",
+      "pathKey": "ivokun",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": "user",
+      "fullLabel": "os-to-host",
+      "hasClass": false,
+      "id": "os_to_host",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "os-to-host",
+      "pathKey": "os-to-host",
+      "perClass": {},
+      "policyName": "os-to-host",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [
+        "host",
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "den/batteries/primary-user(ivokun@sakura)",
+      "hasClass": true,
+      "id": "den__batteries__primary_user_ivokun_sakura_",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/primary-user(ivokun@sakura)",
+      "pathKey": "den/batteries/primary-user(ivokun@sakura)",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "user",
+      "hasClass": false,
+      "id": "user",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "user",
+      "pathKey": "user",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": "user",
+      "fullLabel": "user-to-host",
+      "hasClass": false,
+      "id": "user_to_host",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "user-to-host",
+      "pathKey": "user-to-host",
+      "perClass": {},
+      "policyName": "user-to-host",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "user/resolve(user)",
+      "hasClass": false,
+      "id": "user__resolve_user_",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "user/resolve(user)",
+      "pathKey": "user/resolve(user)",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "terminal",
+      "to": null
+    }
+  ],
+  "rootId": "ivokun",
+  "rootName": "ivokun"
+}

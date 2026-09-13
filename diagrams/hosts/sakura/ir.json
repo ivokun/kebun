@@ -1,0 +1,1179 @@
+{
+  "direction": "LR",
+  "edges": [
+    {
+      "from": "default_host_sakura",
+      "label": null,
+      "style": "normal",
+      "to": "insecure_predicate"
+    },
+    {
+      "from": "default_host_sakura",
+      "label": null,
+      "style": "normal",
+      "to": "unfree_predicate"
+    },
+    {
+      "from": "den__batteries__define_user",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__define_user__ivokun_sakura"
+    },
+    {
+      "from": "den__batteries__hostname",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__hostname__os"
+    },
+    {
+      "from": "host",
+      "label": null,
+      "style": "normal",
+      "to": "default_host_sakura"
+    },
+    {
+      "from": "host",
+      "label": null,
+      "style": "normal",
+      "to": "host__resolve_host_"
+    },
+    {
+      "from": "host",
+      "label": null,
+      "style": "normal",
+      "to": "sakura"
+    },
+    {
+      "from": "insecure_predicate",
+      "label": null,
+      "style": "normal",
+      "to": "insecure_predicate__os"
+    },
+    {
+      "from": "insecure_predicate",
+      "label": null,
+      "style": "normal",
+      "to": "insecure_predicate__user"
+    },
+    {
+      "from": "ivokun",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__define_user"
+    },
+    {
+      "from": "ivokun",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__primary_user_ivokun_sakura_"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "core"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "desktop"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "dev"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "den__batteries__hostname"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "networking"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "printing"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "shell_entry"
+    },
+    {
+      "from": "sakura",
+      "label": null,
+      "style": "normal",
+      "to": "snapper"
+    },
+    {
+      "from": "unfree_predicate",
+      "label": null,
+      "style": "normal",
+      "to": "unfree_predicate__os"
+    },
+    {
+      "from": "unfree_predicate",
+      "label": null,
+      "style": "normal",
+      "to": "unfree_predicate__user"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "_policy_hm_user_detect__0_"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "default_user_ivokun"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "ivokun"
+    },
+    {
+      "from": "user",
+      "label": null,
+      "style": "normal",
+      "to": "user__resolve_user_"
+    }
+  ],
+  "entityEdges": [],
+  "entityInstances": [
+    {
+      "id": "ctx_user_ivokun",
+      "kind": "user",
+      "label": "user: ivokun",
+      "name": "ivokun"
+    },
+    {
+      "id": "ctx_host_sakura",
+      "kind": "host",
+      "label": "host: sakura",
+      "name": "sakura"
+    }
+  ],
+  "entityKinds": [
+    {
+      "ctxKeys": [
+        "host",
+        "system"
+      ],
+      "id": "ctx_host",
+      "name": "host"
+    },
+    {
+      "ctxKeys": [
+        "host",
+        "system",
+        "user"
+      ],
+      "id": "ctx_user",
+      "name": "user"
+    }
+  ],
+  "nodes": [
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "<policy:hm-user-detect>[0]",
+      "hasClass": false,
+      "id": "_policy_hm_user_detect__0_",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "<policy:hm-user-detect>[0]",
+      "pathKey": "<policy:hm-user-detect>[0]",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "core",
+      "hasClass": true,
+      "id": "core",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "core",
+      "pathKey": "core",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "default",
+      "hasClass": true,
+      "id": "default_host_sakura",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "default",
+      "pathKey": "default",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "default",
+      "hasClass": true,
+      "id": "default_user_ivokun",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "default",
+      "pathKey": "default",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "den/batteries/define-user",
+      "hasClass": false,
+      "id": "den__batteries__define_user",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/define-user",
+      "pathKey": "den/batteries/define-user",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "trapezoid",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [
+        "host",
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "den/batteries/define-user/ivokun@sakura",
+      "hasClass": true,
+      "id": "den__batteries__define_user__ivokun_sakura",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/define-user/ivokun@sakura",
+      "pathKey": "den/batteries/define-user/ivokun@sakura",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "desktop",
+      "hasClass": true,
+      "id": "desktop",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "desktop",
+      "pathKey": "desktop",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "dev",
+      "hasClass": true,
+      "id": "dev",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "dev",
+      "pathKey": "dev",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": "user",
+      "fullLabel": "hm-user-detect",
+      "hasClass": false,
+      "id": "hm_user_detect",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "hm-user-detect",
+      "pathKey": "hm-user-detect",
+      "perClass": {},
+      "policyName": "hm-user-detect",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "host",
+      "hasClass": false,
+      "id": "host",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "host",
+      "pathKey": "host",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": "host",
+      "fullLabel": "host-to-hm-users",
+      "hasClass": false,
+      "id": "host_to_hm_users",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "host-to-hm-users",
+      "pathKey": "host-to-hm-users",
+      "perClass": {},
+      "policyName": "host-to-hm-users",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": "host",
+      "fullLabel": "host-to-users",
+      "hasClass": false,
+      "id": "host_to_users",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "host-to-users",
+      "pathKey": "host-to-users",
+      "perClass": {},
+      "policyName": "host-to-users",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "host/resolve(host)",
+      "hasClass": false,
+      "id": "host__resolve_host_",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "host/resolve(host)",
+      "pathKey": "host/resolve(host)",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "terminal",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "den/batteries/hostname",
+      "hasClass": false,
+      "id": "den__batteries__hostname",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/hostname",
+      "pathKey": "den/batteries/hostname",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "trapezoid",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [
+        "host"
+      ],
+      "from": null,
+      "fullLabel": "den/batteries/hostname/os",
+      "hasClass": true,
+      "id": "den__batteries__hostname__os",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/hostname/os",
+      "pathKey": "den/batteries/hostname/os",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "insecure-predicate",
+      "hasClass": false,
+      "id": "insecure_predicate",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "insecure-predicate",
+      "pathKey": "insecure-predicate",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [
+        "host"
+      ],
+      "from": null,
+      "fullLabel": "insecure-predicate/os",
+      "hasClass": true,
+      "id": "insecure_predicate__os",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "insecure-predicate/os",
+      "pathKey": "insecure-predicate/os",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [
+        "host",
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "insecure-predicate/user",
+      "hasClass": false,
+      "id": "insecure_predicate__user",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "insecure-predicate/user",
+      "pathKey": "insecure-predicate/user",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "ivokun",
+      "hasClass": true,
+      "id": "ivokun",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "ivokun",
+      "pathKey": "ivokun",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "networking",
+      "hasClass": true,
+      "id": "networking",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "networking",
+      "pathKey": "networking",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": "host",
+      "fullLabel": "os-to-host",
+      "hasClass": false,
+      "id": "os_to_host_host_sakura",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "os-to-host",
+      "pathKey": "os-to-host",
+      "perClass": {},
+      "policyName": "os-to-host",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": "user",
+      "fullLabel": "os-to-host",
+      "hasClass": false,
+      "id": "os_to_host_user_ivokun",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "os-to-host",
+      "pathKey": "os-to-host",
+      "perClass": {},
+      "policyName": "os-to-host",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [
+        "host",
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "den/batteries/primary-user(ivokun@sakura)",
+      "hasClass": true,
+      "id": "den__batteries__primary_user_ivokun_sakura_",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": true,
+      "label": "batteries/primary-user(ivokun@sakura)",
+      "pathKey": "den/batteries/primary-user(ivokun@sakura)",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [
+        "den",
+        "batteries"
+      ],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "printing",
+      "hasClass": true,
+      "id": "printing",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "printing",
+      "pathKey": "printing",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [
+        "host"
+      ],
+      "from": null,
+      "fullLabel": "sakura",
+      "hasClass": true,
+      "id": "sakura",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "sakura",
+      "pathKey": "sakura",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "shell-entry",
+      "hasClass": true,
+      "id": "shell_entry",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "shell-entry",
+      "pathKey": "shell-entry",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "snapper",
+      "hasClass": true,
+      "id": "snapper",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "snapper",
+      "pathKey": "snapper",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "unfree-predicate",
+      "hasClass": false,
+      "id": "unfree_predicate",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "unfree-predicate",
+      "pathKey": "unfree-predicate",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [
+        "host"
+      ],
+      "from": null,
+      "fullLabel": "unfree-predicate/os",
+      "hasClass": true,
+      "id": "unfree_predicate__os",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "unfree-predicate/os",
+      "pathKey": "unfree-predicate/os",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "host:sakura",
+      "entityKind": "host",
+      "fnArgNames": [
+        "host",
+        "user"
+      ],
+      "from": null,
+      "fullLabel": "unfree-predicate/user",
+      "hasClass": false,
+      "id": "unfree_predicate__user",
+      "isParametric": true,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "unfree-predicate/user",
+      "pathKey": "unfree-predicate/user",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "hexagon",
+      "style": "default",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "user",
+      "hasClass": false,
+      "id": "user",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "user",
+      "pathKey": "user",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": false,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "adapter",
+      "to": null
+    },
+    {
+      "class": "",
+      "classes": [],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": "user",
+      "fullLabel": "user-to-host",
+      "hasClass": false,
+      "id": "user_to_host",
+      "isParametric": false,
+      "isPolicyDispatch": true,
+      "isProvider": false,
+      "label": "user-to-host",
+      "pathKey": "user-to-host",
+      "perClass": {},
+      "policyName": "user-to-host",
+      "providerPath": [],
+      "shape": "rect",
+      "style": "policy",
+      "to": null
+    },
+    {
+      "class": "nixos",
+      "classes": [
+        "nixos"
+      ],
+      "entityInstance": "user:ivokun",
+      "entityKind": "user",
+      "fnArgNames": [],
+      "from": null,
+      "fullLabel": "user/resolve(user)",
+      "hasClass": false,
+      "id": "user__resolve_user_",
+      "isParametric": false,
+      "isPolicyDispatch": false,
+      "isProvider": false,
+      "label": "user/resolve(user)",
+      "pathKey": "user/resolve(user)",
+      "perClass": {
+        "nixos": {
+          "excluded": false,
+          "excludedFrom": null,
+          "hasClass": true,
+          "replacedBy": null
+        }
+      },
+      "policyName": null,
+      "providerPath": [],
+      "shape": "rect",
+      "style": "terminal",
+      "to": null
+    }
+  ],
+  "rootId": "sakura",
+  "rootName": "sakura"
+}
