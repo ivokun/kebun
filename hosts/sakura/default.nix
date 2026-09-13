@@ -3,15 +3,11 @@
   lib,
   pkgs,
   inputs,
-  hostname,
-  username,
   ...
 }: {
   imports = [
     ./hardware-configuration.nix
   ];
-
-  networking.hostName = hostname;
 
   # ─── AMD APU (Renoir / Ryzen 5 PRO 4650U) ───
   boot.initrd.kernelModules = ["amdgpu"];
