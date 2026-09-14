@@ -35,29 +35,62 @@ config changes apply on reload; UWSM/session changes need a re-login.
 
 ## Architecture
 
-### Wiring — everything routes through `flake.nix`
+**Migrated to [Den](https://github.com/denful/den) (ADR-0013, 2026-09-13): the
+wiring is now declarative, aspect-oriented, entity-as-data.** Visual map:
+`diagrams/hosts/sakura.md` (gallery index), rendered tree of all aspect /
+policy / scope views under `diagrams/`.
 
-`flake.nix` is the only place modules get connected, and it does the connecting **imperatively via explicit lists**. There is no auto-import of directories.
+![Aspect hierarchy of kebun](diagrams/hosts/sakura/aspects.mmd.svg)
 
-- `sharedModules` — the NixOS-level modules from `hosts/common/`.
-- `mkHomeManagerModules` — the home-manager modules from `home/`.
-- `mkSystem` composes: `sharedModules` ++ `./hosts/${hostname}` ++ the home-manager NixOS module ++ the per-user home modules.
+The graph: two scopes — `host:sakura` (NixOS) and `user:ivokun`
+(homeManager, nested). The host's aspect spine (`networking → core → dev →
+shell-entry → printing → hostname → snapper`) mounts via aspect `includes`;
+the glue that bridges the two scopes is `host-to-users` (policy resolve),
+`hm-user-detect` (battery), and `os-to-host` (os-class forward). Purple
+nodes are `/os` (nixos-class) content, orange `/user` nodes are
+homeManager-class content. Regenerate: `nix run .#write-diagrams`.
 
-**A new file under `home/features/` or `hosts/common/` does nothing until you add it to the matching list in `flake.nix`.**
+### Wiring — entities declared as data in `modules/`
 
-Home Manager runs as a NixOS module (`home-manager.nixosModules.home-manager`), not standalone — so a single rebuild applies both system and user config, and there is no separate `home-manager switch` step.
+`flake.nix` is a Den entrypoint (`inputs.den.flakeModule` + `evalModules
+./modules/`). All wiring is declarative now:
 
-`specialArgs`/`extraSpecialArgs` pass `inputs`, `username`, `hostname`, and `system` to every module on both layers. Modules take these as function arguments rather than referencing config paths.
+- `modules/den.nix` — entity declarations: `den.hosts.x86_64-linux.sakura.users.ivokun`
+  (`classes = ["homeManager"]`), schema defaults, stateVersions, formatter.
+- `modules/aspects.nix` — host aspects (`core`, `desktop`, `dev`,
+  `networking`, `printing`, `snapper`, `shell-entry` from
+  `modules/aspects/*.nix`, mostly byte-identical moves from
+  `hosts/common/`), plus the `sakura` host aspect composing them with
+  includes and carrying the overlays + `_module.args.inputs`.
+- `modules/users.nix` — the `ivokun` user aspect: the `users.users.ivokun`
+  block via context args, includes `den.batteries.{define-user,primary-user}`,
+  and imports all `home/**` modules untouched (their
+  `username`/`system`/`inputs` fn args are supplied via `_module.args` on
+  the homeManager class — the battery reserves `home-manager.extraSpecialArgs`).
+- `modules/diagrams.nix` — den-diagram rendering (opt-in:
+  `nix run .#write-diagrams`).
 
-### Layers
+**A new file under `home/features/` or `hosts/common/` still does nothing
+until imported** — the lists live in `modules/users.nix` (home) /
+`modules/aspects.nix` (host) instead of `flake.nix`.
+
+Home Manager runs nested under the host (`home-manager` battery with
+`den.batteries.home-manager`), so one rebuild applies both system and user
+config. Modules receive `username`/`system`/`inputs` as fn args via
+`_module.args` (not `specialArgs` anymore).
+
+## Layers
 
 | Layer | Path | Purpose |
 |---|---|---|
-| NixOS, shared | `hosts/common/` | Boot, nix settings, desktop stack, networking, users, dev tools, snapshots |
-| NixOS, host | `hosts/sakura/` | Hardware, LUKS/TPM2, hibernation, power profiles, NFS, Docker |
+| Entities | `modules/den.nix` | Host/user declarations (`den.hosts…`), schema defaults, formatter |
+| NixOS aspects | `modules/aspects/*.nix` | Boot, nix settings, desktop stack, networking, dev tools, snapshots (per-concern aspect files) |
+| NixOS host | `hosts/sakura/` | Hardware, LUKS/TPM2, hibernation, power profiles, NFS, Docker |
 | Home, shared | `home/common.nix` | User package set (incl. custom scripts), browser flags, mime defaults |
 | Home, host | `home/sakura.nix` | Monitor layout (`lib.mkForce`), borg excludes |
-| Home, features | `home/features/` | One file per concern — hyprland (Lua emission), omarchy-shell, shell, terminals, webapps, … |
+| Home, features | `home/features/*` | One file per concern — hyprland (Lua emission), omarchy-shell, shell, terminals, webapps, … |
+| User aspect | `modules/users.nix` | Wires the home modules into `den.aspects.ivokun` |
+| Diagrams | `modules/diagrams.nix`, `diagrams/` | den-diagram views of the resolution pipeline (regen: `nix run .#write-diagrams`) |
 | Packages | `packages/` | Custom script derivations, vendored Omarchy shell environment + theme, IVOKUN wordmark, Plymouth theme |
 
 ### Custom scripts — a two-step wiring
@@ -100,7 +133,8 @@ Deliberately not palette-driven: the upstream-identical literals in the Lua laye
 
 ## Constraints and gotchas
 
-- **Never put `swapDevices` in `hosts/common/`.** The persistent swap device is a dedicated LUKS partition (`luks-e1906…`) declared in `hosts/sakura/hardware-configuration.nix` specifically to keep it out of shared modules. zram (50%, zstd) is primary swap; the LUKS partition is also the hibernation resume target (`boot.resumeDevice` in `hosts/sakura/default.nix`).
+- **`modules/aspects/` files are plain NixOS modules, not aspect bodies.** The `username`/`hostname` fn args they historically took are gone; anything new should use context args (`{ host, user, pkgs, ... }`) or `_module.args`.
+- **Never put `swapDevices` in `modules/aspects/` (ex-"hosts/common").** The persistent swap device is a dedicated LUKS partition (`luks-e1906…`) declared in `hosts/sakura/hardware-configuration.nix` specifically to keep it out of shared modules. zram (50%, zstd) is primary swap; the LUKS partition is also the hibernation resume target (`boot.resumeDevice` in `hosts/sakura/default.nix`).
 - **UWSM is mandatory for launched apps.** `programs.hyprland.withUWSM = true`. In the Lua layer, `o.launch`/`o.launch_on_start` wrap with `uwsm-app --`; `o.exec_on_start` is raw. The shell supervisor uses `o.exec_on_start("uwsm app -- omarchy-launch-shell")` — an explicit wrap, because upstream's `default/hypr/autostart.lua` launches the shell with a raw exec (documented divergence). A raw `exec` breaks systemd session integration (the app lands outside the session scope).
 - **Vendored omarchy scripts are verbatim upstream, patched at build time.** Upstream's Arch shebangs (`#!/bin/bash`, `#!/usr/bin/python3`) don't exist on NixOS — `packages/omarchy/default.nix` rewrites them tree-wide **before** `wrapProgram` (wrapProgram relocates originals verbatim to `.name-wrapped`, so a broken shebang there survives the wrap). New verbs still need two-step wiring: add to `wrappedScripts` + PATH deps in `packages/omarchy/default.nix`; a new interpreter kind needs a new rewrite rule (ADR-0009).
 - **Kebun menus sink into `omarchy-menu-select`/`omarchy-menu-input`** (the shell menu's dmenu mode), not upstream's JSONC route tree. Custom menu content via those two verbs is the pattern, not a workaround.
@@ -126,11 +160,12 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 
 ## Docs
 
+- `diagrams/hosts/sakura.md` — visual gallery of the resolution pipeline (start here to understand the wiring)
 - `INSTALL.md` — full install guide (LUKS + BTRFS + flakes)
 - `OMARCHY_DISCREPANCY_REPORT.md` — historical port-time audit (2026-09-01) that fed ADR-0007; still a useful v4 architecture reference, no longer status
 - `docs/omarchy/quattro-port-inventory.md` — historical port-time inventory (same caveat)
 - `docs/omarchy-parity-backlog.md` — follow-ups, re-scoped post-migration (see its addendum)
-- `docs/adr/` — architecture decision records
+- `docs/adr/` — architecture decision records (0013 = Den adoption)
 - `docs/omarchy/` — research briefs on upstream Omarchy
 - `thoughts/` — in-progress plans and drafts (not authoritative)
 
