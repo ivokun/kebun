@@ -44,6 +44,36 @@
   theme = diagramLib.themeFromPalette edgePalette;
   renderers = diagramLib.renderers {inherit theme;};
 
+  # Post-process mermaid source for GitHub's renderer:
+  # - drop the %%{init}%% frontmatter (GitHub applies its own theme; the raw
+  #   JSON also makes some GitHub clients fall back to a plain code block)
+  # - classDef/class names must not start with '_' (parse error in newer
+  #   mermaid releases) — prefix them with "c".
+  ghSafe = src: let
+    lines = lib.splitString "\n" src;
+    noInit = lib.filter (l: !(lib.hasPrefix "%%{init" l)) lines;
+    classIds = lib.unique (lib.concatMap (
+      l: let
+        parts = lib.strings.splitString " " (lib.trim l);
+      in
+        lib.optionals (lib.head parts == "classDef") [(builtins.elemAt parts 1)]
+    ) (lib.filter (l: lib.hasPrefix "classDef " (lib.trim l)) noInit));
+    underscored = lib.filter (n: lib.hasPrefix "_" n) classIds;
+    apply = ta: tb: text:
+      builtins.foldl' (
+        acc: i: let
+          a = builtins.elemAt ta i;
+          b = builtins.elemAt tb i;
+        in
+          builtins.replaceStrings
+          ["  classDef ${a}" ":::${a}"]
+          ["  classDef ${b}" ":::${b}"]
+          acc
+      )
+      text (lib.range 0 ((builtins.length ta) - 1));
+  in
+    apply underscored (map (n: "c${n}") underscored) (lib.concatStringsSep "\n" noInit);
+
   # --- Auto-discovery ---
   fleetCapture = den.lib.capture.captureFleet {};
   allHosts = lib.concatMap builtins.attrValues (builtins.attrValues den.hosts);
@@ -112,7 +142,7 @@
   fullSummary = lib.concatStringsSep "\n\n---\n\n" ([fleetSummaryText] ++ hostSummaryTexts);
 
   # --- README section composition ---
-  mermaidBlock = src: "```mermaid\n${src}\n```";
+  mermaidBlock = src: "```mermaid\n${ghSafe src}\n```";
 
   collapsible = title: content: ''
     <details>
@@ -141,7 +171,7 @@
   readmeMarkerEnd = "<!-- END:AUTO-GENERATED -->";
 in {
   flake.packages.x86_64-linux = {
-    diagrams-mermaid = pkgs.writeText "architecture.mmd" overviewMermaid;
+    diagrams-mermaid = pkgs.writeText "architecture.mmd" (ghSafe overviewMermaid);
     graph = pkgs.writeShellScriptBin "graph" ''
       cat ${pkgs.writeText "graph.md" fullSummary}
     '';
