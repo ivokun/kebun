@@ -8,5 +8,6 @@
     ./aspects.nix
     ./users.nix
     ./diagrams.nix
+    ./diagrams-mermaid.nix
   ];
 }

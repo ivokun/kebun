@@ -37,18 +37,16 @@ config changes apply on reload; UWSM/session changes need a re-login.
 
 **Migrated to [Den](https://github.com/denful/den) (ADR-0013, 2026-09-13): the
 wiring is now declarative, aspect-oriented, entity-as-data.** Visual map:
-`diagrams/hosts/sakura.md` (gallery index), rendered tree of all aspect /
-policy / scope views under `diagrams/`.
-
-![Aspect hierarchy of kebun](diagrams/hosts/sakura/aspects.mmd.svg)
+the auto-generated mermaid graphs at the bottom of `README.md` (Overview /
+Hosts / Home Manager / Dependencies). Regenerate with
+`nix run .#update-readme`; raw `.mmd` via `nix build .#diagrams-mermaid`;
+plain-text pipeline summary for LLMs via `nix run .#graph`.
 
 The graph: two scopes — `host:sakura` (NixOS) and `user:ivokun`
 (homeManager, nested). The host's aspect spine (`networking → core → dev →
 shell-entry → printing → hostname → snapper`) mounts via aspect `includes`;
 the glue that bridges the two scopes is `host-to-users` (policy resolve),
-`hm-user-detect` (battery), and `os-to-host` (os-class forward). Purple
-nodes are `/os` (nixos-class) content, orange `/user` nodes are
-homeManager-class content. Regenerate: `nix run .#write-diagrams`.
+`hm-user-detect` (battery), and `os-to-host` (os-class forward).
 
 ### Wiring — entities declared as data in `modules/`
 
@@ -67,8 +65,8 @@ homeManager-class content. Regenerate: `nix run .#write-diagrams`.
   and imports all `home/**` modules untouched (their
   `username`/`system`/`inputs` fn args are supplied via `_module.args` on
   the homeManager class — the battery reserves `home-manager.extraSpecialArgs`).
-- `modules/diagrams.nix` — den-diagram rendering (opt-in:
-  `nix run .#write-diagrams`).
+- `modules/diagrams-mermaid.nix` — mermaid graph generation into
+  README (`nix run .#update-readme`).
 
 **A new file under `home/features/` or `hosts/common/` still does nothing
 until imported** — the lists live in `modules/users.nix` (home) /
@@ -90,7 +88,7 @@ config. Modules receive `username`/`system`/`inputs` as fn args via
 | Home, host | `home/sakura.nix` | Monitor layout (`lib.mkForce`), borg excludes |
 | Home, features | `home/features/*` | One file per concern — hyprland (Lua emission), omarchy-shell, shell, terminals, webapps, … |
 | User aspect | `modules/users.nix` | Wires the home modules into `den.aspects.ivokun` |
-| Diagrams | `modules/diagrams.nix`, `diagrams/` | den-diagram views of the resolution pipeline (regen: `nix run .#write-diagrams`) |
+| Diagrams | `modules/diagrams-mermaid.nix` | mermaid graph generation into README (den-diagram; regen: `nix run .#update-readme`) |
 | Packages | `packages/` | Custom script derivations, vendored Omarchy shell environment + theme, IVOKUN wordmark, Plymouth theme |
 
 ### Custom scripts — a two-step wiring
@@ -160,7 +158,7 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 
 ## Docs
 
-- `diagrams/hosts/sakura.md` — visual gallery of the resolution pipeline (start here to understand the wiring)
+- README's auto-generated mermaid section — start here to understand the wiring
 - `INSTALL.md` — full install guide (LUKS + BTRFS + flakes)
 - `OMARCHY_DISCREPANCY_REPORT.md` — historical port-time audit (2026-09-01) that fed ADR-0007; still a useful v4 architecture reference, no longer status
 - `docs/omarchy/quattro-port-inventory.md` — historical port-time inventory (same caveat)

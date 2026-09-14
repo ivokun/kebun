@@ -1,15 +1,14 @@
 {
   # Den entrypoint (ADR-0013). Inputs unchanged; outputs are now produced by
   # Den's evaluation pipeline from modules/.
-  outputs =
-    inputs @ {self, ...}:
-      (inputs.nixpkgs.lib.evalModules {
-        modules = [
-          inputs.den.flakeModule
-          ./modules
-        ];
-        specialArgs = {inherit inputs self;};
-      }).config.flake;
+  outputs = inputs @ {self, ...}:
+    (inputs.nixpkgs.lib.evalModules {
+      modules = [
+        inputs.den.flakeModule
+        ./modules
+      ];
+      specialArgs = {inherit inputs self;};
+    }).config.flake;
 
   inputs = {
     # Den — aspect-oriented resolution framework (ADR-0013).
