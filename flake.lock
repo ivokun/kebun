@@ -82,6 +82,27 @@
         "type": "github"
       }
     },
+    "gen-schema": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1779986641,
+        "narHash": "sha256-KcZuS+hpaloICFcepNXNLpbehh6XoPjWPBteYpTqMRw=",
+        "owner": "sini",
+        "repo": "gen-schema",
+        "rev": "4bd0f6eb1799bf3c38eb3707419157b1f70eb1f5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sini",
+        "repo": "gen-schema",
+        "rev": "4bd0f6eb1799bf3c38eb3707419157b1f70eb1f5",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -425,26 +446,6 @@
         "type": "github"
       }
     },
-    "nh": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1777401891,
-        "narHash": "sha256-3ixfZlUQ0krjSKW2PJ4yRq5lRKDRNLHMWiuYiKzd6KU=",
-        "owner": "viperML",
-        "repo": "nh",
-        "rev": "022883ebe6d8cef6f3083c66734e25c08fcf8dce",
-        "type": "github"
-      },
-      "original": {
-        "owner": "viperML",
-        "repo": "nh",
-        "type": "github"
-      }
-    },
     "nix-index-database": {
       "inputs": {
         "nixpkgs": [
@@ -520,9 +521,9 @@
       "inputs": {
         "den": "den",
         "den-diagram": "den-diagram",
+        "gen-schema": "gen-schema",
         "home-manager": "home-manager",
         "hyprland": "hyprland",
-        "nh": "nh",
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs_2"
       }

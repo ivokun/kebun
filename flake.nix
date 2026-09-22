@@ -1,6 +1,6 @@
 {
-  # Den entrypoint (ADR-0013). Inputs unchanged; outputs are now produced by
-  # Den's evaluation pipeline from modules/.
+  # Den entrypoint (ADR-0013). Outputs are produced by Den's evaluation
+  # pipeline from modules/.
   outputs = inputs @ {self, ...}:
     (inputs.nixpkgs.lib.evalModules {
       modules = [
@@ -32,9 +32,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # nh — Nix Helper for rebuilds
-    nh = {
-      url = "github:viperML/nh";
+    # Schema library behind den's aspect resolution (den.lib.schema). Pinned
+    # to the exact rev in den's CI lock — its no-input fallback — so declaring
+    # the input keeps den off the impure builtins.fetchTarball fallback.
+    gen-schema = {
+      url = "github:sini/gen-schema/4bd0f6eb1799bf3c38eb3707419157b1f70eb1f5";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
