@@ -7,6 +7,7 @@
   # Palette lives in lib/palette.nix (ADR-0007 Stage 5 single-sourcing).
   # ─── Cursor ───
   home.pointerCursor = {
+    enable = true;
     name = "rose-pine-hyprcursor";
     package = pkgs.rose-pine-hyprcursor;
     size = 24;
@@ -42,6 +43,9 @@
       package = pkgs.rose-pine-hyprcursor;
       size = 24;
     };
+    # Preserve the current GTK 4 behavior explicitly without duplicating the
+    # theme definition (Home Manager's future default changes to null).
+    gtk4.theme = config.gtk.theme;
     font = {
       name = "CaskaydiaMono Nerd Font";
       size = 12;

@@ -155,8 +155,9 @@
   };
 
   # Don't spin the disk rebuilding the index on battery (mirrors Omarchy's
-  # plocate-ac-only drop-in).
-  systemd.services.plocate-updatedb.unitConfig.ConditionACPower = true;
+  # plocate-ac-only drop-in). The NixOS module owns update-locatedb — the
+  # upstream plocate units (plocate-updatedb.*) are never installed here.
+  systemd.services.update-locatedb.unitConfig.ConditionACPower = true;
 
   # ─── File Descriptor Limits ───
   boot.kernel.sysctl = {

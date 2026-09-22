@@ -22,6 +22,12 @@ in {
     stateVersion = "25.05";
   };
 
+  # The generated Home Manager manpage currently creates an options.json
+  # derivation with a discarded nixpkgs store context on this pinned HM/Nix
+  # combination. The online manual remains available; avoid the unreliable
+  # derivation until upstream fixes its context handling.
+  manual.manpages.enable = false;
+
   # ─── Packages ───
   home.packages = with pkgs;
     [

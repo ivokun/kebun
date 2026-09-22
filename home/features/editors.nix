@@ -10,8 +10,12 @@ in {
   # ─── Neovim ───
   # LazyVim is best managed outside home-manager since it manages its own plugins.
   # We source the full LazyVim starter + custom configs from the repo.
+  # withRuby/withPython3 stay at their (default) true value — pinned explicitly
+  # because HM now warns about relying on the defaults.
   programs.neovim = {
     enable = true;
+    withRuby = true;
+    withPython3 = true;
     defaultEditor = true;
     vimAlias = true;
     viAlias = true;
@@ -23,23 +27,28 @@ in {
   };
 
   # ─── Git ───
+  # userName/userEmail/aliases/extraConfig migrated to programs.git.settings
+  # (HM deprecation) — rendered output is the same .gitconfig via toGitINI.
   programs.git = {
     enable = true;
-    userName = "Salahuddin Muhammad Iqbal";
-    userEmail = "salahuddin.mi@gmail.com";
 
-    aliases = {
-      co = "checkout";
-      br = "branch";
-      ci = "commit";
-      st = "status";
-      lg = "log --oneline --graph --decorate --all";
-      last = "log -1 HEAD";
-      unstage = "reset HEAD --";
-      amend = "commit --amend";
-    };
+    settings = {
+      user = {
+        name = "Salahuddin Muhammad Iqbal";
+        email = "salahuddin.mi@gmail.com";
+      };
 
-    extraConfig = {
+      alias = {
+        co = "checkout";
+        br = "branch";
+        ci = "commit";
+        st = "status";
+        lg = "log --oneline --graph --decorate --all";
+        last = "log -1 HEAD";
+        unstage = "reset HEAD --";
+        amend = "commit --amend";
+      };
+
       init.defaultBranch = "main";
       core.editor = "nvim";
       pull.rebase = true;

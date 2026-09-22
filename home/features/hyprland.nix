@@ -25,7 +25,17 @@ in {
   # engine swap is Stage 5.
   wayland.windowManager.hyprland = {
     enable = true;
-    package = inputs.hyprland.packages.${pkgs.system}.hyprland;
+    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    # Hyprlang (the .conf renderer) is kept explicit — but nothing is configured
+    # through it: the repo's separate xdg-managed hyprland.lua is the real
+    # config and Hyprland ≥0.53 prefers the .lua entry over the .conf, so the
+    # generated hyprland.conf below is an inert stub.
+    configType = "hyprlang";
+    extraConfig = lib.mkDefault ''
+      # Ignored: configuration ships as ~/.config/hypr/hyprland.lua (kebun Lua
+      # layer, ADR-0007 Stage 3). This stub exists purely to satisfy the HM
+      # module's config emission.
+    '';
     systemd = {
       enable = true;
       variables = ["--all"];
@@ -42,7 +52,7 @@ in {
   # - hyprsunset is the nightlight binary — the shell's
   #   omarchy-toggle-nightlight verb drives it via `hyprctl hyprsunset temperature`
   home.packages = [
-    inputs.hyprland.packages.${pkgs.system}.hyprland
+    inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland
     pkgs.pavucontrol
     pkgs.hyprsunset
   ];

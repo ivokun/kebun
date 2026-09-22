@@ -40,7 +40,7 @@
       export SUDO_EDITOR="$EDITOR"
     '';
 
-    initExtra = ''
+    initContent = ''
       # ─── Custom Functions ───
       # Zoxide wrapper with pwd display
       zd() {
@@ -154,10 +154,13 @@
     nix-direnv.enable = true;
   };
 
+  # Atuin owns Ctrl-R in both shells. Keep fzf's other shell widgets and
+  # completions, but explicitly disable only its history widget.
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
     enableFishIntegration = true;
+    historyWidget.command = "";
   };
 
   programs.eza = {

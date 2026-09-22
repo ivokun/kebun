@@ -99,19 +99,22 @@
   services.power-profiles-daemon.enable = true;
   services.upower.enable = true;
   services.logind = {
-    lidSwitch = "suspend";
-    # "ignore", not "lock": the shell's lock plugin does not listen to logind's
-    # Lock()/LockedHint, so a logind lock would be a no-op — locking on lid
-    # close is the Hyprland binding's job (lid-close script). On AC the machine
-    # stays awake: lock only, no suspend. Suspend on battery stays logind's.
-    lidSwitchExternalPower = "ignore";
-    lidSwitchDocked = "ignore";
-    # "lock", not "suspend". A black screen invites a power-button tap, and
-    # with suspend that put the machine straight back to sleep mid-diagnosis
-    # (2026-07-29 08:32). Locking is idempotent and harmless when already
-    # locked; long-press still powers off.
-    powerKey = "lock";
-    powerKeyLongPress = "poweroff";
+    settings.Login = {
+      # "ignore", not "lock" (and not "suspend"): the shell's lock plugin
+      # does not listen to logind's Lock()/LockedHint, so a logind lock would
+      # be a no-op — locking on lid close is the Hyprland binding's job
+      # (lid-close script). On AC the machine stays awake: lock only, no
+      # suspend. Suspend on battery stays logind's.
+      HandleLidSwitch = "suspend";
+      HandleLidSwitchExternalPower = "ignore";
+      HandleLidSwitchDocked = "ignore";
+      # "lock", not "suspend". A black screen invites a power-button tap, and
+      # with suspend that put the machine straight back to sleep mid-diagnosis
+      # (2026-07-29 08:32). Locking is idempotent and harmless when already
+      # locked; long-press still powers off.
+      HandlePowerKey = "lock";
+      HandlePowerKeyLongPress = "poweroff";
+    };
   };
 
   # ─── Battery-aware power profiles ───

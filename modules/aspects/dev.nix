@@ -18,7 +18,7 @@
 
     docker-compose
 
-    nixfmt-rfc-style
+    nixfmt
     alejandra
     nixd
 

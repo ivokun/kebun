@@ -56,8 +56,10 @@
   # DNS
   services.resolved = {
     enable = true;
-    dnssec = "true";
-    fallbackDns = ["1.1.1.1" "8.8.8.8"];
+    settings.Resolve = {
+      DNSSEC = "yes";
+      FallbackDNS = ["1.1.1.1" "8.8.8.8"];
+    };
   };
 
   # SSH
