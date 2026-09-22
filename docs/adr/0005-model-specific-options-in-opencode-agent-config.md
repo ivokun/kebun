@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; the V1 configuration representation was superseded by ADR-0016.
 
 ## Context
 
@@ -106,5 +106,15 @@ The correct per-model options are not guesswork; they are enumerated by
   `reasoningEffort` option with a `max` tier per `opencode models --verbose`, and
   cheaper at $0.075/$0.25 per Mtok vs $0.22/$0.66). The option shape in decision 3 is
   unchanged; only the model ID moved.
+- 2026-09-22: ADR-0016 migrated the managed binary and configuration to
+  OpenCode V2 2.0.12. The model-specific payloads now live under
+  `request.body` rather than V1's `options`, and permissions use V2's ordered
+  `{action, resource, effect}` entries. The same verification duty remains:
+  inspect the resolved config after every OpenCode or model change. An isolated
+  V2 service resolved all 17 agents without normalization warnings; live
+  availability of `opencode-go/glm-5.3-flash` and `kimi-for-coding/k3` remains
+  a post-activation check on sakura. Both IDs exist in the V2 package's pinned
+  models.dev snapshot; `opencode models` hides credential-disabled providers,
+  so a credential-free smoke test cannot prove account access.
 - Proposed by: ivokun
 - Accepted by: ivokun

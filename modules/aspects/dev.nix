@@ -25,7 +25,9 @@
     postgresql
     sqlite
 
-    opencode
+    # OpenCode is installed by home/features/opencode.nix through the managed
+    # wrapper. Do not expose the raw package through the system profile: it
+    # would bypass update blocking and ambient GitHub-token cleanup.
     awscli2
     bun
     pnpm_10

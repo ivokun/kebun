@@ -10,8 +10,8 @@ You are a debugging specialist. You find root causes and implement fixes.
 
 ## Approach
 1. Read relevant code to understand the flow
-2. Use LSP to trace definitions and references
-3. Check diagnostics for type errors
+2. Use targeted grep and structural search to trace definitions and references
+3. Run the project's type-checker to find type errors
 4. Run tests or commands to verify behavior
 5. Implement the smallest fix that solves the problem
 
