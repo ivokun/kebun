@@ -7,15 +7,15 @@
 # and every dynamic dependency resolve inside the env, and bwrap keeps
 # /nix/store bound so the nix-built Cowork tools run unmodified.
 #
-# Cowork (the QEMU/KVM VM tab) is wired here + in hosts/common:
+# Cowork (the QEMU/KVM VM tab) is wired here and in the host/user aspects:
 #   - qemu-system-x86_64 + virtiofsd land on the env's /usr/bin, and
 #     /usr/libexec/virtiofsd is symlinked in (the app's preferred lookup path)
 #   - OVMF firmware is symlinked at /usr/share/OVMF — the app's hardcoded
 #     lookup path. nixpkgs' OVMFFull ships the 2M pair (OVMF_CODE.fd +
 #     OVMF_VARS.fd); the app tries OVMF_CODE_4M.fd first and falls back.
 #   - /dev/kvm + /dev/vhost-vsock come from the host: the kvm group
-#     (hosts/common/users.nix) and boot.kernelModules vhost_vsock
-#     (hosts/common/core.nix).
+#     (modules/users.nix) and boot.kernelModules vhost_vsock
+#     (modules/aspects/core.nix).
 #
 # Updates: bump `version` and re-fetch the hash —
 #   nix store prefetch-file \

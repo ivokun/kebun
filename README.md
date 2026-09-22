@@ -13,8 +13,8 @@ function args.
 ## At a glance
 
 Two scopes: `host:sakura` (NixOS) and `user:ivokun` (home-manager, nested).
-The host's aspect spine (`networking` → `core` → `dev` → `shell-entry` →
-`printing` → `hostname` → `snapper`) mounts via aspect `includes`; the
+The host aspects (`core`, `desktop`, `dev`, `networking`, `printing`,
+`snapper`, `shell-entry`, and `hostname`) mount via `includes`; the
 glue between the scopes is the `host-to-users` policy, the `hm-user-detect`
 battery, and the `os-to-host` forward. Graphs are the auto-generated
 mermaid sections at the bottom of this page — rendered natively by GitHub
@@ -23,8 +23,9 @@ mermaid sections at the bottom of this page — rendered natively by GitHub
 ## Commands
 
 ```bash
-nixos-rebuild build --flake .#sakura   # eval + build without activating
-nh os switch .                         # apply (normal path)
+nix build .#nixosConfigurations.sakura.config.system.build.toplevel  # any Nix host
+nixos-rebuild build --flake .#sakura   # build on sakura
+nh os switch .                         # apply on sakura only
 nix fmt                                # alejandra formatter
 nix run .#update-readme               # regenerate the mermaid graphs section
 ```
@@ -49,6 +50,9 @@ Post-switch verification: `systemctl --failed`,
 
 - [ADR-0013 — Den adoption](docs/adr/0013-adopt-den-aspect-oriented-framework.md)
   (includes the A/B build-equivalence verification)
+- [ADR-0014 — Workstation trust boundaries](docs/adr/0014-harden-workstation-trust-boundaries.md)
+- [ADR-0015 — Reproducible OpenCode extensions](docs/adr/0015-package-opencode-extensions-reproducibly.md)
+- [ADR-0016 — OpenCode V2 migration](docs/adr/0016-migrate-managed-opencode-to-v2.md)
 - [INSTALL.md](INSTALL.md) — full install guide (LUKS + BTRFS + flakes)
 - [CLAUDE.md](CLAUDE.md) — agent-facing conventions and gotchas (AGENTS.md symlinks to it)
 - Graph packages: `diagrams-mermaid` (raw .mmd), `graph` (text summary for LLMs), `update-readme` (regen README section)
@@ -116,13 +120,11 @@ graph LR
   hm_user_detect["hm-user-detect"]:::hm_user_detect_c
   ivokun{{"ivokun"}}:::ivokun_c
   os_to_host_user_ivokun["os-to-host"]:::os_to_host_user_ivokun_c
-  den__batteries__primary_user_ivokun_sakura_{{"batteries/primary-user(ivokun@sakura)"}}:::den__batteries__primary_user_ivokun_sakura__c
   user["user"]:::user_c
   user_to_host["user-to-host"]:::user_to_host_c
   user__resolve_user_["user/resolve(user)"]:::user__resolve_user__c
   den__batteries__define_user --> den__batteries__define_user__ivokun_sakura
   ivokun --> den__batteries__define_user
-  ivokun --> den__batteries__primary_user_ivokun_sakura_
   user --> _policy_hm_user_detect__0_
   user --> default_user_ivokun
   user --> ivokun
@@ -194,7 +196,6 @@ graph LR
   classDef networking_c fill:#907aa9,stroke:#907aa9,color:#1f1d2e,stroke-width:3px
   classDef os_to_host_host_sakura_c fill:#a9333e,stroke:#a9333e,color:#1f1d2e,stroke-width:2px,stroke-dasharray: 8 4
   classDef os_to_host_user_ivokun_c fill:#ea9d34,stroke:#ea9d34,color:#1f1d2e,stroke-width:2px,stroke-dasharray: 8 4
-  classDef den__batteries__primary_user_ivokun_sakura__c fill:#ea9d34,stroke:#ea9d34,color:#1f1d2e,stroke-width:2px
   classDef printing_c fill:#907aa9,stroke:#907aa9,color:#1f1d2e,stroke-width:3px
   classDef sakura_c fill:#907aa9,stroke:#907aa9,color:#1f1d2e,stroke-width:3px
   classDef shell_entry_c fill:#907aa9,stroke:#907aa9,color:#1f1d2e,stroke-width:3px
@@ -227,13 +228,11 @@ graph LR
   den__batteries__define_user__ivokun_sakura{{"batteries/define-user/ivokun@sakura"}}:::den__batteries__define_user__ivokun_sakura_c
   hm_user_detect["hm-user-detect"]:::hm_user_detect_c
   os_to_host["os-to-host"]:::os_to_host_c
-  den__batteries__primary_user_ivokun_sakura_{{"batteries/primary-user(ivokun@sakura)"}}:::den__batteries__primary_user_ivokun_sakura__c
   user["user"]:::user_c
   user_to_host["user-to-host"]:::user_to_host_c
   user__resolve_user_["user/resolve(user)"]:::user__resolve_user__c
   den__batteries__define_user --> den__batteries__define_user__ivokun_sakura
   ivokun --> den__batteries__define_user
-  ivokun --> den__batteries__primary_user_ivokun_sakura_
   user --> _policy_hm_user_detect__0_
   user --> n_default
   user --> ivokun
@@ -249,7 +248,6 @@ graph LR
   classDef hm_user_detect_c fill:#b4637a,stroke:#b4637a,color:#1f1d2e,stroke-width:2px,stroke-dasharray: 8 4
   classDef ivokun_c fill:#a9333e,stroke:#a9333e,color:#1f1d2e,stroke-width:3px
   classDef os_to_host_c fill:#ea9d34,stroke:#ea9d34,color:#1f1d2e,stroke-width:2px,stroke-dasharray: 8 4
-  classDef den__batteries__primary_user_ivokun_sakura__c fill:#ea9d34,stroke:#ea9d34,color:#1f1d2e,stroke-width:2px
   classDef user_c fill:#a9333e,stroke:#a9333e,color:#1f1d2e,stroke-width:3px
   classDef user_to_host_c fill:#a9333e,stroke:#a9333e,color:#1f1d2e,stroke-width:2px,stroke-dasharray: 8 4
   classDef user__resolve_user__c fill:#fffaf3,stroke:#9893a5,color:#575279,stroke-dasharray: 2 2,stroke-width:1px

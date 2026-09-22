@@ -7,25 +7,30 @@ Kebun is a NixOS system flake for a single machine (`sakura`, a ThinkPad X13 Gen
 ## Commands
 
 ```bash
-# Type-check / build without activating — the fast iteration loop.
-# Catches eval errors, missing options, and build failures. Use this first.
+# On sakura: type-check/build without activating — the fast iteration loop.
 nixos-rebuild build --flake .#sakura
 
-# Apply the config (nh is installed by the flake and is the normal path)
+# On another machine with Nix (including ivokun-htpc): build sakura's
+# closure directly. nixos-rebuild is not installed on the Arch reference host.
+nix build .#nixosConfigurations.sakura.config.system.build.toplevel
+
+# Apply the config — run ON SAKURA, from the repo checkout there.
+# (nh is installed from nixpkgs by home/common.nix and is the normal path.)
 nh os switch .
 
-# Apply without nh
+# Apply without nh — still on sakura
 sudo nixos-rebuild switch --flake .#sakura
 
 # Format every .nix file (alejandra, wired up as the flake formatter)
 nix fmt
 
-# Update flake inputs
-nix flake update              # all inputs
-nix flake update nixpkgs      # one input
+# Update a flake input deliberately; avoid blanket updates during installation.
+nix flake update nixpkgs
 
 # Emergency: /etc/nix/nix.conf ends up with broken placeholder
 # trusted-public-keys after some bad rebuilds. This repairs and rebuilds.
+# The script refuses to run off sakura; test its repair expressions anywhere:
+./fix-and-rebuild.sh --self-test
 ./fix-and-rebuild.sh
 ```
 
@@ -43,8 +48,8 @@ Hosts / Home Manager / Dependencies). Regenerate with
 plain-text pipeline summary for LLMs via `nix run .#graph`.
 
 The graph: two scopes — `host:sakura` (NixOS) and `user:ivokun`
-(homeManager, nested). The host's aspect spine (`networking → core → dev →
-shell-entry → printing → hostname → snapper`) mounts via aspect `includes`;
+(homeManager, nested). The host aspects (`core`, `desktop`, `dev`, `networking`,
+`printing`, `snapper`, `shell-entry`, and `hostname`) mount via `includes`;
 the glue that bridges the two scopes is `host-to-users` (policy resolve),
 `hm-user-detect` (battery), and `os-to-host` (os-class forward).
 
@@ -57,18 +62,20 @@ the glue that bridges the two scopes is `host-to-users` (policy resolve),
   (`classes = ["homeManager"]`), schema defaults, stateVersions, formatter.
 - `modules/aspects.nix` — host aspects (`core`, `desktop`, `dev`,
   `networking`, `printing`, `snapper`, `shell-entry` from
-  `modules/aspects/*.nix`, mostly byte-identical moves from
-  `hosts/common/`), plus the `sakura` host aspect composing them with
-  includes and carrying the overlays + `_module.args.inputs`.
+  `modules/aspects/*.nix`), plus the `sakura` host aspect composing them with
+  includes and carrying the overlays (deno test-skip, opencode bump) +
+  `_module.args.inputs`.
 - `modules/users.nix` — the `ivokun` user aspect: the `users.users.ivokun`
-  block via context args, includes `den.batteries.{define-user,primary-user}`,
-  and imports all `home/**` modules untouched (their
-  `username`/`system`/`inputs` fn args are supplied via `_module.args` on
-  the homeManager class — the battery reserves `home-manager.extraSpecialArgs`).
+  block via context args, includes `den.batteries.define-user` (no
+  `primary-user` battery — it would pull in NetworkManager groups, and this
+  host deliberately runs iwd), and imports all `home/**` modules untouched
+  (their `username`/`system`/`inputs` fn args are supplied via `_module.args`
+  on the homeManager class — the battery reserves
+  `home-manager.extraSpecialArgs`).
 - `modules/diagrams-mermaid.nix` — mermaid graph generation into
   README (`nix run .#update-readme`).
 
-**A new file under `home/features/` or `hosts/common/` still does nothing
+**A new file under `home/features/` or `modules/aspects/` still does nothing
 until imported** — the lists live in `modules/users.nix` (home) /
 `modules/aspects.nix` (host) instead of `flake.nix`.
 
@@ -83,9 +90,9 @@ config. Modules receive `username`/`system`/`inputs` as fn args via
 |---|---|---|
 | Entities | `modules/den.nix` | Host/user declarations (`den.hosts…`), schema defaults, formatter |
 | NixOS aspects | `modules/aspects/*.nix` | Boot, nix settings, desktop stack, networking, dev tools, snapshots (per-concern aspect files) |
-| NixOS host | `hosts/sakura/` | Hardware, LUKS/TPM2, hibernation, power profiles, NFS, Docker |
+| NixOS host | `hosts/sakura/` | Hardware, LUKS/TPM2, power profiles, NFS, Docker |
 | Home, shared | `home/common.nix` | User package set (incl. custom scripts), browser flags, mime defaults |
-| Home, host | `home/sakura.nix` | Monitor layout (`lib.mkForce`), borg excludes |
+| Home, host | `home/sakura.nix` | Host-specific backup excludes |
 | Home, features | `home/features/*` | One file per concern — hyprland (Lua emission), omarchy-shell, shell, terminals, webapps, … |
 | User aspect | `modules/users.nix` | Wires the home modules into `den.aspects.ivokun` |
 | Diagrams | `modules/diagrams-mermaid.nix` | mermaid graph generation into README (den-diagram; regen: `nix run .#update-readme`) |
@@ -121,34 +128,40 @@ Three dispatcher shapes appear in `bindings.lua`:
 
 Rose Pine Dawn is single-sourced in `lib/palette.nix`: upstream's 25-key `colors.toml` schema plus kebun's semantic aliases and derived forms. The shell theme is rendered at **build time** by `packages/omarchy/theme.nix` with the vendored upstream template engine (output byte-identical to the reference machine's staged shell.toml), and `home/features/omarchy-shell.nix` stages it via `home.file` to `~/.local/state/omarchy/current/theme/{colors.toml,shell.toml}` — exactly the two files the shell reads at startup (`watchChanges: false`). Retheme = edit `lib/palette.nix` + rebuild + restart the shell; multi-theme runtime switching is out of scope.
 
-The same palette drives the greeter and the boot splash at build time (ADR-0011): the SDDM greeter is the vendored upstream theme re-skinned in `hosts/common/desktop.nix` (hex substitutions + channel-wise PNG recolor that preserves alpha), and both the greeter and Plymouth show the shared IVOKUN wordmark (`packages/ivokun-wordmark`). A palette edit therefore rethemes shell, greeter and boot in one rebuild.
+The same palette drives the greeter and the boot splash at build time (ADR-0011): the SDDM greeter is the vendored upstream theme re-skinned in `modules/aspects/desktop.nix` (hex substitutions + channel-wise PNG recolor that preserves alpha), and both the greeter and Plymouth show the shared IVOKUN wordmark (`packages/ivokun-wordmark`). A palette edit therefore rethemes shell, greeter and boot in one rebuild.
 
 Deliberately not palette-driven: the upstream-identical literals in the Lua layer — inactive border `rgba(595959aa)`, shadow config, groupbar — stay hardcoded to match upstream byte-for-byte. Untouched palette consumers: helix, nvim, and tmux keep their own (plugin) palettes, and the GTK/Qt side in `theme-rose-pine.nix` uses packaged themes (`rose-pine-gtk-theme` etc.), not hexes.
 
 ### Shell
 
-`fish` is the login shell (`hosts/common/users.nix`). `programs.zsh.enable` stays on at the system level for compatibility, and `home/features/shell.nix` still configures zsh alongside shared tooling (atuin, direnv, zoxide, fzf). Fish-specific abbreviations, functions, and plugins live in `home/features/fish.nix`.
+`fish` is the login shell (wired via `modules/users.nix`, formerly
+`hosts/common/users.nix`). `programs.zsh.enable` stays on at the system level
+for compatibility, and `home/features/shell.nix` still configures zsh
+alongside shared tooling (atuin, direnv, zoxide, fzf). Fish-specific
+abbreviations, functions, and plugins live in `home/features/fish.nix`.
 
 ## Constraints and gotchas
 
 - **`modules/aspects/` files are plain NixOS modules, not aspect bodies.** The `username`/`hostname` fn args they historically took are gone; anything new should use context args (`{ host, user, pkgs, ... }`) or `_module.args`.
-- **Never put `swapDevices` in `modules/aspects/` (ex-"hosts/common").** The persistent swap device is a dedicated LUKS partition (`luks-e1906…`) declared in `hosts/sakura/hardware-configuration.nix` specifically to keep it out of shared modules. zram (50%, zstd) is primary swap; the LUKS partition is also the hibernation resume target (`boot.resumeDevice` in `hosts/sakura/default.nix`).
+- **Never put `swapDevices` in `modules/aspects/` (ex-"hosts/common").** The persistent swap device is a dedicated LUKS partition (`luks-e1906…`) declared in `hosts/sakura/hardware-configuration.nix` specifically to keep it out of shared modules. zram (50%, zstd) is primary swap at runtime; the LUKS partition exists for suspend/swap capacity but is **not** a working hibernation target — it is 8.8 GiB against 30.6 GiB of RAM, so hibernation is disabled (no `boot.resumeDevice`; see the comment block in `hosts/sakura/default.nix` for what a real enablement would take).
 - **UWSM is mandatory for launched apps.** `programs.hyprland.withUWSM = true`. In the Lua layer, `o.launch`/`o.launch_on_start` wrap with `uwsm-app --`; `o.exec_on_start` is raw. The shell supervisor uses `o.exec_on_start("uwsm app -- omarchy-launch-shell")` — an explicit wrap, because upstream's `default/hypr/autostart.lua` launches the shell with a raw exec (documented divergence). A raw `exec` breaks systemd session integration (the app lands outside the session scope).
 - **Vendored omarchy scripts are verbatim upstream, patched at build time.** Upstream's Arch shebangs (`#!/bin/bash`, `#!/usr/bin/python3`) don't exist on NixOS — `packages/omarchy/default.nix` rewrites them tree-wide **before** `wrapProgram` (wrapProgram relocates originals verbatim to `.name-wrapped`, so a broken shebang there survives the wrap). New verbs still need two-step wiring: add to `wrappedScripts` + PATH deps in `packages/omarchy/default.nix`; a new interpreter kind needs a new rewrite rule (ADR-0009).
 - **Kebun menus sink into `omarchy-menu-select`/`omarchy-menu-input`** (the shell menu's dmenu mode), not upstream's JSONC route tree. Custom menu content via those two verbs is the pattern, not a workaround.
 - **HM owns `~/.local/state/omarchy/current/theme/`** (generated output). `shell.json`, `plugins/`, and `toggles/` are user/runtime state — never HM-manage those.
-- **`security.pam.services."omarchy-lock-password"` is load-bearing** (`hosts/common/desktop.nix`): the shell's lock plugin refuses to lock without it.
-- **Deploy status: live since 2026-09-04.** The Stage 3+4 gates were exercised on sakura (shell renders, PAM unlock, SUPER+K cheatsheet, idle/lock timings). Post-deploy hardening landed as ADR-0009–0012. Known accepted gaps: the network panel's connection state now derives from the `omarchy-network-status` script via a build-time patch (ADR-0012 — Quickshell's Networking is NM-only), while panel-side Wi-Fi scan/connect/forget still need NM (Wi-Fi management: the panel's impala button, SUPER+CTRL+W, or iwctl), there is no idle system suspend (idle is the shell plugin: 150s screensaver / 300s lock from shell.json — v3's 900s idle-suspend was **not** carried), and fingerprint unlock stays deferred (backlog §3.2).
-- **Boot has zero prompts by design (ADR-0010).** Both LUKS volumes auto-unlock via TPM2 at PCR 7; SDDM's single password is the machine's only prompt and unlocks the keyring. If a firmware/Secure Boot policy change shifts PCR 7, boot falls back to the passphrase prompt — re-enroll with `sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 <device>`. Autologin stays off.
+- **`security.pam.services."omarchy-lock-password"` is load-bearing** (`modules/aspects/desktop.nix`): the shell's lock plugin refuses to lock without it.
+- **Editing machine vs. build target.** The repo is currently edited on **ivokun-htpc**; the build/switch target remains **sakura**, the machine this flake configures and the only host it declares. Never build-then-switch wherever you happen to be editing: from HTPC, build `.#nixosConfigurations.sakura.config.system.build.toplevel`; only activate on sakura itself (`nh os switch .` from sakura's checkout). sakura is the only kebun-managed machine.
+- **The repo previously lived off-target too.** It used to live on IVOKUN-HTPC before the first deploy (2026-09-04) brought it onto sakura. IVOKUN-HTPC (Arch + Omarchy 4.0.2, live upstream reference at `/usr/share/omarchy`) is back as the active editing machine and remains **not kebun-managed**; its `~/.config` is Omarchy's own state, useful for comparison only. Don't treat HTPC hardware or its monitor layout as sakura facts.
+- **Deploy status: live since 2026-09-04.** The Stage 3+4 gates were exercised on sakura (shell renders, PAM unlock, SUPER+K cheatsheet, idle/lock timings). Post-deploy hardening landed as ADR-0009–0012. Known accepted gaps: the network panel's connection state now derives from the `omarchy-network-status` script via a build-time patch (ADR-0012 — Quickshell's Networking is NM-only), while panel-side Wi-Fi scan/connect/forget still need NM (Wi-Fi management: the panel's impala button, SUPER+CTRL+W, or iwctl), there is no idle system suspend (idle is the shell plugin: 150s screensaver / 300s lock from shell.json — v3's 900s idle-suspend was **not** carried), there is no hibernation (see the swap bullet above), and fingerprint unlock stays deferred (backlog §3.2). Pre-suspend locking lives in `home/features/sleep-lock.nix`: a UWSM user service holds a `PrepareForSleep` delay inhibitor (15s window in `modules/aspects/desktop.nix`) so the shell locks before lid- or menu-triggered suspend. The real session is SDDM → UWSM-managed Hyprland.
+- **Boot has zero prompts by design (ADR-0010).** Both LUKS volumes auto-unlock via TPM2 at PCR 7; SDDM's single password is the machine's only prompt and unlocks the keyring. If firmware policy shifts PCR 7, boot falls back to the passphrase prompt — re-enroll with `sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 <device>`. Autologin stays off. PCR 7 enrollment is not a substitute for verified boot: the repo disables systemd-boot editing but does not provision Secure Boot signing keys, so do not claim offline-tamper resistance until that separate setup exists.
 - **Don't hand-edit HM-managed paths.** Foreign files in HM-owned locations break activation: regular files get moved to `.hm-backup`, but a symlink to a non-store target (e.g. a hand-made `bindings.lua` stopgap) aborts with "would be clobbered" and the whole `nh os switch` fails until the stopgap is removed.
-- **Deno override.** `flake.nix` carries an overlay skipping the flaky Deno test `uv_compat::tests::tty_reset_mode_restores_termios`. Verify the test actually passes before dropping it.
+- **Package overrides.** `modules/aspects.nix` carries the Deno flaky-test skip and the shared OpenCode overlay. OpenCode V2 2.0.12 is packaged in `packages/opencode/opencode-v2.nix`; `lib/opencode-overlay.nix` must remain applied to both the host and nested Home Manager package sets or HM silently falls back to nixpkgs' V1 package. The managed config/plugins use V2 APIs (`agents`, ordered `permissions`, `request.body`, and `setup(ctx)`), and the wrapper blocks self-updates. A version bump requires source/dependency hash updates plus resolved-config, plugin, selected-model, MCP, and native-watcher smoke tests (ADR-0016), not just a new source hash. ADR-0015 also backports sequential-thinking 2026.8.31 and GitHub MCP 1.12.2 under `packages/opencode/`; retain them until the pinned nixpkgs equivalents are at least those versions. Verify the skipped Deno test before dropping its override.
 - **State versions are pinned at `25.05`** (`system.stateVersion` in core.nix and sakura/default.nix, `home.stateVersion` in home/common.nix). Don't bump without reading upstream migration notes.
 - **Home Manager backup extension is `hm-backup`.** Pre-existing dotfiles get renamed on first activation rather than causing a failure.
 - **systemd ordering with `power-profiles-daemon`.** `power-profile-auto` is `wantedBy` the daemon service, not `multi-user.target` — targets are implicitly ordered after everything they `Want`, so target-binding plus `after = ppd` creates a cycle and `switch-to-configuration` aborts with status 4. See the comment in `hosts/sakura/default.nix`.
 - **iwd, not NetworkManager.** `networkmanager.enable = false` is deliberate — `impala` (the WiFi TUI) drives iwd's D-Bus API directly and the two conflict. Wired/DHCP goes through systemd-networkd.
-- **Out-of-store-managed config trees.** Neovim (`home/nvim` → `~/.config/nvim`) and opencode (`home/opencode` → `~/.config/opencode`) are copied file-by-file via `home.file`/`xdg.configFile` because LazyVim manages its own plugins. `home/features/opencode.nix` enumerates every file explicitly — new prompts/skills must be added there.
-- **`/home/.snapshots` must be created manually** as a btrfs subvolume before snapper works: `sudo btrfs subvolume create /home/.snapshots`. The tmpfiles rule only fixes permissions.
-- **The repo is edited and built on sakura itself** (since the first deploy, 2026-09-04 — it used to live on IVOKUN-HTPC). IVOKUN-HTPC (Arch + Omarchy 4.0.2, live upstream reference at `/usr/share/omarchy`) remains the reference machine — not kebun-managed; its `~/.config` is Omarchy's own state, useful for comparison only. Don't treat HTPC hardware or its monitor layout as sakura facts.
+- **Explicitly managed config trees.** Neovim (`home/nvim` → `~/.config/nvim`) is copied file-by-file because LazyVim manages its own plugins. OpenCode's readable source lives under `home/opencode`; `home/features/opencode.nix` renders the main JSON with store-path MCP commands and enumerates prompts, skills, and plugins explicitly. New prompts/skills must be added there, and generated/runtime state (`node_modules`, locks, credentials, service files) must not be Home Manager-owned.
+- **Snapper needs a Btrfs subvolume at `/home/.snapshots`.** `home-snapshots-subvolume.service` creates it and safely replaces only the empty regular directory left by the old tmpfiles rule. Do not replace a non-empty path automatically; inspect it first. After deployment verify with `sudo btrfs subvolume show /home/.snapshots` before trusting snapshots.
+- **Backups are not automated.** `home/sakura.nix` only writes exclusions for manual Borg runs; Snapper is same-disk history, not an off-host backup. A scheduled job still needs an explicit repository and secret-management decision.
 
 ## Conventions
 
@@ -163,7 +176,7 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 - `OMARCHY_DISCREPANCY_REPORT.md` — historical port-time audit (2026-09-01) that fed ADR-0007; still a useful v4 architecture reference, no longer status
 - `docs/omarchy/quattro-port-inventory.md` — historical port-time inventory (same caveat)
 - `docs/omarchy-parity-backlog.md` — follow-ups, re-scoped post-migration (see its addendum)
-- `docs/adr/` — architecture decision records (0013 = Den adoption)
+- `docs/adr/` — architecture decision records (0013 = Den adoption, 0014 = trust boundaries, 0015 = OpenCode supply chain, 0016 = OpenCode V2 migration)
 - `docs/omarchy/` — research briefs on upstream Omarchy
 - `thoughts/` — in-progress plans and drafts (not authoritative)
 

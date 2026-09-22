@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: {
-  # Fcitx5 is enabled at the NixOS level in hosts/common/desktop.nix
+  # Fcitx5 is enabled at the NixOS level in modules/aspects/desktop.nix
   # (i18n.inputMethod is a NixOS module option, not a home-manager option)
   # This module handles user-level configuration only.
 
