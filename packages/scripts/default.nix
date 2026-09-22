@@ -346,7 +346,7 @@ in {
   # ─── File Manager (current directory) ───
   file-manager-cwd = pkgs.writeShellScriptBin "file-manager-cwd" ''
     set -euo pipefail
-    CWD=$(${hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
+    CWD=$("${hyprland}/bin/hyprctl" activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
     [ -z "$CWD" ] && CWD="$HOME"
     [ ! -d "$CWD" ] && CWD="$HOME"
     uwsm app -- ${pkgs.nautilus}/bin/nautilus --new-window "$CWD"
@@ -625,35 +625,35 @@ in {
       omarchy-menu-select "Transcode")
 
     # Use active window's working directory or home
-    CWD=$(${hyprland}/bin/hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
-    [ -z "$CWD" ] \&\& CWD="$HOME"
+    CWD=$("${hyprland}/bin/hyprctl" activewindow -j | ${pkgs.jq}/bin/jq -r '.workingDirectory // empty')
+    [ -z "$CWD" ] && CWD="$HOME"
     cd "$CWD"
 
     case "$CHOICE" in
       "Compress video")
         FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select video" || true)
-        [ -z "$FILE" ] \&\& exit 0
+        [ -z "$FILE" ] && exit 0
         OUTPUT="''${FILE%.*}-compressed.mp4"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -vcodec libx264 -crf 23 -preset fast "$OUTPUT"
         omarchy-notification-send "Transcode" "Compressed: $OUTPUT"
         ;;
       "Extract audio")
         FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select video" || true)
-        [ -z "$FILE" ] \&\& exit 0
+        [ -z "$FILE" ] && exit 0
         OUTPUT="''${FILE%.*}.mp3"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -vn -acodec libmp3lame -q:a 2 "$OUTPUT"
         omarchy-notification-send "Transcode" "Audio extracted: $OUTPUT"
         ;;
       "Convert to MP4")
         FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select file" || true)
-        [ -z "$FILE" ] \&\& exit 0
+        [ -z "$FILE" ] && exit 0
         OUTPUT="''${FILE%.*}.mp4"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -c:v libx264 -c:a aac "$OUTPUT"
         omarchy-notification-send "Transcode" "Converted: $OUTPUT"
         ;;
       "Convert to WebM")
         FILE=$(${pkgs.findutils}/bin/find . -maxdepth 1 -type f \( -iname "*.mp4" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.webm" -o -iname "*.mp3" -o -iname "*.wav" -o -iname "*.flac" -o -iname "*.ogg" -o -iname "*.m4a" \) -printf '%P\n' | omarchy-menu-select "Select file" || true)
-        [ -z "$FILE" ] \&\& exit 0
+        [ -z "$FILE" ] && exit 0
         OUTPUT="''${FILE%.*}.webm"
         ${pkgs.ffmpeg-headless}/bin/ffmpeg -y -i "$FILE" -c:v libvpx-vp9 -c:a libopus "$OUTPUT"
         omarchy-notification-send "Transcode" "Converted: $OUTPUT"
