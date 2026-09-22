@@ -209,14 +209,52 @@
     };
   };
 
-  # ─── Btrfs Snapshots (home only) ───
-  # NOTE: /home/.snapshots must be a BTRFS subvolume, not a regular directory.
-  # Create it manually before first rebuild:
-  #   sudo btrfs subvolume create /home/.snapshots
-  # This tmpfiles rule only ensures permissions after the subvolume exists.
-  systemd.tmpfiles.rules = [
-    "d /home/.snapshots 0750 ivokun users -"
-  ];
+  # systemd-tmpfiles `v` is not sufficient here: it only creates a Btrfs
+  # subvolume when `/` itself is a subvolume, while sakura deliberately mounts
+  # Btrfs's top level as `/`. Safely migrate the empty regular directory that
+  # the old tmpfiles `d` rule may have left behind, but never delete contents.
+  # Snapper is held back if the path is non-empty or otherwise unexpected.
+  systemd.services.home-snapshots-subvolume = {
+    description = "Provision the /home Snapper subvolume";
+    wantedBy = ["multi-user.target"];
+    requiredBy = [
+      "snapperd.service"
+      "snapper-timeline.service"
+      "snapper-cleanup.service"
+    ];
+    before = [
+      "snapperd.service"
+      "snapper-timeline.service"
+      "snapper-cleanup.service"
+    ];
+    unitConfig.RequiresMountsFor = "/home";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -euo pipefail
+      target=/home/.snapshots
+
+      if ${pkgs.btrfs-progs}/bin/btrfs subvolume show "$target" >/dev/null 2>&1; then
+        ${pkgs.coreutils}/bin/chown ivokun:users "$target"
+        ${pkgs.coreutils}/bin/chmod 0750 "$target"
+        exit 0
+      fi
+
+      if [ -e "$target" ]; then
+        if [ ! -d "$target" ] || [ -n "$(${pkgs.findutils}/bin/find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+          echo "$target exists but is not an empty Btrfs subvolume; refusing to replace it" >&2
+          exit 1
+        fi
+        ${pkgs.coreutils}/bin/rmdir -- "$target"
+      fi
+
+      ${pkgs.btrfs-progs}/bin/btrfs subvolume create "$target"
+      ${pkgs.coreutils}/bin/chown ivokun:users "$target"
+      ${pkgs.coreutils}/bin/chmod 0750 "$target"
+    '';
+  };
 
   system.stateVersion = "25.05";
 }

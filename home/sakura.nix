@@ -12,6 +12,8 @@
   # replaced the HM-generated monitor list.
 
   # ─── Borg backup excludes ───
+  # Input for manual/off-host Borg runs only; no scheduled Borg job or secret
+  # is declared here. Snapper's same-disk snapshots are not a backup.
   home.file.".borg-excludes".text = ''
     # Cache directories
     **/.cache
