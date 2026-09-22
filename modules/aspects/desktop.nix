@@ -198,8 +198,10 @@ in {
   # API, so the file is standalone.
   environment.etc."sddm-greeter/hyprland.lua".source = "${sddmGreeterHyprland}/hyprland.lua";
 
-  # Default to Hyprland UWSM session in SDDM
-  services.displayManager.defaultSession = "hyprland";
+  # Default to Hyprland UWSM session in SDDM — the UWSM session entry the
+  # uwsm module generates (providedSessions = ["hyprland-uwsm"]); the bare
+  # "hyprland" session bypasses UWSM's systemd scoping entirely.
+  services.displayManager.defaultSession = "hyprland-uwsm";
 
   # ─── PAM LUKS Integration ───
   # Unlock LUKS devices on login using the provided password.

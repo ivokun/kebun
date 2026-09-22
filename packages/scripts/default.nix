@@ -274,7 +274,7 @@ in {
 
     case "$CHOICE" in
       "Terminal") uwsm app -- ${pkgs.alacritty}/bin/alacritty ;;
-      "Browser") ${pkgs.google-chrome}/bin/google-chrome ;;
+      "Browser") uwsm app -- ${pkgs.google-chrome}/bin/google-chrome ;;
       "Editor") uwsm app -- ${pkgs.alacritty}/bin/alacritty -e ${pkgs.neovim}/bin/nvim ;;
       "File manager") uwsm app -- ${pkgs.nautilus}/bin/nautilus --new-window ;;
       "Lock screen") omarchy-system-lock ;;
@@ -291,11 +291,17 @@ in {
       omarchy-menu-select "Background")
 
     case "$CHOICE" in
-      "Rose Pine Dawn") ${pkgs.swaybg}/bin/swaybg -c '${palette.background}' -m solid_color ;;
-      "Solid white") ${pkgs.swaybg}/bin/swaybg -c '#ffffff' -m solid_color ;;
-      "Solid black") ${pkgs.swaybg}/bin/swaybg -c '#000000' -m solid_color ;;
-      "Solid gray") ${pkgs.swaybg}/bin/swaybg -c '#808080' -m solid_color ;;
+      "Rose Pine Dawn") COLOR='${palette.background}' ;;
+      "Solid white") COLOR='#ffffff' ;;
+      "Solid black") COLOR='#000000' ;;
+      "Solid gray") COLOR='#808080' ;;
+      *) exit 0 ;;
     esac
+
+    # Exactly one wallpaper process owns the outputs. Run the replacement in
+    # the UWSM application scope so it remains part of the graphical session.
+    ${pkgs.procps}/bin/pkill -x swaybg 2>/dev/null || true
+    exec uwsm app -- ${pkgs.swaybg}/bin/swaybg -c "$COLOR" -m solid_color
   '';
 
   # ─── Close All Windows ───
