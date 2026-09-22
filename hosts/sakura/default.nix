@@ -179,14 +179,27 @@
   fileSystems."/mnt/tubeinas" = {
     device = "192.168.100.29:/mnt/tank/ivokun";
     fsType = "nfs";
-    options = ["vers=4" "rw" "x-systemd.automount" "x-systemd.idle-timeout=600" "noauto" "_netdev"];
+    options = [
+      "vers=4"
+      "rw"
+      "nosuid"
+      "nodev"
+      "noexec"
+      "x-systemd.automount"
+      "x-systemd.idle-timeout=600"
+      "x-systemd.requires=tailscaled.service"
+      "x-systemd.after=tailscaled.service"
+      "noauto"
+      "_netdev"
+    ];
   };
 
   # ─── Docker ───
-  virtualisation.docker = {
+  # Rootless Docker preserves the lazydocker workflow without granting the
+  # desktop user root-equivalent access to the system daemon socket.
+  virtualisation.docker.rootless = {
     enable = true;
-    enableOnBoot = true;
-    autoPrune.enable = true;
+    setSocketVariable = true;
   };
 
   # ─── Keyboard ───

@@ -9,6 +9,12 @@
   boot = {
     loader = {
       systemd-boot.enable = true;
+      # Disable the editor: anyone at the keyboard could otherwise edit the
+      # kernel command line and bypass the LUKS passphrase entirely
+      # (init=/bin/sh). FIDO/TPM disk encryption is meaningless if the boot
+      # menu can inject its own cmdline. Rebooting to a generation is still
+      # possible via the reboot-into-menu entry.
+      systemd-boot.editor = false;
       efi.canTouchEfiVariables = true;
     };
 
@@ -59,9 +65,10 @@
     memoryPercent = 50;
     algorithm = "zstd";
   };
-  # NOTE: The persistent swap device (a dedicated LUKS-encrypted partition,
-  # also the hibernation resume target — see hosts/sakura/default.nix) is
-  # defined in hardware-configuration.nix to avoid merge conflicts.
+  # NOTE: The persistent swap device is a dedicated LUKS-encrypted partition.
+  # It was intended as a hibernation resume target, but hibernation is disabled
+  # because swap is smaller than RAM — see hosts/sakura/default.nix. The device
+  # stays in hardware-configuration.nix to avoid merge conflicts.
   # Do NOT add swapDevices here.
 
   # ─── Locale / Time ───
@@ -101,7 +108,9 @@
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
         "hyprland.cachix.org-1:a7pgxQMzO+MR5HsMYwJfn+BFMQjEnJPSIlWM+NLSo60="
       ];
-      trusted-users = ["root" "@wheel"];
+      # Trusted Nix clients can override daemon safety policy and are therefore
+      # root-equivalent. Interactive administrators use sudo when it is needed.
+      trusted-users = lib.mkForce ["root"];
     };
 
     gc = {

@@ -34,6 +34,9 @@
     bluez # bluetoothctl, omarchy-bluetooth-device/power
     brightnessctl # omarchy-brightness-display
     coreutils
+    # dbus-monitor (omarchy-system-sleep-monitor's PrepareForSleep listener)
+    # and busctl (omarchy-system-sleep-lock's InhibitDelayMaxUSec probe)
+    dbus
     ffmpeg-headless # omarchy-capture-screenrecording thumbnails + finalize pass (ffmpeg/ffprobe)
     findutils
     gawk
@@ -79,6 +82,13 @@
     "omarchy-osd"
     "omarchy-notification-send"
     "omarchy-system-lock"
+    # Pre-suspend locking (upstream Omarchy v4.0.2 parity): the monitor holds
+    # a delay inhibitor on PrepareForSleep and the lock script secures the
+    # session before the window expires (home/features/sleep-lock.nix starts
+    # the monitor). dbus-monitor / busctl / systemd-inhibit resolve from
+    # runtimeDeps above.
+    "omarchy-system-sleep-monitor"
+    "omarchy-system-sleep-lock"
     "omarchy-launch-shell"
     "omarchy-restart-shell"
     "omarchy-toggle"

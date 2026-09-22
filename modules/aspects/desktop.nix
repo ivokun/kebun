@@ -227,6 +227,18 @@ in {
   # (omarchy-lock-fingerprint + fprintd) is deferred — see backlog §3.2.
   security.pam.services."omarchy-lock-password" = {};
 
+  # ─── Pre-suspend locking ───
+  # omarchy-sleep-lock (home/features/sleep-lock.nix) holds a delay inhibitor
+  # so the session is locked before the machine suspends. A delay inhibitor is
+  # a timer, not a promise: logind suspends anyway once the window expires,
+  # locked or not. Five seconds is not enough when closing the lid also
+  # reconfigures displays — Quickshell waits for the screen set to settle
+  # before it can secure. Matches upstream's
+  # etc/systemd/logind.conf.d/20-inhibit-delay.conf; this only costs anything
+  # when locking is broken, since a healthy lock releases the inhibitor in
+  # well under a second.
+  services.logind.settings.Login.InhibitDelayMaxSec = 15;
+
   # ─── Desktop packages (system-level) ───
   environment.systemPackages = with pkgs; [
     # SDDM theme (must be in systemPackages for /run/current-system/sw/share/sddm/themes)

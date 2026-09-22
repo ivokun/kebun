@@ -753,7 +753,10 @@ in {
   # Idle is the shell's idle service plugin now; timings live in shell.json
   # (screensaver 150s, lock 300s). No idle-suspend: the v3 hypridle 900s
   # suspend listener is intentionally not carried — noted for deploy
-  # validation on sakura.
+  # validation on sakura. That only means the machine never suspends from
+  # idleness; suspends from the lid or the power menu are still preceded by a
+  # lock — omarchy-sleep-lock (sleep-lock.nix) holds a delay inhibitor on
+  # PrepareForSleep and secures the session first.
 
   # ─── Lock screen ───
   # The shell's lock plugin is the lock screen now (omarchy-shell lock lock).

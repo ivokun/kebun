@@ -1,6 +1,6 @@
 # Den migration — host aspects & wiring (ADR-0013).
-# hosts/common/*.nix are kept as plain NixOS modules and captured here as
-# aspect imports — their bodies are untouched. Like the pre-Den flake, the
+# The former hosts/common modules are plain NixOS modules under aspects/ and
+# are captured here as aspect imports. Like the pre-Den flake, the
 # username/hostname/system fn args those modules request are delivered via
 # nixosSystem specialArgs and home-manager extraSpecialArgs, applied here
 # with standalone hosts.batteries (define-user handles the user side).
@@ -10,7 +10,7 @@
   lib,
   ...
 }: {
-  # ─── Shared host aspects (1:1 from hosts/common/) ───
+  # ─── Shared host aspects ───
   den.aspects.core.nixos.imports = [
     ./aspects/core.nix
     inputs.nix-index-database.nixosModules.nix-index
@@ -21,12 +21,10 @@
   den.aspects.printing.nixos.imports = [./aspects/printing.nix];
   den.aspects.snapper.nixos.imports = [./aspects/snapper.nix];
 
-  # The host-free settings from hosts/common/users.nix.
+  # Host-free shell settings from the former hosts/common/users.nix.
   den.aspects.shell-entry.nixos = {
     programs.fish.enable = true;
     programs.zsh.enable = true;
-
-    nix.settings.trusted-users = ["root" "@wheel"];
   };
 
   # ─── Host aspect: sakura ───

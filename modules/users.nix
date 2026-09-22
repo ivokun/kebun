@@ -13,12 +13,14 @@
   den.aspects.ivokun = {
     includes = [
       den.batteries.define-user
-      den.batteries.primary-user
     ];
 
-    # OS-level user definition (the users.users block from
-    # hosts/common/users.nix; the free-standing programs.fish/zsh and nix
-    # trusted-users live in den.aspects.shell-entry).
+    # OS-level user definition (the former hosts/common/users.nix block;
+    # the free-standing programs.fish/zsh live in den.aspects.shell-entry,
+    # while Nix daemon trust policy lives in the core aspect). No primary-user
+    # battery: iwd replaces
+    # NetworkManager on this host, so the battery's networkmanager group
+    # would point at a daemon that is deliberately disabled.
     nixos = {
       user,
       pkgs,
@@ -28,18 +30,24 @@
         isNormalUser = true;
         extraGroups = [
           "wheel"
-          "video"
-          "audio"
-          "docker"
-          "input"
-          "storage"
           # Cowork (claude-desktop's QEMU VM) opens /dev/kvm and
           # /dev/vhost-vsock, both owned by group kvm.
           "kvm"
         ];
         shell = pkgs.fish;
-        initialPassword = "changeme";
+
+        # Passwords stay mutable and are set interactively (`passwd ivokun`)
+        # after installation; never place a reusable password in the Nix store.
+        # A fresh account remains locked until that interactive step.
+        initialHashedPassword = "!";
+        # Administrative SSH is key-only and restricted to tailscale0 by the
+        # networking aspect. This is the operator key on IVOKUN-HTPC.
+        openssh.authorizedKeys.keyFiles = [../keys/ivokun-htpc.pub];
       };
+
+      # Keep privilege elevation password-gated even if the upstream default
+      # changes. `wheel` remains intentional for local administration.
+      security.sudo.wheelNeedsPassword = true;
     };
 
     # Home Manager config for this user — all original home/ modules, with
@@ -69,6 +77,7 @@
         ../home/features/helix.nix
         ../home/features/mpv.nix
         ../home/features/webapps.nix
+        ../home/features/sleep-lock.nix
       ];
       _module.args.username = lib.mkForce "ivokun";
       _module.args.system = lib.mkForce "x86_64-linux";

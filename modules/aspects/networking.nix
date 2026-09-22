@@ -21,12 +21,22 @@
 
     firewall = {
       enable = true;
-      # 53317 is LocalSend. Without it the app and the `localsend-share`
-      # script can send but never appear to peers, because discovery is a
-      # UDP multicast announcement on that port and the transfer itself is
-      # the matching TCP listener.
-      allowedTCPPorts = [22 80 443 53317];
-      allowedUDPPorts = [53317];
+
+      # LocalSend discovery/transfer and printer discovery belong on physical
+      # LAN links only. SSH is administrative traffic and is reachable only
+      # through the tailnet. Keeping these interface-scoped avoids exposing a
+      # future listener merely because it happens to bind 0.0.0.0.
+      interfaces = {
+        "wl+" = {
+          allowedTCPPorts = [53317];
+          allowedUDPPorts = [53317 5353];
+        };
+        "en+" = {
+          allowedTCPPorts = [53317];
+          allowedUDPPorts = [53317 5353];
+        };
+        tailscale0.allowedTCPPorts = [22];
+      };
     };
   };
 
@@ -65,15 +75,12 @@
   # SSH
   services.openssh = {
     enable = true;
+    openFirewall = false;
     settings = {
-      PasswordAuthentication = true; # Change to false after setup
+      PasswordAuthentication = false;
+      KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
+      AllowUsers = ["ivokun"];
     };
-  };
-
-  # Avahi (mDNS for local network discovery)
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
   };
 }
