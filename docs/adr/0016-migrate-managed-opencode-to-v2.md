@@ -100,12 +100,13 @@ configuration:
 - the wrapper blocks self-updates, and all rendered local MCP commands avoid
   `npx`, `uvx`, and runtime package downloads.
 
-The bundled, fetch-disabled models.dev snapshot contains both
-`opencode-go/glm-5.3-flash` and `kimi-for-coding/k3`. The `opencode models`
-command lists only models whose providers are enabled, however, so the
-isolated credential-free smoke exposes only OpenCode's public free models.
-Seeing both selected IDs with sakura's real provider credentials remains a
-deployment gate.
+The bundled, fetch-disabled models.dev snapshot contains
+`kimi-for-coding/k3`; OpenCode Go supplies its account-backed catalog
+dynamically, and the reference host lists `opencode-go/glm-5.3-flash` there.
+The `opencode models` command lists only models whose providers are enabled,
+so the isolated credential-free smoke exposes only OpenCode's public free
+models. Seeing both selected IDs with sakura's real provider credentials
+remains a deployment gate.
 
 Activation and user-state checks must run on sakura only, after `nh os switch
 .`: selected-model availability, provider credentials, GitHub keyring access,

@@ -598,11 +598,15 @@ else
 fi
 opencode debug config
 opencode debug agents
+# The first command starts the background service; let local plugin discovery
+# finish before asserting the inventory.
+sleep 2
 opencode plugin list
 
-# Both selected models must be present for the configured agents. They exist in
-# the pinned catalog; absence here means the corresponding provider credential
-# is not enabled for this account.
+# Both selected models must be present for the configured agents. Kimi is in
+# the pinned models.dev snapshot; OpenCode Go supplies its account catalog
+# dynamically. Absence here means the provider credential/catalog is not
+# enabled for this account.
 opencode models | grep -Fx "opencode-go/glm-5.3-flash"
 opencode models | grep -Fx "kimi-for-coding/k3"
 

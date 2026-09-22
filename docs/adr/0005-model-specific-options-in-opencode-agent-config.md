@@ -113,8 +113,9 @@ The correct per-model options are not guesswork; they are enumerated by
   inspect the resolved config after every OpenCode or model change. An isolated
   V2 service resolved all 17 agents without normalization warnings; live
   availability of `opencode-go/glm-5.3-flash` and `kimi-for-coding/k3` remains
-  a post-activation check on sakura. Both IDs exist in the V2 package's pinned
-  models.dev snapshot; `opencode models` hides credential-disabled providers,
-  so a credential-free smoke test cannot prove account access.
+  a post-activation check on sakura. The Kimi ID exists in the V2 package's
+  pinned models.dev snapshot, while OpenCode Go supplies its account-backed
+  catalog dynamically. `opencode models` hides credential-disabled providers,
+  so a credential-free smoke test cannot prove either account's access.
 - Proposed by: ivokun
 - Accepted by: ivokun
