@@ -127,10 +127,10 @@ in {
       # Copy mode (Vi style) — yank plugin handles clipboard integration
       setw -g mode-keys vi
 
-      # Prefix (C-a)
-      unbind C-b
-      set -g prefix C-a
-      bind C-a send-prefix
+      # Prefix (C-Space; C-b kept as secondary — matches upstream config/tmux/tmux.conf)
+      set -g prefix C-Space
+      set -g prefix2 C-b
+      bind -N "Send prefix" C-Space send-prefix
 
       # Reload config
       bind q source-file ~/.config/tmux/tmux.conf \; display "Configuration reloaded"
