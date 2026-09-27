@@ -459,6 +459,44 @@ in {
     esac
   '';
 
+  # ─── Lid Close ───
+  # Lid-close handler for the Hyprland switch binding: lock, then panel off.
+  # Locking happens here and not in logind because the shell's lock plugin
+  # does not listen to logind's Lock()/LockedHint — HandleLidSwitch*=lock
+  # would be a no-op. Same division of labour as upstream's
+  # omarchy-system-lid-close.
+  #
+  # Docked (more than one enabled physical output) means clamshell mode is in
+  # use on the external display — logind agrees (lidSwitchDocked = "ignore") —
+  # so skip the lock and just park the internal panel. An unreadable probe
+  # counts as undocked: a spurious lock is cheap, a missed one is not.
+  #
+  # On battery, logind suspends right after this runs (lidSwitch = "suspend"),
+  # so the lock also lands ahead of sleep in practice — but with no delay
+  # inhibitor there is no guarantee. The guaranteed variant is the sleep-lock
+  # inhibitor service (parity backlog §3).
+  lid-close = pkgs.writeShellScriptBin "lid-close" ''
+    set -uo pipefail
+
+    hc=${hyprland}/bin/hyprctl
+    jq=${pkgs.jq}/bin/jq
+
+    enabled=$("$hc" monitors -j 2>/dev/null |
+      "$jq" -r '[.[] | select(.disabled == false) | select((.name | startswith("HEADLESS")) | not)] | length' 2>/dev/null) || enabled=""
+
+    docked=false
+    case "$enabled" in
+      "" | *[!0-9]*) ;; # probe failed → treat as undocked (lock)
+      *) [ "$enabled" -ge 2 ] && docked=true ;;
+    esac
+
+    if [ "$docked" = false ]; then
+      omarchy-system-lock >/dev/null 2>&1 || true
+    fi
+
+    toggle-laptop-display off
+  '';
+
   # ─── Toggle Mirror Display ───
   toggle-mirror-display = pkgs.writeShellScriptBin "toggle-mirror-display" ''
     set -euo pipefail

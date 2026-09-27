@@ -100,7 +100,11 @@
   services.upower.enable = true;
   services.logind = {
     lidSwitch = "suspend";
-    lidSwitchExternalPower = "suspend";
+    # "ignore", not "lock": the shell's lock plugin does not listen to logind's
+    # Lock()/LockedHint, so a logind lock would be a no-op — locking on lid
+    # close is the Hyprland binding's job (lid-close script). On AC the machine
+    # stays awake: lock only, no suspend. Suspend on battery stays logind's.
+    lidSwitchExternalPower = "ignore";
     lidSwitchDocked = "ignore";
     # "lock", not "suspend". A black screen invites a power-button tap, and
     # with suspend that put the machine straight back to sleep mid-diagnosis

@@ -201,6 +201,7 @@ in {
       toggle-single-window-square
       toggle-laptop-display
       toggle-mirror-display
+      lid-close
 
       # Media & capture
       localsend-share

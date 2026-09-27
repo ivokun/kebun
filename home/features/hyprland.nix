@@ -511,8 +511,12 @@ in {
     --
     -- They still earn their keep when docked: lidSwitchDocked = "ignore" means
     -- closing the lid with an external display attached does not suspend, and
-    -- then switching the internal panel off is exactly right.
-    o.bind("switch:on:Lid Switch", nil, "toggle-laptop-display off", { locked = true })
+    -- then switching the internal panel off is exactly right. The close handler
+    -- is lid-close, not a bare display toggle: it also locks the session when
+    -- undocked (logind's "lock" action never reaches the shell's lock plugin),
+    -- which combined with lidSwitch = "suspend" gives lock+sleep on battery
+    -- and lock-only on AC (lidSwitchExternalPower = "ignore").
+    o.bind("switch:on:Lid Switch", nil, "lid-close", { locked = true })
     o.bind("switch:off:Lid Switch", nil, "toggle-laptop-display on", { locked = true })
   '';
 
