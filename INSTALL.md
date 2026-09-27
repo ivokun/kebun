@@ -1,6 +1,6 @@
 # NixOS + Flakes Installation Guide
 
-Complete step-by-step guide to install NixOS with Flakes on your Lenovo ThinkPad X13 Gen 1 (the `sakura` host) and apply the `kebun` flake.
+Complete step-by-step guide to install NixOS with Flakes on your Lenovo ThinkPad X13 Gen 1 (the `sakura` host) and apply the `kebun` flake. **Sakura-specific.** The second kebun host, `ume` (the ivokun-htpc hardware, currently pre-install), has its own gated runbook: [INSTALL-UME.md](INSTALL-UME.md).
 
 Two hard rules while following this guide:
 
