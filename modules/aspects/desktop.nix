@@ -117,6 +117,12 @@ in {
     withUWSM = true;
   };
 
+  # gpu-screen-recorder's default KMS backend delegates device access to
+  # gsr-kms-server. The NixOS module installs the matching package and gives
+  # that narrowly scoped helper CAP_SYS_ADMIN, avoiding a Polkit password
+  # prompt every time the Omarchy capture menu starts a recording.
+  programs.gpu-screen-recorder.enable = true;
+
   # ─── XDG ───
   xdg.portal = {
     enable = true;

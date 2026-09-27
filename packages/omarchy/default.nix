@@ -42,6 +42,8 @@
     gawk
     gnugrep
     gnused
+    # Recorder binary; modules/aspects/desktop.nix enables the NixOS module
+    # separately so gsr-kms-server also gets its required capability wrapper.
     gpu-screen-recorder # omarchy-capture-screenrecording*
     grim # omarchy-capture-screenshot/text/qr
     hyprland
@@ -165,7 +167,7 @@ in
     # for omarchy-file-select's D-Bus portal client.
     #
     # On top of shebang fixes, kebun divergence patches in patches/ are
-    # applied (currently: network panel iwd state fallback — see ADR-0012).
+    # applied (network panel iwd fallback and Nix recording fixes).
     for f in $(grep -RIl '^#!/bin/bash' $out 2>/dev/null); do
       sed -i "1s|^#!/bin/bash|#!${pkgs.bash}/bin/bash|" "$f"
     done
@@ -173,12 +175,16 @@ in
       sed -i "1s|^#!/usr/bin/python3|#!${pkgs.python3.withPackages (p: [p.pygobject3])}/bin/python3|" "$f"
     done
 
-    # Kebun divergence patches on top of the pinned upstream tree (ADR-0012):
-    # the network panel's connection state has no iwd backend in Quickshell,
-    # so fall back to omarchy-network-status's script data; also offer an
-    # impala launcher as the panel's Wi-Fi management affordance.
+    # Kebun divergence patches on top of the pinned upstream tree. The network
+    # panel's connection state has no iwd backend in Quickshell (ADR-0012), so
+    # fall back to omarchy-network-status's script data and offer impala as the
+    # panel's Wi-Fi management affordance. Screen recording needs a separate
+    # process matcher because nixpkgs execs the binary from a .wrapped path;
+    # its output directory is also created on first use for fresh installs.
     patch -d $out -p1 < ${./patches/network-iwd-state.patch}
     patch -d $out -p1 < ${./patches/network-impala-button.patch}
+    patch -d $out -p1 < ${./patches/screenrecord-nix-process-match.patch}
+    patch -d $out -p1 < ${./patches/screenrecord-create-output-dir.patch}
 
     # Wrap the entry scripts so their external commands resolve from the
     # closure, including repo-internal callees via $out/bin.

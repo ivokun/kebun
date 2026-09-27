@@ -1,0 +1,17 @@
+diff -Naur a/bin/omarchy-capture-screenrecording b/bin/omarchy-capture-screenrecording
+--- a/bin/omarchy-capture-screenrecording	2026-09-27 14:10:51.674041528 +0800
++++ b/bin/omarchy-capture-screenrecording	2026-09-27 14:10:51.709350108 +0800
+@@ -22,8 +22,11 @@
+ OUTPUT_DIR="${OMARCHY_SCREENRECORD_DIR:-${XDG_VIDEOS_DIR:-$HOME/Videos}}"
+
+ if [[ ! -d $OUTPUT_DIR ]]; then
+-  omarchy-notification-send -u critical -t 3000 "Screen recording directory does not exist: $OUTPUT_DIR"
+-  exit 1
++  if ! mkdir -p "$OUTPUT_DIR"; then
++    omarchy-notification-send -u critical -t 3000 "Could not create screen recording directory: $OUTPUT_DIR"
++    exit 1
++  fi
++  omarchy-notification-send "Created screen recording directory: $OUTPUT_DIR" -t 2000
+ fi
+
+ DESKTOP_AUDIO="false"
