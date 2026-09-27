@@ -10,8 +10,70 @@
   ];
 
   # ─── AMD APU (Renoir / Ryzen 5 PRO 4650U) ───
-  boot.initrd.kernelModules = ["amdgpu"];
   services.xserver.videoDrivers = ["amdgpu"];
+
+  # ─── Machine-specific kernel wiring (ThinkPad X13 Gen 1, AMD Renoir) ───
+  # Moved out of modules/aspects/core.nix: these values are sakura-only
+  # (ThinkPad/Renoir hardware), so they belong here instead of a shared
+  # aspect. Lists kept verbatim from the old core.nix.
+  boot.initrd = {
+    availableKernelModules = [
+      "nvme"
+      "xhci_pci"
+      "ahci"
+      "usbhid"
+      "uas"
+      "sd_mod"
+      "btrfs"
+      # TPM2 (auto-unlock)
+      "tpm_crb"
+      "tpm_tis"
+    ];
+    kernelModules = ["amdgpu" "kvm-amd"];
+  };
+
+  # vhost_vsock: Cowork (claude-desktop's VM) needs /dev/vhost-vsock.
+  # rtsx_pci: SD card reader (Realtek RTS525A).
+  boot.kernelModules = [
+    "amdgpu"
+    "kvm-amd"
+    "btusb"
+    "thinkpad_acpi"
+    "vhost_vsock"
+    "rtsx_pci"
+  ];
+
+  # Kernel parameters for LUKS + BTRFS + AMD
+  boot.kernelParams = [
+    "amd_iommu=on"
+    "amdgpu.sg_display=0"
+    "rtc_cmos.use_acpi_alarm=1"
+    # s0ix resume fixes for AMD Renoir (ThinkPad X13 Gen 1)
+    "amdgpu.dcdebugmask=0x10" # Disable PSR — prevents black screen on resume
+    "acpi_sleep=nonvs" # Prevent ACPI NVS corruption during s0ix
+    "processor.max_cstate=5" # Limit C-states to prevent s0ix resume failures
+    # Prefer S3 (deep) over s2idle. Renoir s2idle deadlocks on suspend
+    # re-entry while a previous resume is still in flight (3 fatal hangs
+    # in 10 days, 2026-08 — all lid-triggered, journal ends at
+    # "Performing sleep operation"). INERT until BIOS Sleep State is set
+    # to "Linux" (Config → Power); without that, deep isn't advertised.
+    # Verify after BIOS flip: cat /sys/power/mem_sleep → s2idle [deep]
+    "mem_sleep_default=deep"
+  ];
+
+  # ─── Kebun host surface (consumed by Home Manager via osConfig) ───
+  kebun.host = {
+    isLaptop = true;
+    greeterLayout = "jp";
+    monitorsLua = ''
+      -- Kebun monitor layout — moved verbatim from home/sakura.nix (ADR-0007
+      -- Stage 3). sakura-specific values (X13 built-in panel + HDMI + 4K DP);
+      -- verify against the machine on next deploy — backlog §3.1.
+      hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+      hl.monitor({ output = "HDMI-A-1", mode = "1920x1080@60.00", position = "2272x1440", scale = 1.00 })
+      hl.monitor({ output = "DP-2", mode = "3840x2160@60.00", position = "1920x0", scale = 1.5 })
+    '';
+  };
 
   # ─── LUKS TPM2 auto-unlock ───
   # Use systemd initrd so crypttab supports tpm2-device=auto
@@ -27,8 +89,8 @@
     crypttabExtraOpts = ["tpm2-device=auto"];
   };
 
-  # TPM2 kernel modules for initrd
-  boot.initrd.availableKernelModules = ["tpm_crb" "tpm_tis"];
+  # TPM2 kernel modules are merged into boot.initrd.availableKernelModules
+  # above.
 
   # ─── Hibernation: NOT enabled, because it cannot work on this layout ───
   # The LUKS swap partition (luks-e1906…) is 8.8 GiB against 30.6 GiB of RAM,
@@ -54,8 +116,7 @@
     pkcs11.enable = true;
   };
 
-  # SD card reader (Realtek RTS525A)
-  boot.kernelModules = ["rtsx_pci"];
+  # SD card reader is merged into boot.kernelModules above.
 
   hardware = {
     graphics = {
@@ -174,100 +235,15 @@
     ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="USB", RUN+="${pkgs.systemd}/bin/systemctl start --no-block power-profile-auto.service"
   '';
 
-  # ─── NFS Mount (tubeinas via Tailscale) ───
-  # Using automount to avoid boot hang when not on the Tailscale network
-  fileSystems."/mnt/tubeinas" = {
-    device = "192.168.100.29:/mnt/tank/ivokun";
-    fsType = "nfs";
-    options = [
-      "vers=4"
-      "rw"
-      "nosuid"
-      "nodev"
-      "noexec"
-      "x-systemd.automount"
-      "x-systemd.idle-timeout=600"
-      "x-systemd.requires=tailscaled.service"
-      "x-systemd.after=tailscaled.service"
-      "noauto"
-      "_netdev"
-    ];
-  };
-
-  # ─── Docker ───
-  # Rootless Docker preserves the lazydocker workflow without granting the
-  # desktop user root-equivalent access to the system daemon socket.
-  virtualisation.docker.rootless = {
-    enable = true;
-    setSocketVariable = true;
-  };
-
   # ─── Keyboard ───
   services.xserver.xkb = {
     layout = "us";
     options = "compose:caps";
   };
 
-  # ─── Btrfs Snapshots (home only) ───
-  services.snapper.configs = {
-    home = {
-      SUBVOLUME = "/home";
-      ALLOW_USERS = ["ivokun"];
-      TIMELINE_CREATE = true;
-      TIMELINE_CLEANUP = true;
-      TIMELINE_LIMIT_HOURLY = 10;
-      TIMELINE_LIMIT_DAILY = 7;
-      TIMELINE_LIMIT_WEEKLY = 4;
-      TIMELINE_LIMIT_MONTHLY = 12;
-    };
-  };
-
-  # systemd-tmpfiles `v` is not sufficient here: it only creates a Btrfs
-  # subvolume when `/` itself is a subvolume, while sakura deliberately mounts
-  # Btrfs's top level as `/`. Safely migrate the empty regular directory that
-  # the old tmpfiles `d` rule may have left behind, but never delete contents.
-  # Snapper is held back if the path is non-empty or otherwise unexpected.
-  systemd.services.home-snapshots-subvolume = {
-    description = "Provision the /home Snapper subvolume";
-    wantedBy = ["multi-user.target"];
-    requiredBy = [
-      "snapperd.service"
-      "snapper-timeline.service"
-      "snapper-cleanup.service"
-    ];
-    before = [
-      "snapperd.service"
-      "snapper-timeline.service"
-      "snapper-cleanup.service"
-    ];
-    unitConfig.RequiresMountsFor = "/home";
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      set -euo pipefail
-      target=/home/.snapshots
-
-      if ${pkgs.btrfs-progs}/bin/btrfs subvolume show "$target" >/dev/null 2>&1; then
-        ${pkgs.coreutils}/bin/chown ivokun:users "$target"
-        ${pkgs.coreutils}/bin/chmod 0750 "$target"
-        exit 0
-      fi
-
-      if [ -e "$target" ]; then
-        if [ ! -d "$target" ] || [ -n "$(${pkgs.findutils}/bin/find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
-          echo "$target exists but is not an empty Btrfs subvolume; refusing to replace it" >&2
-          exit 1
-        fi
-        ${pkgs.coreutils}/bin/rmdir -- "$target"
-      fi
-
-      ${pkgs.btrfs-progs}/bin/btrfs subvolume create "$target"
-      ${pkgs.coreutils}/bin/chown ivokun:users "$target"
-      ${pkgs.coreutils}/bin/chmod 0750 "$target"
-    '';
-  };
+  # NFS /mnt/tubeinas, rootless Docker and the home Snapper config live in
+  # the shared networking/dev/snapper aspects (host-agnostic workstation
+  # policy, both hosts need them). Storage/swap hardware facts stay here.
 
   system.stateVersion = "25.05";
 }

@@ -72,6 +72,27 @@
     };
   };
 
+  # NFS mount — /mnt/tubeinas over Tailscale (shared workstation policy;
+  # both kebun hosts pull the same export). Automount avoids a boot hang when
+  # not on the Tailscale network.
+  fileSystems."/mnt/tubeinas" = {
+    device = "192.168.100.29:/mnt/tank/ivokun";
+    fsType = "nfs";
+    options = [
+      "vers=4"
+      "rw"
+      "nosuid"
+      "nodev"
+      "noexec"
+      "x-systemd.automount"
+      "x-systemd.idle-timeout=600"
+      "x-systemd.requires=tailscaled.service"
+      "x-systemd.after=tailscaled.service"
+      "noauto"
+      "_netdev"
+    ];
+  };
+
   # SSH
   services.openssh = {
     enable = true;

@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  osConfig ? {},
   pkgs,
   inputs,
   username,
@@ -8,6 +9,53 @@
   ...
 }: let
   palette = import ../../lib/palette.nix;
+
+  # Host capability from the NixOS side (kebun.host, set per host in
+  # hosts/<name>/default.nix). The `or` guard keeps bare `nix eval` of the
+  # HM module honest; on the real host osConfig is always present.
+  laptop = osConfig.kebun.host.isLaptop or false;
+
+  # Laptop-only pieces of the emitted Lua. Content strings carry their own
+  # indent so the rendered laptop config stays byte-identical; on desktop
+  # hosts they render as inert blank lines.
+  touchpadLua = lib.optionalString laptop (lib.concatStringsSep "\n" [
+    "touchpad = {"
+    "      natural_scroll = true,"
+    "      scroll_factor = 0.4,"
+    "      disable_while_typing = true,"
+    "      tap_to_click = true,"
+    "      drag_lock = false,"
+    "      middle_button_emulation = true,"
+    "    },"
+  ]);
+
+  lidSwitchLua = lib.optionalString laptop (lib.concatStringsSep "\n" [
+    "-- ─── Lid Switch ───"
+    "--"
+    "-- These are only safe because toggle-laptop-display now refuses to disable"
+    "-- the last enabled output. Unguarded, this pair was the cause of the"
+    "-- post-suspend hangs: lid close destroyed eDP-1's wl_output, and the"
+    "-- matching lid-open handler could not undo it because it looked the panel"
+    "-- up in `hyprctl monitors -j`, which omits disabled monitors. Suspend can"
+    "-- also invert the ordering of the two — the close handler gets frozen and"
+    "-- thaws on resume, after the open handler has already run — so the safety"
+    "-- has to live in the script, not in the ordering here. See the comments on"
+    "-- toggle-laptop-display in packages/scripts/default.nix."
+    "--"
+    "-- They still earn their keep when docked: lidSwitchDocked = \"ignore\" means"
+    "-- closing the lid with an external display attached does not suspend, and"
+    "-- then switching the internal panel off is exactly right. The close handler"
+    "-- is lid-close, not a bare display toggle: it also locks the session when"
+    "-- undocked (logind's \"lock\" action never reaches the shell's lock plugin),"
+    "-- which combined with lidSwitch = \"suspend\" gives lock+sleep on battery"
+    "-- and lock-only on AC (lidSwitchExternalPower = \"ignore\")."
+    "o.bind(\"switch:on:Lid Switch\", nil, \"lid-close\", { locked = true })"
+    "o.bind(\"switch:off:Lid Switch\", nil, \"toggle-laptop-display on\", { locked = true })"
+  ]);
+
+  bindBatteryStatus = lib.optionalString laptop "o.bind(\"SUPER + SHIFT + Y\", \"Show battery status\", \"omarchy-notification-battery\")";
+  bindToggleLaptopDisplay = lib.optionalString laptop "o.bind(\"SUPER + CTRL + DELETE\", \"Toggle laptop display\", \"toggle-laptop-display\")";
+  bindShowBattery = lib.optionalString laptop "o.bind(\"SUPER + CTRL + ALT + B\", \"Show battery\", \"show-battery\")";
 in {
   # ─── Hyprland — Lua layer (ADR-0007 Stage 3) ───
   #
@@ -113,14 +161,19 @@ in {
     hl.env("XMODIFIERS", "@im=fcitx")
   '';
 
-  xdg.configFile."hypr/monitors.lua".text = ''
-    -- Kebun monitor layout — moved verbatim from home/sakura.nix (ADR-0007
-    -- Stage 3). sakura-specific values (X13 built-in panel + HDMI + 4K DP);
-    -- verify against the machine on next deploy — backlog §3.1.
-    hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
-    hl.monitor({ output = "HDMI-A-1", mode = "1920x1080@60.00", position = "2272x1440", scale = 1.00 })
-    hl.monitor({ output = "DP-2", mode = "3840x2160@60.00", position = "1920x0", scale = 1.5 })
-  '';
+  # Monitor layout is host-provided: NixOS hosts set kebun.host.monitorsLua
+  # (hosts/<name>/default.nix) and it is rendered verbatim here. A host that
+  # provides none gets the single-preferred-output fallback below.
+  xdg.configFile."hypr/monitors.lua".text = let
+    hostLua = osConfig.kebun.host.monitorsLua or "";
+  in
+    if hostLua != ""
+    then hostLua
+    else ''
+      -- Kebun monitor layout — host provides none (kebun.host.monitorsLua);
+      -- single preferred output, auto-positioned.
+      hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+    '';
 
   xdg.configFile."hypr/input.lua".text = ''
     -- Kebun input overrides — ported from the old hyprland.conf input block
@@ -140,14 +193,7 @@ in {
         repeat_delay = 600,
         numlock_by_default = true,
 
-        touchpad = {
-          natural_scroll = true,
-          scroll_factor = 0.4,
-          disable_while_typing = true,
-          tap_to_click = true,
-          drag_lock = false,
-          middle_button_emulation = true,
-        },
+        ${touchpadLua}
       },
     })
   '';
@@ -369,7 +415,7 @@ in {
     o.bind("SUPER + PRINT", "Color picker", "pkill hyprpicker || hyprpicker -a")
 
     -- ─── Battery ───
-    o.bind("SUPER + SHIFT + Y", "Show battery status", "omarchy-notification-battery")
+    ${bindBatteryStatus}
 
     -- ─── Window Gaps ───
     o.bind("SUPER + ALT + Z", "Toggle window gaps", "toggle-gaps")
@@ -416,7 +462,7 @@ in {
     o.bind("SUPER + CTRL + BACKSPACE", "Toggle single-window square", "toggle-single-window-square")
 
     -- ─── Toggles (extended) ───
-    o.bind("SUPER + CTRL + DELETE", "Toggle laptop display", "toggle-laptop-display")
+    ${bindToggleLaptopDisplay}
     o.bind("SUPER + CTRL + ALT + DELETE", "Toggle display mirroring", "toggle-mirror-display")
 
     -- ─── Captures (extended) ───
@@ -480,7 +526,7 @@ in {
 
     -- ─── Info Displays ───
     o.bind("SUPER + CTRL + ALT + T", "Show time", "show-time")
-    o.bind("SUPER + CTRL + ALT + B", "Show battery", "show-battery")
+    ${bindShowBattery}
     o.bind("SUPER + CTRL + ALT + W", "Show weather", "show-weather")
 
     -- ─── Dictation ───
@@ -507,27 +553,7 @@ in {
     o.bind("SUPER + mouse:272", nil, hl.dsp.window.drag(), { mouse = true })
     o.bind("SUPER + mouse:273", nil, hl.dsp.window.resize(), { mouse = true })
 
-    -- ─── Lid Switch ───
-    --
-    -- These are only safe because toggle-laptop-display now refuses to disable
-    -- the last enabled output. Unguarded, this pair was the cause of the
-    -- post-suspend hangs: lid close destroyed eDP-1's wl_output, and the
-    -- matching lid-open handler could not undo it because it looked the panel
-    -- up in `hyprctl monitors -j`, which omits disabled monitors. Suspend can
-    -- also invert the ordering of the two — the close handler gets frozen and
-    -- thaws on resume, after the open handler has already run — so the safety
-    -- has to live in the script, not in the ordering here. See the comments on
-    -- toggle-laptop-display in packages/scripts/default.nix.
-    --
-    -- They still earn their keep when docked: lidSwitchDocked = "ignore" means
-    -- closing the lid with an external display attached does not suspend, and
-    -- then switching the internal panel off is exactly right. The close handler
-    -- is lid-close, not a bare display toggle: it also locks the session when
-    -- undocked (logind's "lock" action never reaches the shell's lock plugin),
-    -- which combined with lidSwitch = "suspend" gives lock+sleep on battery
-    -- and lock-only on AC (lidSwitchExternalPower = "ignore").
-    o.bind("switch:on:Lid Switch", nil, "lid-close", { locked = true })
-    o.bind("switch:off:Lid Switch", nil, "toggle-laptop-display on", { locked = true })
+    ${lidSwitchLua}
   '';
 
   xdg.configFile."hypr/windows.lua".text = ''

@@ -2,7 +2,6 @@
 set -euo pipefail
 
 FLAKE_PATH="$(cd "$(dirname "$0")" && pwd)"
-HOST="sakura"
 
 # Self-test: run the nix.conf sed repairs against a representative fixture in
 # a private temporary directory (no sudo, no rebuild) so the expressions can
@@ -34,11 +33,15 @@ if [[ "${1:-}" == "--self-test" ]]; then
   fi
 fi
 
-if [[ "$(hostname -s)" != "$HOST" ]]; then
-  echo "Refusing to rebuild $HOST from $(hostname -s)." >&2
-  echo "Run this emergency script locally on $HOST; --self-test is safe anywhere." >&2
-  exit 1
-fi
+HOST="$(hostname -s)"
+case "$HOST" in
+  sakura | ume) ;;
+  *)
+    echo "Refusing to rebuild an unmanaged host ($HOST)." >&2
+    echo "Run this emergency script locally on sakura or ume; --self-test is safe anywhere." >&2
+    exit 1
+    ;;
+esac
 
 echo "=== Step 1: Fixing broken placeholder keys in /etc/nix/nix.conf ==="
 sudo sed -i \

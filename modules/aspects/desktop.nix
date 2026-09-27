@@ -5,36 +5,44 @@
   inputs,
   ...
 }: let
-  # Script to unlock LUKS devices using the password provided by PAM.
+  # Script to unlock the host's LUKS devices using the password provided by
+  # PAM. Generated from config.boot.initrd.luks.devices — no UUIDs are
+  # hard-coded here, so any LUKS-capable host gets the same fallback.
   #
-  # IMPORTANT: You must first add your login password as a LUKS key
-  # for each device you want to unlock on login:
+  # IMPORTANT: You must first add your login password as a LUKS key for each
+  # device (see the UUIDs in hosts/<name>/default.nix or
+  # hardware-configuration.nix):
   #
-  #   sudo cryptsetup luksAddKey /dev/disk/by-uuid/5525027e-a087-470e-a530-3ab692f4a14c
-  #   sudo cryptsetup luksAddKey /dev/disk/by-uuid/e1906a9e-c934-4352-bfea-02620b6abd80
+  #   sudo cryptsetup luksAddKey /dev/disk/by-uuid/<uuid>
   #
   # This provides a password fallback in case TPM2 auto-unlock fails,
   # and ensures your login password can unlock LUKS "when logged in as well".
-  unlockLuksOnLogin = pkgs.writeShellScript "unlock-luks-on-login" ''
+  # The configured device path is passed through unchanged, so this also works
+  # for stable paths other than /dev/disk/by-uuid.
+  unlockLuksOnLogin = pkgs.writeShellScript "unlock-luks-on-login" (let
+    luksDevices = lib.filterAttrs (_: entry: entry.device != null) config.boot.initrd.luks.devices;
+    # Each block mirrors the original hard-coded form (one if/fi pair per
+    # device). Attrset iteration is name-sorted, which for sakura keeps the
+    # original root-before-swap order (luks-5525… < luks-e1906…).
+    block = name: entry: let
+      device = toString entry.device;
+    in ''
+      # Try to unlock ${name} if not already open
+      mapper_name=${lib.escapeShellArg name}
+      device=${lib.escapeShellArg device}
+      if [ ! -e "/dev/mapper/$mapper_name" ]; then
+        # This is an optional PAM fallback: a failed key must not block login.
+        printf '%s' "$password" | ${pkgs.cryptsetup}/bin/cryptsetup open \
+          "$device" "$mapper_name" 2>/dev/null || true
+      fi
+    '';
+  in ''
     set -euo pipefail
 
     # Read password from stdin (PAM exposes it via expose_authtok)
     IFS= read -r password
-
-    # Try to unlock root device if not already open
-    if [ ! -e "/dev/mapper/luks-5525027e-a087-470e-a530-3ab692f4a14c" ]; then
-      printf '%s' "$password" | ${pkgs.cryptsetup}/bin/cryptsetup open \
-        /dev/disk/by-uuid/5525027e-a087-470e-a530-3ab692f4a14c \
-        luks-5525027e-a087-470e-a530-3ab692f4a14c 2>/dev/null || true
-    fi
-
-    # Try to unlock swap device if not already open
-    if [ ! -e "/dev/mapper/luks-e1906a9e-c934-4352-bfea-02620b6abd80" ]; then
-      printf '%s' "$password" | ${pkgs.cryptsetup}/bin/cryptsetup open \
-        /dev/disk/by-uuid/e1906a9e-c934-4352-bfea-02620b6abd80 \
-        luks-e1906a9e-c934-4352-bfea-02620b6abd80 2>/dev/null || true
-    fi
-  '';
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList block luksDevices)}
+  '');
 
   # Vendored Omarchy env (pinned upstream tree), reused by the SDDM theme and
   # greeter compositor config below — same store path the shell already
@@ -86,11 +94,11 @@
   # Split into two derivations: a shell heredoc would be mangled by nix fmt.
   sddmGreeterDelta = pkgs.writeText "sddm-greeter-kebun-delta.lua" ''
 
-    -- Kebun: JP keyboard layout — the greeter session does not inherit the
+    -- Kebun: ${lib.toUpper config.kebun.host.greeterLayout} keyboard layout — the greeter session does not inherit the
     -- desktop input config, and a layout mismatch caused failed logins.
     hl.config({
       input = {
-        kb_layout = "jp",
+        kb_layout = "${config.kebun.host.greeterLayout}",
       },
     })
   '';

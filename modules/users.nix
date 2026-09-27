@@ -59,7 +59,7 @@
     }: {
       imports = [
         ../home/common.nix
-        ../home/sakura.nix
+        ../home/backup.nix
         ../home/features/hyprland.nix
         ../home/features/omarchy-shell.nix
         ../home/features/terminals.nix

@@ -1,12 +1,18 @@
 {
   config,
   lib,
+  osConfig ? {},
   pkgs,
   inputs,
   username,
   system,
   ...
 }: let
+  # Laptop host capability from the NixOS side (kebun.host, set in
+  # hosts/<name>/default.nix). The `or` guard keeps bare `nix eval` honest;
+  # on the real host osConfig is always present.
+  laptop = osConfig.kebun.host.isLaptop or false;
+
   # Scripts get the compositor's own hyprctl (the flake input), not nixpkgs'
   # pkgs.hyprland — the versions drift and a mismatched client misleads scripts.
   scripts = import ../packages/scripts {
@@ -172,7 +178,8 @@ in {
       # Transcoding
       ffmpeg-headless
 
-      # Custom scripts
+      # Custom scripts (laptop pieces gated on kebun.host.isLaptop via
+      # lib.optionals, preserving the exact list order for laptop hosts)
     ]
     ++ (with scripts; [
       screenshot-edit
@@ -180,7 +187,12 @@ in {
       color-picker
       window-pop
       check-updates
-      battery-remaining-time
+    ])
+    # Battery readouts (laptop only)
+    ++ lib.optionals laptop [
+      scripts.battery-remaining-time
+    ]
+    ++ (with scripts; [
       toggle-gaps
       toggle-layout
       toggle-power-profile
@@ -205,10 +217,19 @@ in {
 
       # Toggles
       toggle-single-window-square
-      toggle-laptop-display
+    ])
+    ++ lib.optionals laptop [
+      # Laptop display management (laptop only)
+      scripts.toggle-laptop-display
+    ]
+    ++ (with scripts; [
       toggle-mirror-display
-      lid-close
-
+    ])
+    ++ lib.optionals laptop [
+      # Lid-close handling (laptop only)
+      scripts.lid-close
+    ]
+    ++ (with scripts; [
       # Media & capture
       localsend-share
       transcode
@@ -216,8 +237,12 @@ in {
       # Info displays
       show-time
       show-weather
-      show-battery
-
+    ])
+    ++ lib.optionals laptop [
+      # Battery readout (laptop only)
+      scripts.show-battery
+    ]
+    ++ (with scripts; [
       # Reminders
       reminder-set
       reminder-show

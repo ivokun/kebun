@@ -5,11 +5,8 @@
   username,
   ...
 }: {
-  # Host-specific home-manager settings for sakura
-
-  # ─── Hyprland monitor layout ───
-  # Moved to ~/.config/hypr/monitors.lua (ADR-0007 Stage 3) — the Lua layer
-  # replaced the HM-generated monitor list.
+  # Shared Borg backup excludes (used by every eventual kebun host — the old
+  # home/sakura.nix).
 
   # ─── Borg backup excludes ───
   # Input for manual/off-host Borg runs only; no scheduled Borg job or secret
@@ -101,7 +98,4 @@
     # Video editing cache
     **/.local/share/DaVinciResolve/.cache
   '';
-
-  # Wallpaper path (will be set after copying wallpaper)
-  # xdg.configFile."omarchy/current/background".source = ../../wallpapers/sakura-bg.jpg;
 }

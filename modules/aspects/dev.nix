@@ -4,6 +4,14 @@
   pkgs,
   ...
 }: {
+  # ─── Rootless Docker (shared workstation policy) ───
+  # Preserves the lazydocker workflow without granting the desktop user
+  # root-equivalent access to the system daemon socket.
+  virtualisation.docker.rootless = {
+    enable = true;
+    setSocketVariable = true;
+  };
+
   environment.systemPackages = with pkgs; [
     gcc
     gnumake
