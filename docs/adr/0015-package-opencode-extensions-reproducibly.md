@@ -43,7 +43,7 @@ under `mcp` downloads anything at launch. Four sourcing choices are kept
 deliberately distinct:
 
 The same package set provides a managed `opencode` wrapper. It executes the
-exact `pkgs.opencode` store path (now V2 2.0.12, packaged in-tree by
+exact `pkgs.opencode` store path (now V2 2.0.18, packaged in-tree by
 ADR-0016), disables self-updates, strips ambient GitHub credentials before
 plugins or tools load, and is prepended to the Home Manager session PATH so an
 unmanaged `~/.opencode/bin` or mise install cannot shadow it.
@@ -206,7 +206,7 @@ npm registry at startup.
   requires reproducing that perspective, not copying upstream's lockfile.
 - At the time of this decision, OpenCode's binary was the overlay-pinned
   1.18.11 package and this ADR added only the managed wrapper. ADR-0016 now
-  packages V2 2.0.12 in `packages/opencode/opencode-v2.nix`; the wrapper and
+  packages V2 2.0.18 in `packages/opencode/opencode-v2.nix`; the wrapper and
   extension trust boundaries remain the ones defined here.
 
 ## References
@@ -230,6 +230,8 @@ npm registry at startup.
 - 2026-09-22: ADR-0016 moved the managed binary and local plugin APIs to V2
   2.0.12. The MCP packaging, wrapper hardening, and credential boundaries in
   this ADR carry over unchanged.
+- 2026-09-28: OpenCode moved to 2.0.18 without changing those extension or
+  credential boundaries.
 - Date proposed: 2026-09-21
 - Date accepted: 2026-09-21
 - Proposed by: Ivokun

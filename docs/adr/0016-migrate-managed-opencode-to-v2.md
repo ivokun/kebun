@@ -19,10 +19,10 @@ wrapper hardening, and build-only deployment gate.
 
 ## Decision
 
-### Package OpenCode 2.0.12 in the repository
+### Package OpenCode V2 in the repository
 
-`packages/opencode/opencode-v2.nix` builds the `v2.0.12` source tag. It follows
-upstream's Nix packaging approach:
+`packages/opencode/opencode-v2.nix` initially built the `v2.0.12` source tag
+and now builds `v2.0.18`. It follows upstream's Nix packaging approach:
 
 - source and the Bun dependency closure are fixed-output, hash-pinned inputs;
 - `bun install --frozen-lockfile --ignore-scripts` runs only during the Nix
@@ -30,6 +30,11 @@ upstream's Nix packaging approach:
 - the bundled models.dev snapshot prevents runtime model-catalog downloads;
 - the package disables automatic updates and supplies its runtime `ripgrep`
   and Wayland dependencies explicitly.
+
+The 2.0.18 dependency closure hash was recomputed with the pinned Nix/Bun
+toolchain. The hash published in upstream's `nix/hashes.json` did not reproduce
+with upstream's own locked flake, while both that clean flake and kebun produced
+the same replacement hash.
 
 Bun's single-file build does not retain the optional native
 `@parcel/watcher-linux-x64-glibc` addon. Without it, OpenCode starts but logs
@@ -52,15 +57,19 @@ silently retain nixpkgs' V1 package.
 - ordered `permissions` entries with `action`, `resource`, and `effect`;
 - `mcp.servers`, with all seven local commands rendered to absolute store
   paths by `home/features/opencode.nix`;
-- `update: "disable"`.
+- `update: "disable"`;
+- an experimental hard policy that denies `read` requests for dotenv-like
+  paths before saved approvals can allow them.
 
-LSP permission actions and LSP-dependent prompt instructions are removed.
-Repository-native grep, build, type-check, and test commands replace those
+LSP, AST-grep, Context7, and legacy search permission actions and dependent
+prompt instructions are removed. Repository-native grep/glob, GitNexus,
+webfetch/websearch, build, type-check, and test commands replace those
 assumptions.
 
 Both local plugins use V2 definitions with stable IDs and `setup(ctx)`:
 
-- `env-protection` registers `ctx.tool.hook("execute.before", ...)`;
+- `env-protection` registers `ctx.tool.hook("execute.before", ...)` as a
+  defense-in-depth check alongside the hard policy;
 - the pinned `@whisperopencode/push` 0.3.0 tarball receives a reviewed V2 event
   adapter at build time. The adapter subscribes through `ctx.event`, maps known
   V2 event shapes to their legacy equivalents, and passes unknown event types
@@ -88,7 +97,8 @@ unchanged.
 Build-only and isolated checks completed on ivokun-htpc without activating the
 configuration:
 
-- OpenCode builds as version 2.0.12, and the full sakura system closure builds;
+- OpenCode builds as version 2.0.18, and the full sakura and ume system
+  closures build;
 - an isolated V2 service loads the rendered config with 17 custom agents and no
   normalization warnings;
 - both local plugin IDs are discovered;
@@ -96,6 +106,9 @@ configuration:
   Sequential-Thinking MCP servers initialize from store paths; the GitHub MCP
   intentionally fails without a keyring credential and the remote Obsidian MCP
   correctly reports that authentication is required;
+- BrowserMCP registers all 12 tools during the isolated smoke but later reports
+  `Connection closed` in `mcp list`; stability with the real extension remains
+  a post-activation check;
 - the packaged native watcher starts directory subscriptions with the `inotify`
   backend and no `watcher backend not supported` error;
 - the wrapper blocks self-updates, and all rendered local MCP commands avoid
@@ -171,6 +184,8 @@ accepted and build-verified migration, not a completed deployment.
 
 ## Notes
 
+- 2026-09-28: bumped the in-tree package to 2.0.18, added the hard dotenv-read
+  policy, and removed stale AST-grep/Context7 permission and prompt references.
 - Date proposed: 2026-09-22
 - Date accepted: 2026-09-22
 - Proposed by: Ivokun

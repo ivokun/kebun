@@ -579,13 +579,13 @@ journalctl -b -p warning
 systemctl status home-snapshots-subvolume.service
 sudo btrfs subvolume show /home/.snapshots
 
-# 13. The Nix-managed OpenCode V2 wins PATH (currently pinned to 2.0.12)
+# 13. The Nix-managed OpenCode V2 wins PATH (currently pinned to 2.0.18)
 # Run the stateful checks under bash even though fish is the login shell.
 bash -c '
 set -euo pipefail
 command -v opencode
 readlink -f "$(command -v opencode)"  # Must resolve into /nix/store
-test "$(opencode --version)" = "opencode v2.0.12"
+test "$(opencode --version)" = "opencode v2.0.18"
 
 # Stop any pre-switch background service so the next command must start the
 # newly deployed binary. Then inspect the native V2 config and local plugins.

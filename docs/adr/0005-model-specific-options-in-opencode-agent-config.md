@@ -117,5 +117,8 @@ The correct per-model options are not guesswork; they are enumerated by
   pinned models.dev snapshot, while OpenCode Go supplies its account-backed
   catalog dynamically. `opencode models` hides credential-disabled providers,
   so a credential-free smoke test cannot prove either account's access.
+- 2026-09-28: the in-tree package moved to OpenCode V2 2.0.18. The selected
+  model IDs and `request.body` payloads remain unchanged and retain the same
+  live provider-availability gate.
 - Proposed by: ivokun
 - Accepted by: ivokun
