@@ -71,9 +71,13 @@
     options = ["fmask=0077" "dmask=0077"];
   };
 
-  # Existing Btrfs swapfile, byte-for-byte as found. Hibernation is NOT
-  # claimed and no boot.resumeDevice is set — a Btrfs swapfile hibernation
-  # target needs a verified resume_offset, which is deliberately deferred.
+  # Existing Btrfs swapfile inside the @ root subvolume (there is no separate
+  # /swap mount), byte-for-byte as found. The path alone cannot record its
+  # required NODATACOW/preallocated extent properties; verify those with the
+  # read-only gate in INSTALL-UME.md after any install-time disk change.
+  # Hibernation is NOT claimed and no boot.resumeDevice is set — a Btrfs
+  # swapfile hibernation target also needs a verified resume_offset, which is
+  # deliberately deferred.
   swapDevices = [{device = "/swap/swapfile";}];
 
   # ─── Secondary disk: /dev/sda, ext4 media disk ───

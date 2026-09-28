@@ -39,7 +39,7 @@ Recorded verbatim from the live machine into
   `fdfeaf01-6060-473f-9d01-dfd685d2e2fd`) unlocking as mapper **`root`**,
   containing Btrfs (UUID `1ba0592d-e0e2-44dc-a8cb-6dec12f4b417`) with
   subvolumes `@` (`/`), `@home` (`/home`), `@log` (`/var/log`), plus a
-  Btrfs swapfile at `/swap/swapfile`.
+  Btrfs swapfile at `/swap/swapfile` inside `@` (not a separate mount).
   Compression `zstd:3` on all subvolume mounts.
 - **ESP:** UUID `17FE-CA36` (vfat, `/boot`).
 - **Media disk:** `/dev/sda`, ext4, UUID
@@ -49,6 +49,21 @@ Recorded verbatim from the live machine into
 - **`/dev/sdb`: a removable NTFS thumbdrive ("thumbdisk"). NEVER a target.
   It is deliberately not configured anywhere in kebun; keep it that way
   and triple-check any `dd`/`parted`/`mkfs` device argument.**
+
+A read-only audit on 2026-09-28 confirmed that `/swap/swapfile` was active on
+the current Arch system and resolved through the `@` root mount. The Nix file
+records only its path, not the Btrfs extent properties required for swap. After
+any install-time disk change, and before relying on it, verify that the file is
+still active and that Btrfs accepts it as NODATACOW, preallocated, and
+single-device:
+
+```bash
+swapon --show
+sudo btrfs inspect-internal map-swapfile -r /swap/swapfile
+```
+
+The second command is read-only and verifies the Btrfs swapfile requirements;
+its printed resume offset does not enable hibernation by itself.
 
 If install repartitions, **regenerate this file**:
 `nixos-generate-config --show-hardware-config` from the installed system
@@ -109,8 +124,8 @@ system:
 - Steam enabled, xpadneo enabled, Flatpak enabled, no laptop-only
   battery/lid/touchpad logic, swap lives on `/swap/swapfile`
   (no `boot.resumeDevice` — hibernation is not claimed here either),
-- the ext4 media disk automount at `/mnt/entertainments`, the NFS Tailscale
-  automount `/mnt/tubeinas`,
+- the ext4 media disk automount at `/mnt/entertainments`, the LAN-addressed NFS
+  automount `/mnt/tubeinas` (remote use needs a Tailscale subnet route),
 - `monitors.lua` has ume's generic preferred/auto rule at scale 1.25;
   replace with per-output rules once booted on real hardware,
 - LAN Mouse is packaged as a graphical-session user service and UDP 4242 is
@@ -176,11 +191,12 @@ backup. Options and open questions:
 - **Boot trust.** PCR 7 TPM enrollment is unattended-unlock convenience,
   not offline-tamper resistance. Secure Boot is currently disabled and kebun
   does not provision signing keys; do not treat ume as verified boot.
-- **Tailscale with what idents?** `/mnt/tubeinas` autos-mounts through
-  `x-systemd.requires=tailscaled.service`; decide the tailscale identity
-  for this desktop (fresh host? reuse the existing arch one's name?) and
-  have an auth key ready before first switch, so the NFS automount can
-  come up.
+- **Tailscale identity and subnet route.** `/mnt/tubeinas` points to the LAN
+  address `192.168.100.29`. Its systemd unit waits for `tailscaled`, but that
+  ordering does not create a route. Decide the desktop's tailnet identity and,
+  if the export must work away from this LAN, verify that a subnet router
+  advertises `192.168.100.0/24` and that ume accepts that route. Have the
+  required auth key ready before the first switch.
 - **Monitor layout** — keep the generic preferred rule at 1.25, or
   narrow to per-output `hl.monitor` rules (DP-1 Lenovo P27Q-40 2560x1440,
   DP-2 LG UltraFine 3840x2160) once verified on real hardware? Either
@@ -217,9 +233,12 @@ step — not a retro-fit of this list.
 - **LAN Mouse.** Restore `~/.config/lan-mouse/lan-mouse.pem` and its peer
   authorization config before the first remote-control session; confirm the
   service listens only on the intended wired network.
-- **Storage state.** `/mnt/entertainments` mounts; `/mnt/tubeinas` mounts
-  and stays mounted over Tailscale (it was failed on Arch — re-verify from
-  scratch on NixOS).
+- **Storage state.** `/mnt/entertainments` mounts. `/mnt/tubeinas` mounts on
+  the LAN; if remote access is required, repeat the check away from the LAN to
+  prove the Tailscale subnet route rather than only the service ordering. It
+  was failed on Arch, so re-verify it from scratch on NixOS. Confirm
+  `/swap/swapfile` appears in `swapon --show` and that the read-only
+  `btrfs inspect-internal map-swapfile -r` check above succeeds.
 - **`hardware-configuration.nix` regenerated/verified** per section 2,
   and the resulting `nix build
   .#nixosConfigurations.ume.config.system.build.toplevel`

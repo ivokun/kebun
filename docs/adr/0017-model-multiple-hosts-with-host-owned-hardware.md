@@ -53,8 +53,9 @@ Anything inherently machine-bound left the shared aspects:
   kernel parameters — these are per-host in `hosts/<name>/default.nix`.
 - The shared system now models **workstation policy**, not one machine:
   `dev.nix` gained rootless Docker (moved from hosts/sakura), and
-  `networking.nix` gained the `/mnt/tubeinas` Tailscale NFS automount
-  (both kebun hosts use the same export).
+  `networking.nix` gained the shared `/mnt/tubeinas` NFS automount. The export
+  uses its LAN address; remote access depends on a separately configured
+  Tailscale subnet route.
 
 What varies in *behavior* rather than *hardware* is expressed as typed
 **capability options** in `host-base`:
