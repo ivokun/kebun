@@ -120,5 +120,11 @@ The correct per-model options are not guesswork; they are enumerated by
 - 2026-09-28: the in-tree package moved to OpenCode V2 2.0.18. The selected
   model IDs and `request.body` payloads remain unchanged and retain the same
   live provider-availability gate.
+- 2026-09-28: all 17 agents converged on `opencode-go/glm-5.3-flash`; the six
+  remaining k3 agents (`build`, `explore`, `librarian`, `code-reviewer`,
+  `git-specialist`, `security-auditor`) moved over and their adaptive
+  `thinking`/`effort` bodies were replaced with `reasoningEffort: "max"`.
+  `git-specialist` keeps carrying no effort options, as before. Only the
+  Kimi capability note above is now historical.
 - Proposed by: ivokun
 - Accepted by: ivokun

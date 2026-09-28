@@ -608,7 +608,6 @@ opencode plugin list
 # dynamically. Absence here means the provider credential/catalog is not
 # enabled for this account.
 opencode models | grep -Fx "opencode-go/glm-5.3-flash"
-opencode models | grep -Fx "kimi-for-coding/k3"
 
 # 14. GitHub MCP reads the active github.com token from the gh keyring.
 # Use a dedicated fine-grained token limited to the repositories it must read
