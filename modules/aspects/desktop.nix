@@ -119,9 +119,17 @@ in {
 
   # gpu-screen-recorder's default KMS backend delegates device access to
   # gsr-kms-server. The NixOS module installs the matching package and gives
-  # that narrowly scoped helper CAP_SYS_ADMIN, avoiding a Polkit password
-  # prompt every time the Omarchy capture menu starts a recording.
+  # its helper CAP_SYS_ADMIN, avoiding a Polkit password prompt every time the
+  # Omarchy capture menu starts a recording.
   programs.gpu-screen-recorder.enable = true;
+
+  # Upstream makes the capability wrapper world-executable. Kebun has one
+  # normal-user group, so exclude SDDM and other system accounts while keeping
+  # promptless capture available to the workstation user.
+  security.wrappers."gsr-kms-server" = {
+    group = lib.mkForce "users";
+    permissions = "u+rx,g+x,o-rx";
+  };
 
   # ─── XDG ───
   xdg.portal = {

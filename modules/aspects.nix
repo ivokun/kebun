@@ -1,9 +1,8 @@
 # Den migration — host aspects & wiring (ADR-0013).
 # The former hosts/common modules are plain NixOS modules under aspects/ and
-# are captured here as aspect imports. Like the pre-Den flake, the
-# username/hostname/system fn args those modules request are delivered via
-# nixosSystem specialArgs and home-manager extraSpecialArgs, applied here
-# with standalone hosts.batteries (define-user handles the user side).
+# are captured here as aspect imports. Den context data reaches parametric
+# aspect bodies directly; shared plain modules receive deliberate host values
+# through _module.args. Home Manager's module args are set in modules/users.nix.
 {
   den,
   inputs,
@@ -39,7 +38,7 @@ in {
   };
 
   # ─── Reusable base wiring included by every host aspect ───
-  # Hostname, specialArgs, nested Home Manager settings, package overlays and
+  # Hostname, module args, nested Home Manager settings, package overlays and
   # the kebun.* host capability options live here so hosts/<name> aspects
   # declare only their own files and values.
   den.aspects.host-base = {
@@ -82,9 +81,11 @@ in {
       config = {
         networking.hostName = host.hostName;
 
-        # NixOS-module fn args consumed by hosts/* — mirrors the pre-Den
-        # flake's specialArgs.
-        _module.args.inputs = inputs;
+        # NixOS-module fn args consumed by hosts/* and shared plain modules.
+        _module.args = {
+          inherit inputs;
+          hostUserNames = builtins.attrNames host.users;
+        };
 
         home-manager.useUserPackages = true;
         home-manager.backupFileExtension = "hm-backup";

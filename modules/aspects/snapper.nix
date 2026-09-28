@@ -1,6 +1,6 @@
 {
+  hostUserNames,
   pkgs,
-  lib,
   ...
 }: {
   services.snapper = {
@@ -18,7 +18,10 @@
   services.snapper.configs = {
     home = {
       SUBVOLUME = "/home";
-      ALLOW_USERS = ["ivokun"];
+      ALLOW_USERS = hostUserNames;
+      # snapper(8) requires root ownership and no non-root write access.
+      # Snapper grants the declared users read/traverse access through ACLs.
+      SYNC_ACL = true;
       TIMELINE_CREATE = true;
       TIMELINE_CLEANUP = true;
       TIMELINE_LIMIT_HOURLY = 10;
@@ -58,7 +61,7 @@
       rmdir = "${pkgs.coreutils}/bin/rmdir";
       find = "${pkgs.findutils}/bin/find";
       btrfs = "${pkgs.btrfs-progs}/bin/btrfs";
-      owner = "ivokun:users";
+      owner = "root:users";
     in ''
       set -euo pipefail
       target=/home/.snapshots

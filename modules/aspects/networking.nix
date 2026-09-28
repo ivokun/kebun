@@ -1,5 +1,6 @@
 {
   config,
+  hostUserNames,
   lib,
   pkgs,
   ...
@@ -72,9 +73,10 @@
     };
   };
 
-  # NFS mount — /mnt/tubeinas over Tailscale (shared workstation policy;
-  # both kebun hosts pull the same export). Automount avoids a boot hang when
-  # not on the Tailscale network.
+  # LAN-addressed NFS mount shared by both kebun hosts. Ordering it after
+  # tailscaled supports remote access through an accepted subnet route, but
+  # does not itself route 192.168.100.0/24 through Tailscale. Automount avoids
+  # a boot hang when the export is unreachable.
   fileSystems."/mnt/tubeinas" = {
     device = "192.168.100.29:/mnt/tank/ivokun";
     fsType = "nfs";
@@ -101,7 +103,7 @@
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
-      AllowUsers = ["ivokun"];
+      AllowUsers = hostUserNames;
     };
   };
 }
