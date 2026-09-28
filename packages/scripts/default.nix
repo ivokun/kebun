@@ -1,5 +1,6 @@
 {
   pkgs,
+  laptop ? false,
   # The compositor's own hyprctl (the flake input), not nixpkgs' pkgs.hyprland —
   # the two versions drift and a mismatched client misleads hyprctl-driven scripts.
   # Callers pass inputs.hyprland.packages.${system}.hyprland.
@@ -7,6 +8,24 @@
   ...
 }: let
   palette = import ../../lib/palette.nix;
+  hardwareMenu = builtins.concatStringsSep "\n" (
+    [
+      "Audio controls"
+      "Bluetooth controls"
+      "WiFi controls"
+    ]
+    ++ pkgs.lib.optional laptop "Battery status"
+    ++ [
+      "Power profile"
+      "Brightness up"
+      "Brightness down"
+      "Volume up"
+      "Volume down"
+    ]
+  );
+  batteryMenuCase = pkgs.lib.optionalString laptop ''
+    "Battery status") omarchy-notification-battery ;;
+  '';
 in {
   # Screenshot annotation editor, invoked as OMARCHY_SCREENSHOT_EDITOR by the
   # vendored omarchy-capture-screenshot. Upstream defaults to tensaku-edit,
@@ -249,14 +268,14 @@ in {
   menu-hardware = pkgs.writeShellScriptBin "menu-hardware" ''
     set -euo pipefail
 
-    CHOICE=$(echo -e "Audio controls\nBluetooth controls\nWiFi controls\nBattery status\nPower profile\nBrightness up\nBrightness down\nVolume up\nVolume down" | \
+    CHOICE=$(printf '%s\n' ${pkgs.lib.escapeShellArg hardwareMenu} | \
       omarchy-menu-select "Hardware")
 
     case "$CHOICE" in
       "Audio controls") uwsm app -- ${pkgs.pavucontrol}/bin/pavucontrol ;;
       "Bluetooth controls") uwsm app -- ${pkgs.blueman}/bin/blueman-manager ;;
       "WiFi controls") launch-wifi ;;
-      "Battery status") omarchy-notification-battery ;;
+      ${batteryMenuCase}
       "Power profile") toggle-power-profile ;;
       "Brightness up") omarchy-brightness-display +5% ;;
       "Brightness down") omarchy-brightness-display 5%- ;;

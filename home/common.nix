@@ -16,7 +16,7 @@
   # Scripts get the compositor's own hyprctl (the flake input), not nixpkgs'
   # pkgs.hyprland — the versions drift and a mismatched client misleads scripts.
   scripts = import ../packages/scripts {
-    inherit pkgs;
+    inherit laptop pkgs;
     hyprland = inputs.hyprland.packages.${system}.hyprland;
   };
 in {
