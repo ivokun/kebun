@@ -36,28 +36,9 @@
     *.temp
     **/*~
 
-    # Development build directories
-    **/target/debug
-    **/target/release
-    **/build
-    **/dist
-    **/.git/objects
-
-    # Large media working directories
-    **/.local/share/Steam
-    **/.steam
-
-    # Virtual environments
-    **/venv
-    **/.venv
-    **/virtualenv
-
-    # Logs
-    *.log
-    **/logs
-
     # Large media/games (re-downloadable)
     **/.local/share/Steam
+    **/.steam
     **/.steam/steam/steamapps/common
     **/.steam/steam/package
     **/.steam/steam/appcache
@@ -84,14 +65,7 @@
     **/virtualenv
     **/.conda
 
-    # Temporary files
-    **/.thumbnails
-    **/.local/share/Trash
-    **/Trash
-    **/.Trash
-    *.tmp
-    *.temp
-    **/*~
+    # Logs
     *.log
     **/logs
 

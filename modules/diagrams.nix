@@ -1,11 +1,11 @@
 # Aspect resolution diagrams (den-diagram).
 #
-# Renders views for the sakura host and the ivokun user into
+# Renders views for every declared host and its users into
 # subdirectories under diagrams/:
 #
 #   diagrams/
-#     hosts/sakura/          — per-host views + DAG
-#     hosts/sakura/users/ivokun/ — per-user views
+#     hosts/<name>/          — per-host views + DAG
+#     hosts/<name>/users/<user>/ — per-user views
 #     fleet/                 — fleet-wide views
 #
 # Requires the den-diagram input (see flake.nix).
