@@ -127,6 +127,9 @@ in {
     # absolute gh path inside opencode-github-mcp.
     pkgs.gh
     managedOpencode
+    # The Electron GUI; bundles the vendored CLI as its sidecar service and
+    # ships with the desktop auto-updater disabled at source.
+    pkgs.opencode-desktop
     opencodePkgs.opencode-excalidraw-mcp
     opencodePkgs.opencode-github-mcp
     opencodePkgs.browsermcp

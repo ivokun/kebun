@@ -171,7 +171,9 @@ accepted and build-verified migration, not a completed deployment.
 
 ## References
 
+- **References**
 - `packages/opencode/opencode-v2.nix` — V2 source, dependency closure, native watcher, and package wrapper
+- `packages/opencode/opencode-desktop.nix` and `electron.nix` — the Electron GUI, built from the same pinned source, bundling the managed CLI
 - `lib/opencode-overlay.nix` — shared NixOS/Home Manager package replacement
 - `packages/opencode/default.nix` — managed command and MCP wrappers
 - `packages/opencode/whisperopencode-push.nix` and `whisperopencode-push-v2.js` — pinned push plugin and V2 adapter
@@ -186,6 +188,18 @@ accepted and build-verified migration, not a completed deployment.
 
 - 2026-09-28: bumped the in-tree package to 2.0.18, added the hard dotenv-read
   policy, and removed stale AST-grep/Context7 permission and prompt references.
+- 2026-09-28: added the OpenCode Desktop GUI (`packages/opencode/
+  opencode-desktop.nix` + `electron.nix`) to the same vendored-source update
+  path. It builds the upstream Electron app from the pinned 2.0.18 source and
+  bundles the managed CLI as its sidecar (`resources/opencode-cli`). The
+  desktop auto-updater is disabled at source — an update would download and
+  exec an upstream-packaged app that is not patched for NixOS — and the
+  updater's URL strings remain in the bundle only as dead code. Electron 44.4.3
+  is pinned in-tree with SHASUMS-verified hashes because the pinned nixpkgs
+  electron scope tops out at 43; its `postFixup` skips the libEGL/libGLESv2
+  patchelf that Electron ≥43's zip no longer satisfies. Live checks (window
+  opens under Hyprland, sidecar starts, service adoption) are post-activation
+  gates on sakura, same as the CLI gates above.
 - Date proposed: 2026-09-22
 - Date accepted: 2026-09-22
 - Proposed by: Ivokun
