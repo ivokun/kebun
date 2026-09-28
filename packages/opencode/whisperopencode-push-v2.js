@@ -4,7 +4,8 @@ import { publish } from "./relay.js"
 import { load, save } from "./state.js"
 
 // @whisperopencode/push 0.3.0 consumes V1's { type, properties } events.
-// Translate only the events it understands from V2's { type, data } stream.
+// Translate known V2 shapes and pass unknown types to the upstream recorder,
+// which remains responsible for deciding whether an event is retained.
 const legacyEvent = (event) => {
   const data = event.data ?? {}
 

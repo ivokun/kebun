@@ -62,8 +62,9 @@ Both local plugins use V2 definitions with stable IDs and `setup(ctx)`:
 
 - `env-protection` registers `ctx.tool.hook("execute.before", ...)`;
 - the pinned `@whisperopencode/push` 0.3.0 tarball receives a reviewed V2 event
-  adapter at build time. The adapter subscribes through `ctx.event` and maps
-  only the V2 events understood by the existing relay implementation.
+  adapter at build time. The adapter subscribes through `ctx.event`, maps known
+  V2 event shapes to their legacy equivalents, and passes unknown event types
+  to the upstream recorder, whose existing filter decides what is retained.
 
 Plugins are deployed under `~/.config/opencode/plugins/`. Neither plugin is
 installed from npm at startup.
