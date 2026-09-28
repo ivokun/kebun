@@ -184,17 +184,12 @@
           "effect": "allow"
         },
         {
-          "action": "google_search",
+          "action": "websearch",
           "resource": "*",
           "effect": "allow"
         },
         {
-          "action": "context7_resolve-library-id",
-          "resource": "*",
-          "effect": "allow"
-        },
-        {
-          "action": "context7_query-docs",
+          "action": "read",
           "resource": "*",
           "effect": "allow"
         },
@@ -228,7 +223,7 @@
           "effect": "allow"
         },
         {
-          "action": "ast_grep_search",
+          "action": "glob",
           "resource": "*",
           "effect": "allow"
         },
@@ -282,11 +277,6 @@
           "effect": "allow"
         },
         {
-          "action": "ast_grep_search",
-          "resource": "*",
-          "effect": "allow"
-        },
-        {
           "action": "subagent",
           "resource": "*",
           "effect": "allow"
@@ -326,11 +316,6 @@
           "effect": "allow"
         },
         {
-          "action": "ast_grep_search",
-          "resource": "*",
-          "effect": "allow"
-        },
-        {
           "action": "subagent",
           "resource": "*",
           "effect": "allow"
@@ -364,7 +349,7 @@
           "effect": "allow"
         },
         {
-          "action": "ast_grep_search",
+          "action": "glob",
           "resource": "*",
           "effect": "allow"
         },
@@ -408,6 +393,11 @@
           "effect": "allow"
         },
         {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
           "action": "subagent",
           "resource": "*",
           "effect": "allow"
@@ -443,16 +433,6 @@
         },
         {
           "action": "glob",
-          "resource": "*",
-          "effect": "allow"
-        },
-        {
-          "action": "ast_grep_search",
-          "resource": "*",
-          "effect": "allow"
-        },
-        {
-          "action": "ast_grep_replace",
           "resource": "*",
           "effect": "allow"
         },
@@ -569,6 +549,11 @@
           "effect": "allow"
         },
         {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
           "action": "subagent",
           "resource": "*",
           "effect": "allow"
@@ -604,6 +589,11 @@
         },
         {
           "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
           "resource": "*",
           "effect": "allow"
         },
@@ -646,7 +636,7 @@
           "effect": "allow"
         },
         {
-          "action": "ast_grep_search",
+          "action": "glob",
           "resource": "*",
           "effect": "allow"
         },
@@ -862,5 +852,14 @@
         "disabled": false
       }
     }
+  },
+  "experimental": {
+    "policies": [
+      {
+        "action": "permission",
+        "resource": "read:*.env*",
+        "effect": "deny"
+      }
+    ]
   }
 }

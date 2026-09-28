@@ -23,7 +23,7 @@ Run from the project root. This parses all source files, builds the knowledge gr
 | `--force`      | Force full re-index even if up to date                           |
 | `--embeddings` | Enable embedding generation for semantic search (off by default) |
 
-**When to run:** First time in a project, after major code changes, or when `gitnexus://repo/{name}/context` reports the index is stale. This OpenCode configuration does not install an automatic post-commit hook, so run `gitnexus analyze` explicitly after commits or merges that materially change the graph.
+**When to run:** First time in a project, after major code changes, or when `gitnexus://repo/{name}/context` reports the index is stale. This OpenCode configuration does not install an automatic post-commit hook, so run `gitnexus analyze` explicitly after commits or merges that materially change the graph, then run `opencode reload` so the persistent service reloads the GitNexus MCP server.
 
 ### status — Check index freshness
 
@@ -73,11 +73,12 @@ Lists all repositories registered in `~/.gitnexus/registry.json`. The MCP `list_
 
 ## After Indexing
 
-1. **Read `gitnexus://repo/{name}/context`** to verify the index loaded
-2. Use the other GitNexus skills (`exploring`, `debugging`, `impact-analysis`, `refactoring`) for your task
+1. Run `opencode reload` to reconnect the GitNexus MCP server
+2. **Read `gitnexus://repo/{name}/context`** to verify the index loaded
+3. Use the other GitNexus skills (`exploring`, `debugging`, `impact-analysis`, `refactoring`) for your task
 
 ## Troubleshooting
 
 - **"Not inside a git repository"**: Run from a directory inside a git repo
-- **Index is stale after re-analyzing**: Restart OpenCode to reconnect the GitNexus MCP server
+- **Index is stale after re-analyzing**: Run `opencode reload` to reconnect the GitNexus MCP server
 - **Embeddings slow**: Omit `--embeddings` (it's off by default) or set `OPENAI_API_KEY` for faster API-based embedding

@@ -100,7 +100,7 @@ in {
   # Deploys opencode agent configs, prompts, skills, plugins, and MCP servers
   # to ~/.config/opencode/ via home-manager.
   #
-  # The managed wrapper pins OpenCode to pkgs.opencode (currently 2.0.12),
+  # The managed wrapper pins OpenCode to pkgs.opencode (currently 2.0.18),
   # disables self-updates, and
   # strips ambient GitHub credentials before plugins or tools run. Its exact
   # store bin is prepended to PATH so ~/.opencode/bin or mise cannot shadow it.
@@ -116,8 +116,11 @@ in {
   # independent keyring access by another process running as the same user.
   #
   # No plugin is fetched from the npm registry at startup: native V2 plugins
-  # come from ~/.config/opencode/plugins/ — env-protection.js is a repo file,
+  # come from ~/.config/opencode/plugins/ — env-protection.js is a repo file
+  # layered with the config's hard dotenv-read policy, and
   # whisperopencode-push.js is the Nix-built, bundled plugin file.
+  # Run `opencode reload` after managed config, agent, skill, or MCP changes;
+  # use `opencode service restart` only when reload cannot recover the service.
 
   home.packages = [
     # Needed to provision and inspect the keyring credential consumed by the
