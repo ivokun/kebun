@@ -12,12 +12,12 @@
   wayland,
   writableTmpDirAsHomeHook,
 }: let
-  version = "2.0.12";
+  version = "2.0.18";
   src = fetchFromGitHub {
     owner = "anomalyco";
     repo = "opencode";
     tag = "v${version}";
-    hash = "sha256-hBbTwbYVnnddouC46b8Tah/TSvvJuQQNdZbxfZj90Ys=";
+    hash = "sha256-QyzzA9SUnnCunYucJPjZAw/EkUN1EKoDcrFalIOYVps=";
   };
 
   # V2 is not packaged by the pinned nixpkgs revision. Keep upstream's Bun
@@ -68,8 +68,9 @@
     dontFixup = true;
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    # Upstream v2.0.12 nix/hashes.json, x86_64-linux.
-    outputHash = "sha256-8mOzCscBAuogG4tm8CroqjTX5E5yzCvTobbhKvxQP0U=";
+    # Recomputed with the pinned Nix/Bun toolchain. Upstream v2.0.18's
+    # published x86_64-linux hash does not reproduce with its own locked flake.
+    outputHash = "sha256-9gJjhes2ueYckAgdeGlPwZcaIDdwB3ZnqK/XHHXhWNs=";
   };
 in
   stdenvNoCC.mkDerivation (finalAttrs: {
