@@ -102,6 +102,7 @@ in {
 
       # AI
       claude-code
+      inputs.luvus.packages.${system}.default
       # Official Linux beta repackaged from Anthropic's .deb (packages/claude-desktop)
       (pkgs.callPackage ../packages/claude-desktop {})
 

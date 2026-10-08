@@ -45,5 +45,12 @@
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Mission control for AI coding agents. Pin release tags deliberately;
+    # home/common.nix installs the package for every managed host.
+    luvus = {
+      url = "github:RizRiyz/luvus/v0.14.3";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 }
