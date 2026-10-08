@@ -19,12 +19,12 @@
     "GH_ENTERPRISE_TOKEN"
   ];
   expectedLocalMcpNames = lib.sort builtins.lessThan [
-    "browser"
     "excalidraw"
     "github"
     "gitnexus"
     "memory"
     "nixos"
+    "pencil"
     "sequential-thinking"
   ];
   localMcpNames = lib.sort builtins.lessThan (builtins.attrNames (
@@ -73,15 +73,15 @@
                 // {
                   command = sanitizedCommand githubTokenVariables "${mcpServers}/bin/mcp-server-sequential-thinking" [];
                 };
-              browser =
-                sourceServers.browser
-                // {
-                  command = sanitizedCommand githubTokenVariables "${opencodePkgs.browsermcp}/bin/mcp-server-browsermcp" [];
-                };
               nixos =
                 sourceServers.nixos
                 // {
                   command = sanitizedCommand (["PYTHONPATH"] ++ githubTokenVariables) "${mcpServers}/bin/mcp-nixos" [];
+                };
+              pencil =
+                sourceServers.pencil
+                // {
+                  command = sanitizedCommand githubTokenVariables "${opencodePkgs.opencode-pencil-mcp}/bin/opencode-pencil-mcp" ["--app" "desktop"];
                 };
               gitnexus =
                 sourceServers.gitnexus
@@ -109,7 +109,9 @@ in {
   # PATH lookup and no npx/uvx
   # downloads at launch (packages/opencode/default.nix: pinned nixpkgs and
   # release backports via the mcp-servers link farm, npm-tarball builds for
-  # browsermcp/gitnexus). The github MCP is the official local server; its
+  # GitNexus). Pencil's store-backed launcher needs the Pen AppImage running
+  # separately; its embedded MCP server is not part of the Nix closure.
+  # The github MCP is the official local server; its
   # token is fetched per launch from the gh keyring by the
   # opencode-github-mcp wrapper and explicitly injected only into that
   # server's `env -i` environment. This prevents ambient inheritance, not
@@ -132,7 +134,7 @@ in {
     pkgs.opencode-desktop
     opencodePkgs.opencode-excalidraw-mcp
     opencodePkgs.opencode-github-mcp
-    opencodePkgs.browsermcp
+    opencodePkgs.opencode-pencil-mcp
     opencodePkgs.gitnexus
     opencodePkgs.mcp-servers
   ];

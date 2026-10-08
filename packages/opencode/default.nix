@@ -1,6 +1,9 @@
 # OpenCode MCP packaging: every local MCP server in
 # home/opencode/opencode.json runs from a Nix-store executable — nothing
-# is fetched via npx/uvx at launch.
+# is fetched via npx/uvx at launch. One exception: opencode-pencil-mcp
+# execs the MCP server staged inside the running Pen AppImage (an
+# unmanaged runtime prerequisite, see below), while the wrapper and its
+# interpreter/readlink are still Nix-store paths.
 #
 # - mcp-server-memory and mcp-nixos come from pinned nixpkgs. Sequential
 #   thinking 2026.8.31 and github-mcp-server 1.12.2 are reproducible security/
@@ -39,12 +42,40 @@
     ln -s ${pkgs.mcp-nixos}/bin/mcp-nixos $out/bin/mcp-nixos
     ln -s ${githubMcpServer}/bin/github-mcp-server $out/bin/github-mcp-server
   '';
+
+  # Pencil MCP: the server binary is NOT bundled or pinned here — pen.dev
+  # ships as an unmanaged AppImage, and the wrapper discovers its
+  # mcp-server-linux-x64 inside the live mount at launch. It is a runtime
+  # prerequisite: the Pen app must already be running when OpenCode starts
+  # this server, and the server's version follows the AppImage the user
+  # runs, not this repository.
+  opencode-pencil-mcp = pkgs.writeShellScriptBin "opencode-pencil-mcp" ''
+    # Nix-store interpreter and utilities; keep PATH-independent.
+    set -euo pipefail
+
+    for process_executable in /proc/[0-9]*/exe; do
+      pen_executable="$(${pkgs.coreutils}/bin/readlink "$process_executable" 2>/dev/null)" || continue
+
+      case "$pen_executable" in
+        /tmp/.mount_Pen-*/pen)
+          server="''${pen_executable%/pen}/resources/app.asar.unpacked/out/mcp-server-linux-x64"
+          if [[ -x "$server" ]]; then
+            exec "$server" "$@"
+          fi
+          ;;
+      esac
+    done
+
+    echo "opencode-pencil-mcp: Start pen.dev before OpenCode" >&2
+    exit 1
+  '';
 in {
   inherit
     browsermcp
     gitnexus
     githubMcpServer
     mcp-servers
+    opencode-pencil-mcp
     sequentialThinking
     whisperopencodePush
     ;
