@@ -3,7 +3,8 @@ return {
   opts = {
     servers = {
       biome = {},
-      lua_ls = {},
+      -- installed by Nix (extraPackages), not Mason — see plugins.lua
+      lua_ls = { mason = false },
       html = {},
       cssls = {},
       ts_ls = {},
@@ -14,7 +15,7 @@ return {
       golangci_lint_ls = {},
       pyright = {},
       elixirls = {},
-      rust_analyzer = {},
+      rust_analyzer = { mason = false },
     },
   },
 }

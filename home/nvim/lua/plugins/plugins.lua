@@ -4,12 +4,13 @@ local plugins = {
     keys = { { "<leader>cm", "<cmd>Mason<cr>", desc = "Mason" } },
     build = ":MasonUpdate",
     opts_extend = { "ensure_installed" },
-    opts = {
-      ensure_installed = {
-        -- lua stuff
-        "lua-language-server",
-        "stylua",
-
+    opts = function(_, opts)
+      -- opts is the opts accumulated so far (LazyVim upstream seeds
+      -- ensure_installed with { stylua, shfmt }). Add this spec's tools and
+      -- drop the ones owned by Nix (programs.neovim.extraPackages): Mason's
+      -- generic ELF builds can't run on NixOS.
+      opts.ensure_installed = opts.ensure_installed or {}
+      local extra = {
         -- web dev stuff
         "css-lsp",
         "html-lsp",
@@ -27,9 +28,18 @@ local plugins = {
         "black",
         "ruff",
         "elixir-ls",
-        "rust-analyzer",
-      },
-    },
+      }
+      opts.ensure_installed = vim.list_extend(vim.list_extend({}, opts.ensure_installed or {}), extra)
+      local native = { "lua-language-server", "stylua", "rust-analyzer" }
+      opts.ensure_installed = vim.tbl_filter(function(tool)
+        return not vim.tbl_contains(native, tool)
+      end, opts.ensure_installed)
+      -- Mason registry installs go to the END of PATH, so Nix-wrapped
+      -- binaries (and old retained Mason tools still present locally) resolve
+      -- Nix-first; upstream remains "prepend".
+      opts.PATH = "append"
+      return opts
+    end,
     config = function(_, opts)
       require("mason").setup(opts)
       local registry = require("mason-registry")

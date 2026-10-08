@@ -19,6 +19,19 @@ in {
     defaultEditor = true;
     vimAlias = true;
     viAlias = true;
+    # Nix-owned tools for both hosts (Mason registry packages are generic ELF
+    # builds that fail on NixOS): lua_ls / rust_analyzer are marked mason=false
+    # in lspconfig.lua, Mason's ensure list filters them out in plugins.lua,
+    # and Mason PATH="append" keeps old Mason installs from shadowing Nix.
+    # yarn + nodejs feed markdown-preview.nvim's `cd app && yarn install`
+    # build hook. Scoped to the nvim wrapper PATH — no globals, no nix-ld.
+    extraPackages = with pkgs; [
+      lua-language-server
+      stylua
+      rust-analyzer
+      yarn
+      nodejs
+    ];
   };
 
   home.file.".config/nvim" = {
