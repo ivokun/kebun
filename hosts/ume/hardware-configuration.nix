@@ -78,7 +78,12 @@
   # Hibernation is NOT claimed and no boot.resumeDevice is set — a Btrfs
   # swapfile hibernation target also needs a verified resume_offset, which is
   # deliberately deferred.
-  swapDevices = [{device = "/swap/swapfile";}];
+  swapDevices = [
+    {
+      device = "/swap/swapfile";
+      priority = 0;
+    }
+  ];
 
   # ─── Secondary disk: /dev/sda, ext4 media disk ───
   # Mounted non-blockingly so the machine boots fine when it is absent.

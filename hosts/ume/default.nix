@@ -76,6 +76,16 @@
     fileSystems = ["/"];
   };
 
+  # ─── Swap ───
+  # Preserve ivokun-htpc's two-tier strategy on ume: logical zram capacity
+  # equals 100% of RAM, with priority above the disk swapfile. This does not
+  # reserve all physical RAM. The shared zstd algorithm is inherited;
+  # sakura keeps the shared 50% capacity and default priority.
+  zramSwap = {
+    memoryPercent = lib.mkForce 100;
+    priority = 100;
+  };
+
   # ─── Desktop power management ───
   # No lid/battery behavior: this is a desktop host (kebun.host.isLaptop =
   # false keeps Home Manager from emitting laptop-only pieces).

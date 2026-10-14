@@ -8,7 +8,7 @@ local plugins = {
       -- opts is the opts accumulated so far (LazyVim upstream seeds
       -- ensure_installed with { stylua, shfmt }). Add this spec's tools and
       -- drop the ones owned by Nix (programs.neovim.extraPackages): Mason's
-      -- generic ELF builds can't run on NixOS.
+      -- audited LuaLS/StyLua binaries need an ELF loader absent on NixOS.
       opts.ensure_installed = opts.ensure_installed or {}
       local extra = {
         -- web dev stuff
@@ -34,9 +34,8 @@ local plugins = {
       opts.ensure_installed = vim.tbl_filter(function(tool)
         return not vim.tbl_contains(native, tool)
       end, opts.ensure_installed)
-      -- Mason registry installs go to the END of PATH, so Nix-wrapped
-      -- binaries (and old retained Mason tools still present locally) resolve
-      -- Nix-first; upstream remains "prepend".
+      -- Append Mason's bin directory so wrapped Nix tools take precedence
+      -- over any old Mason installations retained in the home directory.
       opts.PATH = "append"
       return opts
     end,
