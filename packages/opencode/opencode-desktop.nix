@@ -29,6 +29,18 @@
   opencode,
 }: let
   electron = callPackage ./electron.nix {};
+
+  # The desktop's client falls back to the unsuffixed service.json, but the
+  # managed CLI runs channel "prod" and registers the channel-scoped
+  # service-prod.json (packages/cli/src/services/service-config.ts,
+  # filename()). Discovery then always reports "missing": ensure() keeps
+  # spawning serve contenders that recognize the incumbent on the prod port
+  # and exit 0 — the client doubles its spawn delay forever and never logs
+  # "ready", so the window opens but never gets server credentials. Point
+  # discovery at the same channel-resolved file the CLI writes;
+  # import.meta.env.OPENCODE_CHANNEL is baked by electron-vite from the
+  # same build channel as the CLI's own define.
+  channelRegistrationFile = ''path.join(process.env.XDG_STATE_HOME ?? path.join(app.getPath("home"), ".local", "state"), "opencode", ["latest", "dev", "beta", "next"].includes(import.meta.env.OPENCODE_CHANNEL) ? "service.json" : `service-''${(import.meta.env.OPENCODE_CHANNEL ?? "prod").replace(/[^a-zA-Z0-9._-]/g, "-")}.json`)'';
 in
   stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "opencode-desktop";
@@ -70,6 +82,7 @@ in
         ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
       };
 
+    # Channel-scoped service discovery, see channelRegistrationFile above.
     postPatch =
       # NOTE: Relax Bun version check to be a warning instead of an error
       ''
@@ -89,7 +102,12 @@ in
         substituteInPlace \
           packages/desktop/src/main/windows/appearance.ts \
           packages/desktop/src/main/service/desktop-cli.ts \
+          packages/desktop/src/main/service/sidecar-probe.ts \
           --replace-fail "process.resourcesPath" "'$out/opt/opencode-desktop/resources'"
+        substituteInPlace packages/desktop/src/main/service/background-service.ts \
+          --replace-fail ': undefined,' ': ${channelRegistrationFile},'
+        substituteInPlace packages/desktop/src/main/service/sidecar-probe.ts \
+          --replace-fail 'Service.discover({ version })' 'Service.discover({ version, file: ${channelRegistrationFile} })'
       '';
 
     preBuild = ''
