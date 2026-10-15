@@ -585,7 +585,10 @@ For the **public Git clone only** (`MODE=git`), inspect `git status --short` and
 `git diff --stat` in `/mnt/etc/nixos/kebun`. With `MODE=borg`, do not run Git
 against restored metadata/configuration; review the two edited Nix files in nano.
 
-`/mnt/etc/nixos/kebun` is the durable root-owned copy (becomes `/etc/nixos/kebun`); keep it untouched as the admin fallback.
+`/mnt/etc/nixos/kebun` is the install-time copy only. It is **not** a durable
+admin fallback — on this machine it did not survive the install, and because
+the UUID merge above lived nowhere else, the corrected values were lost.
+Treat it as scratch: the authority is the pushed Git remote (see Phase 9).
 
 ## Phase 7 — Install NixOS and Set the User Password
 
@@ -699,7 +702,23 @@ echo "user working copy ready: $WORK"
 '
 ```
 
-From then on: edit/rebuild in `$WORK` (`cd "$WORK" && nix fmt && nh os switch .`) — pinned lock, no blanket flake update, no automatic git commits, no pull/reset of the hardware edits. Keep `/etc/nixos/kebun` as the authoritative admin fallback; do not overwrite it. If you later restore the old kebun source from the archive, do not let it overwrite the new machine-facts edits.
+From then on: edit/rebuild in `$WORK` (`cd "$WORK" && nix fmt && nh os switch .`) — pinned lock, no blanket flake update, no pull/reset of the hardware edits. If you later restore the old kebun source from the archive, do not let it overwrite the machine-facts edits.
+
+**The pushed Git remote (`origin/main`) is the authority.** There is no
+root-owned `/etc/nixos/kebun` fallback — the install-time copy is scratch and
+was not preserved, which is exactly how the corrected UUIDs went missing.
+That makes one rule load-bearing:
+
+> **Machine-facts edits are not done until they are committed *and* pushed.**
+> A UUID that exists only in the working copy is one reinstall away from
+> being lost; a UUID that exists only locally is absent from the authority
+> you would rebuild from. "Uncommitted by design" (Phase 6) applies to the
+> install session only — commit and push as soon as the machine boots.
+
+Recovering config on a fresh machine is then just `git clone`; nothing has to
+be rescued out of `/etc`. The cost is that an unpushed commit is invisible to
+recovery, so check `git status --short` and `git log --oneline origin/main..HEAD`
+before you rely on the remote.
 
 ## Phase 10 — Restore Data Selectively
 
@@ -829,6 +848,8 @@ PCR 7 TPM auto-unlock is convenience only; Secure Boot is not provisioned, so th
 - **No Arch fallthrough.** After Phase 3–4 the old system is gone; the old LUKS header is not a restore plan. Recovery data comes only from the Borg archive.
 - **No earlier generation yet.** A fresh install has one generation, so `nixos-rebuild --rollback` has nothing to target until the next rebuild — and it never restores user data anyway.
 - **Rescue path:** boot the HP USB → unlock the **new** container → mount `@`, `@home`, `@log`, and the ESP (**no `mkfs`**) → `nixos-enter --root /mnt` to inspect/repair.
+- **Config recovery = `git clone` from `origin`,** not a copy out of `/etc`; there is no root-owned admin tree on this machine. Anything committed locally but never pushed is *not* recoverable this way — verify with `git log --oneline origin/main..HEAD` before trusting the remote.
+- **A host that will not activate is usually a stale device UUID,** not a broken closure. `switch-to-configuration` unmounts `/boot` and remounts it; if `fileSystems."/boot"` names a device that does not exist, `local-fs.target` fails and the machine reaches emergency mode. Check `/dev/disk/by-uuid` against `hosts/<name>/` first.
 - **Partial stage failure:** inspect what exists, take a fresh explicit go, resume from the matching phase — never re-run a failed destructive block blind.
 - **Once data is restored, repair in place.** No re-wipe. Protect the backup and media disks.
 
@@ -848,7 +869,8 @@ Checked = already true today; unchecked = pending.
 - [ ] Phase 7 `nixos-install` completed; `passwd ivokun` set via `nixos-enter` before reboot
 - [ ] Phase 8 cleanup child OK; normal reboot (no power-cut)
 - [ ] Phase 9 first boot: manual LUKS, SDDM login, `sudo -v`; `systemctl --failed` clean; `swapon` shows zram 100/100 + swapfile 0; media + `/home/.snapshots`
-- [ ] Phase 9 user working copy at `$HOME/Documents/dev/kebun` (ownership flipped, admin copy untouched)
+- [x] Phase 9 user working copy at `$HOME/Documents/dev/kebun` (ownership flipped)
+- [ ] Machine-facts UUIDs committed **and pushed** to `origin/main` — the authority; no `/etc/nixos/kebun` fallback exists
 - [ ] Phase 10 data restored selectively and incrementally (post-2026-10-12 gaps checked; ADATA ejected)
 - [ ] Optional: header backup first, then TPM/login-key enrollment — with a new explicit go
 
