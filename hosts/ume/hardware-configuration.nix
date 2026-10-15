@@ -1,12 +1,16 @@
-# ⚠️ PRE-INSTALL HARDWARE SNAPSHOT — ume (current ivokun-htpc disk layout) ⚠️
+# Hardware layout — ume (installed). Verified against the live machine on
+# 2026-10-15; the values below are the ones the running system actually uses.
 #
-# This file records the CURRENT disk layout of the target machine BEFORE a
-# kebun install. If (re)partitioning during installation changes UUIDs,
-# subvolume names, the mapper name or the swapfile location, REGENERATE this
-# file with `nixos-generate-config` (or diff by hand) and re-check:
+# This file began as a pre-install snapshot of the old ivokun-htpc layout. The
+# install repartitioned the NVMe, so the snapshot's ESP and LUKS2 UUIDs no
+# longer existed — and because `fileSystems."/boot"` pointed at a device that
+# never appears, `switch-to-configuration` could not remount /boot, failed
+# local-fs.target and dropped the machine into emergency mode. Both UUIDs are
+# now the real ones. If the disk is ever repartitioned again, re-check:
 #
-#   - ESP UUID (boot, vfat)
-#   - LUKS2 UUID + the mapper name it unlocks as ("root" here)
+#   - ESP UUID (boot, vfat) ........ 12CE-A600            (/dev/nvme0n1p1)
+#   - LUKS2 UUID → mapper "root" ... af6c38b9-…-da19a7f29a00 (/dev/nvme0n1p2,
+#     set in default.nix's boot.initrd.luks.devices)
 #   - Btrfs UUID + subvolumes (@, @home, @log)
 #   - Btrfs swapfile /swap/swapfile
 #   - the ext4 media disk /dev/sda → /mnt/entertainments
@@ -45,7 +49,7 @@
   # ─── Primary disk: /dev/nvme0n1 (LUKS2 → Btrfs) ───
   # Current mapper name is "root"; it must stay in sync with
   # boot.initrd.luks.devices in default.nix.
-  # Inner Btrfs filesystem UUID: 1ba0592d-e0e2-44dc-a8cb-6dec12f4b417.
+  # Inner Btrfs filesystem UUID: 60691fd6-54bc-40ae-864a-c25e42a3307a.
 
   fileSystems."/" = {
     device = "/dev/mapper/root";
@@ -66,7 +70,7 @@
   };
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-uuid/17FE-CA36";
+    device = "/dev/disk/by-uuid/12CE-A600";
     fsType = "vfat";
     options = ["fmask=0077" "dmask=0077"];
   };

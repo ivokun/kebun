@@ -42,7 +42,7 @@
   # listed in boot.initrd.luks.devices.
   boot.initrd.systemd.enable = true;
   boot.initrd.luks.devices."root" = {
-    device = "/dev/disk/by-uuid/fdfeaf01-6060-473f-9d01-dfd685d2e2fd";
+    device = "/dev/disk/by-uuid/af6c38b9-e330-47b5-97dd-da19a7f29a00";
     crypttabExtraOpts = ["tpm2-device=auto" "tpm2-measure-pcr=yes"];
   };
 
