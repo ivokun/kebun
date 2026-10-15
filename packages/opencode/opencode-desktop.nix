@@ -1,6 +1,6 @@
 # OpenCode Desktop — the Electron GUI, built from the same vendored upstream
 # source tree as the CLI (packages/opencode/opencode-v2.nix). Ported from
-# upstream's nix/desktop.nix (tag v2.0.18) with kebun adaptations:
+# upstream's nix/desktop.nix (tag v2.0.29) with kebun adaptations:
 #
 # - The bundled sidecar CLI is the vendored opencode derivation, so the app
 #   runs the exact version the managed config targets. A package.json stub is
@@ -91,9 +91,16 @@ in
                          'console.warn(`Warning: This script requires bun@''${expectedBunVersionRange}'
 
         # The desktop auto-updater would download and run an upstream binary
-        # that is not patched for NixOS. Disable it at source.
-        substituteInPlace packages/desktop/src/main/constants.ts \
-          --replace-fail 'app.isPackaged && CHANNEL !== "dev"' 'false'
+        # that is not patched for NixOS. Disable it at source. v2.0.29 moved
+        # the updater out of the main process (the former
+        # constants.ts UPDATER_ENABLED) into the gui-extensions updater
+        # extension, where `enabled` is the same predicate. Forcing it false
+        # takes upstream's own opt-out path: ./platform — and with it
+        # electron-updater — is never imported, and the state machine reports
+        # status "disabled" while check/install stay guarded.
+        substituteInPlace packages/gui-extensions/src/updater/main.ts \
+          --replace-fail 'const enabled = build.packaged && build.channel !== "dev"' \
+                         'const enabled = false'
       ''
       # https://github.com/electron/electron/issues/31121 — app.asar is passed
       # as a flag to a non-standard location, so process.resourcesPath does

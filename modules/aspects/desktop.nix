@@ -40,7 +40,10 @@
     set -euo pipefail
 
     # Read password from stdin (PAM exposes it via expose_authtok)
-    IFS= read -r password
+    # pam_exec writes the token NUL-terminated with no trailing newline, so a
+    # plain `read -r` hits EOF, returns 1 and set -e aborts the script — PAM
+    # then logs "failed: exit code 1" on every login. Read up to the NUL.
+    IFS= read -r -d "" password || true
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList block luksDevices)}
   '');
 
@@ -72,6 +75,14 @@
 
       # Light mode: Dawn base replaces the Tokyo Night background.
       substituteInPlace Main.qml --replace '#1a1b26' '${palette.background}'
+
+      # Username fallback: the theme has no username field and logs in as
+      # userModel.lastUser, which is empty until the first successful login
+      # (fresh install) — SDDM then authenticates user "" and always fails.
+      # --replace-fail: break the build if upstream renames the property.
+      substituteInPlace Main.qml --replace-fail \
+        'property string currentUser: userModel.lastUser' \
+        'property string currentUser: userModel.lastUser !== "" ? userModel.lastUser : "${config.kebun.host.greeterUser}"'
 
       # Recolor assets channel-wise (RGB only), preserving alpha: bullet,
       # lock and the entry frame go Tokyo Night fg → Dawn text; failed

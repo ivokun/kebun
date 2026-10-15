@@ -81,7 +81,7 @@
   OVMFFull,
 }: let
   pname = "claude-desktop";
-  version = "1.19367.0";
+  version = "2.2553.13";
 
   # The raw Electron tree from the official deb. The deb's maintainer scripts
   # (postinst: apt-repo registration + AppArmor profile) are deliberately not
@@ -92,7 +92,7 @@
 
     src = fetchurl {
       url = "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_${version}_amd64.deb";
-      hash = "sha256-dvVwcwwRhZJOJCPF+IonvsF8HnrbBV7NCUAaDpOpKZs=";
+      hash = "sha256-AqlanRM0csG3c8jp297lZoG4FkUAF4CDvYtTudEdEJ8=";
     };
 
     # A deb is an ar archive holding data.tar.xz — stdenv's ar/xz/tar unpack

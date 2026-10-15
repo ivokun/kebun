@@ -67,6 +67,16 @@ in {
             default is us); individual hosts override it (sakura uses jp).
           '';
         };
+        greeterUser = lib.mkOption {
+          type = lib.types.strMatching "[a-z_][a-z0-9_-]*";
+          default = "ivokun";
+          description = ''
+            Login name the SDDM greeter authenticates when SDDM has no
+            remembered last user (fresh install, wiped /var/lib/sddm). The
+            omarchy theme shows only a password field, so without this
+            fallback it submits an empty username and every login fails.
+          '';
+        };
         monitorsLua = lib.mkOption {
           type = lib.types.lines;
           default = "";
