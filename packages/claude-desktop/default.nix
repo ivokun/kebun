@@ -17,11 +17,14 @@
 #     (modules/users.nix) and boot.kernelModules vhost_vsock
 #     (modules/aspects/core.nix).
 #
-# Updates: bump `version` and re-fetch the hash —
+# Updates: find the newest version in the repo's Packages index — note the
+# dists/ tree sits *under* apt/stable/, not beside it —
+#   curl -sL https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages \
+#     | grep -E '^(Version|SHA256):' | paste - - | sort -V | tail -1
+# then bump `version` and re-fetch the hash —
 #   nix store prefetch-file \
 #     https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_<ver>_amd64.deb
-# (newest version is in the repo's Packages index; the app does not
-# self-update on Linux.)
+# (the app does not self-update on Linux.)
 {
   lib,
   stdenv,
@@ -53,6 +56,10 @@
   libuuid,
   libxkbcommon,
   xkeyboard-config,
+  # libpipewire-0.3-0 became a hard Depends in 2.37337.1 (it was absent in
+  # 2.2553.13) — Chromium dlopens it for the xdg-desktop-portal ScreenCast
+  # path, so screen sharing fails silently without it.
+  pipewire,
   zlib,
   fontconfig,
   freetype,
@@ -81,7 +88,7 @@
   OVMFFull,
 }: let
   pname = "claude-desktop";
-  version = "2.2553.13";
+  version = "2.37337.1";
 
   # The raw Electron tree from the official deb. The deb's maintainer scripts
   # (postinst: apt-repo registration + AppArmor profile) are deliberately not
@@ -92,7 +99,7 @@
 
     src = fetchurl {
       url = "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_${version}_amd64.deb";
-      hash = "sha256-AqlanRM0csG3c8jp297lZoG4FkUAF4CDvYtTudEdEJ8=";
+      hash = "sha256-QXRbCRTw/1FjGh/xu0A7g2v1yZWEXMpnQt05vKOi2hQ=";
     };
 
     # A deb is an ar archive holding data.tar.xz — stdenv's ar/xz/tar unpack
@@ -160,6 +167,7 @@
         cups
         expat
         alsa-lib
+        pipewire # screen capture via xdg-desktop-portal
         udev
         nss
         nspr
