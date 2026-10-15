@@ -14,7 +14,7 @@ in {
     rounded_corners = True
     graph_symbol = "braille"
     shown_boxes = "cpu mem net proc"
-    update_ms = 2000
+    update_ms = 1000
     proc_sorting = "cpu lazy"
     proc_tree = False
     proc_colors = True

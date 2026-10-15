@@ -1,11 +1,22 @@
-# INSTALL-UME — ume install runbook (config-first, no disk changes yet)
+# INSTALL-UME — ume install runbook (executed 2026-10-15)
 
-**Status: PRE-INSTALL. Nothing in this document has run destructive
-commands, and none is approved by writing it here.** This is a runbook for
-installing kebun on `ume` — the ASRock B550M-ITX/ac desktop whose hardware
-is currently the editing machine `ivokun-htpc` (Arch + Omarchy 4.0.3). It
-records the machine's *current* state, the decisions that must be made
-*before* any disk write, and the gates for the install itself.
+**Status: INSTALLED 2026-10-15.** The clean reinstall described below has
+run: ume is a live NixOS host (system generation 1 dates from 14:38 that
+day) and the old Arch system is gone. This document is kept as the record
+of the plan and its gates; it is **no longer a pre-install snapshot**, and
+§2 has been updated to the post-install disk facts.
+
+> **The install changed the NVMe's UUIDs.** `hosts/ume/` initially kept the
+> pre-install values, and because `fileSystems."/boot"` then named a device
+> that does not exist, the first `nh os switch` could not remount `/boot`,
+> failed `local-fs.target` and dropped the machine into emergency mode.
+> After any repartition, reconcile every `by-uuid` in `hosts/<name>/`
+> against the live machine before switching.
+
+This was a runbook for installing kebun on `ume` — the ASRock B550M-ITX/ac
+desktop whose hardware was previously the Arch machine `ivokun-htpc`
+(Omarchy 4.0.3). It records the machine's state, the decisions made before
+the disk write, and the gates for the install itself.
 
 The kebun side is already in shape: two Den hosts are wired
 (ADR-0017), and `nix build
@@ -48,19 +59,21 @@ The chosen operator path for the install session is **local console
 Build declared in `hosts/ume/default.nix`; disk snapshot in
 `hosts/ume/hardware-configuration.nix`.
 
-## 2. Current disk facts (pre-install snapshot — may change on install)
+## 2. Disk facts (post-install, verified against the live machine 2026-10-15)
 
-Recorded verbatim from the live machine into
-`hosts/ume/hardware-configuration.nix`:
+These are the values now in `hosts/ume/`. The pre-install UUIDs they
+replaced (`fdfeaf01-…` LUKS, `17FE-CA36` ESP, `1ba0592d-…` Btrfs) did not
+survive the repartition and exist nowhere on the machine — see the banner
+at the top of this file.
 
 - **Primary disk:** `/dev/nvme0n1` (XPG GAMMIX S70 BLADE, serial
-  `2P36292DSGD7`) — LUKS2 container (UUID
-  `fdfeaf01-6060-473f-9d01-dfd685d2e2fd`) unlocking as mapper **`root`**,
-  containing Btrfs (UUID `1ba0592d-e0e2-44dc-a8cb-6dec12f4b417`) with
+  `2P36292DSGD7`) — LUKS2 container on `nvme0n1p2` (UUID
+  `af6c38b9-e330-47b5-97dd-da19a7f29a00`) unlocking as mapper **`root`**,
+  containing Btrfs (UUID `60691fd6-54bc-40ae-864a-c25e42a3307a`) with
   subvolumes `@` (`/`), `@home` (`/home`), `@log` (`/var/log`), plus a
-  Btrfs swapfile at `/swap/swapfile` inside `@` (not a separate mount).
-  Compression `zstd:3` on all subvolume mounts.
-- **ESP:** UUID `17FE-CA36` (vfat, `/boot`).
+  32 GiB Btrfs swapfile at `/swap/swapfile` inside `@` (not a separate
+  mount). Compression `zstd:3` on all subvolume mounts.
+- **ESP:** `/dev/nvme0n1p1`, UUID `12CE-A600` (vfat, 2 GiB, `/boot`).
 - **Media disk:** `/dev/sda`, ext4, UUID
   `5a56e7ae-9a37-49c2-9a98-728c5500a08d`, automounted at
   `/mnt/entertainments` (`noauto` + `x-systemd.automount`, safe to boot

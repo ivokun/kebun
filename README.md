@@ -4,9 +4,9 @@ Kebun is a NixOS system flake for two machines, one user (ivokun):
 
 - **sakura** — ThinkPad X13 Gen 1 (AMD Renoir), laptop, live since
   2026-09-04 — the deployed, managed machine.
-- **ume** — ASRock B550M-ITX/ac desktop (Ryzen 9 5900X, RX 9060 XT),
-  currently the ivokun-htpc hardware, **pre-install** until its disk is
-  migrated ([INSTALL-UME.md](INSTALL-UME.md)).
+- **ume** — ASRock B550M-ITX/ac desktop (Ryzen 9 5900X, RX 9060 XT), the
+  former ivokun-htpc hardware, **live since 2026-10-15**
+  ([INSTALL-UME.md](INSTALL-UME.md)).
 
 Desktop = kebun's port of [Omarchy](https://omarchy.org) v4 ("Quattro") to
 NixOS idioms (QuickShell shell, Hyprland Lua, palette-driven theming),
@@ -23,7 +23,7 @@ extends it to multiple hosts (shared `host-base` aspect + typed
 | Host | Machine | Class | Hardware files | Status |
 |---|---|---|---|---|
 | sakura | ThinkPad X13 Gen 1 (Renoir) | laptop | `hosts/sakura/` | live since 2026-09-04 |
-| ume | ASRock B550M-ITX/ac (5900X / RX 9060 XT) | desktop | `hosts/ume/` | pre-install (see [INSTALL-UME.md](INSTALL-UME.md)) |
+| ume | ASRock B550M-ITX/ac (5900X / RX 9060 XT) | desktop | `hosts/ume/` | live since 2026-10-15 (see [INSTALL-UME.md](INSTALL-UME.md)) |
 
 Two scopes: `host:sakura` and `host:ume` (NixOS) with a nested shared
 `user:ivokun` (home-manager) each. The host aspects (`core`, `desktop`,
@@ -38,10 +38,10 @@ artifacts). Regenerate with `nix run .#update-readme`.
 
 ```bash
 nix build .#nixosConfigurations.sakura.config.system.build.toplevel  # any Nix host
-nix build .#nixosConfigurations.ume.config.system.build.toplevel     #   " (pre-install)
+nix build .#nixosConfigurations.ume.config.system.build.toplevel     #   "
 
 nixos-rebuild build --flake .#sakura   # on sakura
-nixos-rebuild build --flake .#ume      # on ume (post-install only)
+nixos-rebuild build --flake .#ume      # on ume
 
 nh os switch .                         # apply — ON the target host only
 ```
@@ -81,7 +81,7 @@ nix run .#update-readme               # regenerate the mermaid graphs section
 - [ADR-0016 — OpenCode V2 migration](docs/adr/0016-migrate-managed-opencode-to-v2.md)
 - [ADR-0017 — Multi-host modeling](docs/adr/0017-model-multiple-hosts-with-host-owned-hardware.md)
 - [INSTALL.md](INSTALL.md) — full install guide (LUKS + BTRFS + flakes), sakura-specific
-- [INSTALL-UME.md](INSTALL-UME.md) — ume migration runbook (config-first, pre-install, gated)
+- [INSTALL-UME.md](INSTALL-UME.md) — ume migration runbook (executed 2026-10-15; post-install disk facts)
 - [CLAUDE.md](CLAUDE.md) — agent-facing conventions and gotchas (AGENTS.md symlinks to it)
 - Graph packages: `diagrams-mermaid` (raw .mmd), `graph` (text summary for LLMs), `update-readme` (regen README section)
 - `docs/omarchy/` — upstream Omarchy research briefs

@@ -6,13 +6,15 @@ tags:
   - kebun
   - nixos
   - installation
-status: pre_install
+status: installed
 date: 2026/10/14
 ---
 
 # Kebun - Ume Installation and Post-Installation
 
-> **Status: pre-install. These are instructions, not a record.** Nothing below proves an installation happened. Checkboxes at the bottom get ticked only as steps are actually completed. This note authorizes nothing — every destructive step needs your explicit, in-the-moment go.
+> **Status: installed 2026-10-15.** ume is live (system generation 1 dates from 14:38 that day). These were the instructions; they are kept as the record of the plan.
+>
+> **One post-install step in Phase 6 did not reach the repo.** The UUID merge below was applied to the install-time copy under `/mnt/etc/nixos/kebun` — which is why generation 1 boots correctly — but those edits were "uncommitted by design" and never made it into the working clone, and the durable `/etc/nixos/kebun` fallback the runbook describes does not exist on the installed system. `hosts/ume/` therefore kept the pre-install UUIDs until 2026-10-15, when the first `nh os switch` hit a `/boot` device that does not exist, failed `local-fs.target` and dropped the machine into emergency mode. The real values are now in the repo and recorded in the table below.
 
 Canonical source: [INSTALL-UME.md @ 56ac7a6a](https://github.com/ivokun/kebun/blob/56ac7a6a7a23a373b5211cc2eb31d8d249fa74aa/INSTALL-UME.md). Repo: [ivokun/kebun](https://github.com/ivokun/kebun).
 
@@ -551,14 +553,26 @@ nano /mnt/etc/nixos/kebun/hosts/ume/hardware-configuration.nix
 nano /mnt/etc/nixos/kebun/hosts/ume/default.nix
 ```
 
-UUID table — old values are the pre-install snapshot:
+UUID table — old values are the pre-install snapshot. **Actual post-install
+values, verified against the live machine on 2026-10-15, are in the third
+column and are now what `hosts/ume/` holds:**
 
-| Item | Old value | What the merged config must hold |
+| Item | Old (pre-install) | Actual, post-install |
 |---|---|---|
-| ESP `/boot` | `17FE-CA36` | new ESP UUID from Phase 5 |
-| LUKS container (p2) | `fdfeaf01-6060-473f-9d01-dfd685d2e2fd` | new LUKS UUID from Phase 5 |
-| Btrfs root | `1ba0592d-…` | no device change: `/`, `/home`, `/var/log` stay on `/dev/mapper/root`; optionally refresh the inner-UUID comment with the Phase 5 value |
-| Media ext4 | `5a56e7ae-9a37-49c2-9a98-728c5500a08d` | keep exactly, even if detached |
+| ESP `/boot` | `17FE-CA36` | **`12CE-A600`** (`/dev/nvme0n1p1`) |
+| LUKS container (p2) | `fdfeaf01-6060-473f-9d01-dfd685d2e2fd` | **`af6c38b9-e330-47b5-97dd-da19a7f29a00`** (`/dev/nvme0n1p2`) |
+| Btrfs root | `1ba0592d-…` | **`60691fd6-54bc-40ae-864a-c25e42a3307a`** — no device change: `/`, `/home`, `/var/log` stay on `/dev/mapper/root`; this is the inner-UUID comment only |
+| Media ext4 | `5a56e7ae-9a37-49c2-9a98-728c5500a08d` | unchanged — keep exactly, even if detached |
+
+**Commit this merge.** The step below says the edits stay uncommitted; that
+is what stranded the corrected UUIDs outside the repo. Verify before
+switching by diffing the built closure's fstab against the running one:
+
+```bash
+diff <(grep -v '^#' /run/current-system/etc/fstab | sort) \
+     <(grep -v '^#' "$(nix build --no-link --print-out-paths \
+        .#nixosConfigurations.ume.config.system.build.toplevel)/etc/fstab" | sort)
+```
 
 Merging rules:
 
