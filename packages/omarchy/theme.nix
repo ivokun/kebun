@@ -26,8 +26,10 @@ in
     # The upstream scripts carry #!/bin/bash shebangs (absent in the build
     # sandbox) and are not in the vendored wrap list, so stage patched
     # copies rather than reimplementing the renderer.
+    # omarchy-theme-set-glass is the renderer's last step; with no glass
+    # toggle in the build sandbox it only strips glass blocks (a no-op here).
     bin=$(mktemp -d)
-    for script in omarchy-theme-set-templates omarchy-theme-color; do
+    for script in omarchy-theme-set-templates omarchy-theme-color omarchy-theme-set-glass; do
       cp ${omarchy}/bin/$script $bin/
     done
     patchShebangs $bin

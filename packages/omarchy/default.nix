@@ -6,6 +6,8 @@
 # shell's QML builds paths as omarchyPath + "/bin/…", "/shell/…",
 # "/default/…". Verified against the v4.0.2 reference install: nothing
 # hardcodes /usr/share/omarchy, everything resolves through $OMARCHY_PATH.
+# (Post-v4.0.2 QML also probes /usr/share/omarchy-platform/*.json; absent on
+# NixOS, which upstream treats as "no platform overrides".)
 #
 # The entry scripts kebun invokes are wrapped with a store-path PATH prefix;
 # the remaining upstream bin scripts are copied verbatim — but since the
@@ -23,11 +25,18 @@
   omarchy-src = pkgs.fetchFromGitHub {
     owner = "omacom";
     repo = "omarchy";
-    # Lightweight tag v4.0.2 (2026-08-30). Bump deliberately; the tree is
-    # byte-identical to the reference install audited 2026-09-01.
-    rev = "346e69e1cec6c4e8924531874af6ba010a1bc99e";
-    hash = "sha256-DtaDI3gyvK7YVnul2vRmNHHGK86Hn64WfbAVeG4888Y=";
+    # quattro HEAD 8a787b6 (2026-10-15), 953 commits past v4.0.2. Not a tag:
+    # v4.0.3/v4.0.4 live on a release branch that lacks the shell security
+    # fixes kebun runs (screen-recording state out of /tmp, notification
+    # sanitization, plugin capability restrictions, display panel
+    # escaping). Bump deliberately.
+    rev = "8a787b6a8bec830b04543bf14c760ee0a10591f6";
+    hash = "sha256-G+63CTcIO6cf4xShEqxaB6jT7XJlbObhXEQI0DNHMlY=";
   };
+
+  # PyGObject for omarchy-file-select's D-Bus portal client and the input
+  # method indicator's Fcitx D-Bus reader.
+  python = pkgs.python3.withPackages (p: [p.pygobject3]);
 
   runtimeDeps = with pkgs; [
     bash
@@ -146,7 +155,7 @@
     "omarchy-tailscale-receive"
   ];
 in
-  pkgs.runCommand "omarchy-shell-env-4.0.2" {
+  pkgs.runCommand "omarchy-shell-env-4.0.4-unstable-2026-10-15" {
     nativeBuildInputs = [pkgs.makeWrapper pkgs.patch];
   } ''
     mkdir -p $out
@@ -170,27 +179,34 @@ in
     # not be found", and a dead launcher produces no log at all. Rewrite the
     # shebangs across the whole tree (bin/, shell/ plugins, default/ helpers)
     # BEFORE wrapProgram: it relocates the original verbatim to .name-wrapped
-    # and a broken shebang there survives the wrap. python3 needs PyGObject
-    # for omarchy-file-select's D-Bus portal client.
+    # and a broken shebang there survives the wrap.
     #
     # On top of shebang fixes, kebun divergence patches in patches/ are
-    # applied (network panel iwd fallback and Nix recording fixes).
+    # applied (network panel iwd fallback, recording output dir).
     for f in $(grep -RIl '^#!/bin/bash' $out 2>/dev/null); do
       sed -i "1s|^#!/bin/bash|#!${pkgs.bash}/bin/bash|" "$f"
     done
     for f in $(grep -RIl '^#!/usr/bin/python3' $out 2>/dev/null); do
-      sed -i "1s|^#!/usr/bin/python3|#!${pkgs.python3.withPackages (p: [p.pygobject3])}/bin/python3|" "$f"
+      sed -i "1s|^#!/usr/bin/python3|#!${python}/bin/python3|" "$f"
     done
+    # The keyboard widget's input-method singleton execs python by absolute
+    # path (not a shebang) and respawns it every 5s when the exec fails.
+    substituteInPlace $out/shell/Commons/InputMethodState.qml \
+      --replace-fail '"/usr/bin/python3"' '"${python}/bin/python3"'
+    # NixOS has no /usr/share/zoneinfo; the Elsewhen panel's city search
+    # reads the zone table directly.
+    substituteInPlace $out/shell/plugins/panels/elsewhen/Panel.qml \
+      --replace-fail '"/usr/share/zoneinfo/zone1970.tab"' '"${pkgs.tzdata}/share/zoneinfo/zone1970.tab"'
 
     # Kebun divergence patches on top of the pinned upstream tree. The network
     # panel's connection state has no iwd backend in Quickshell (ADR-0012), so
     # fall back to omarchy-network-status's script data and offer impala as the
-    # panel's Wi-Fi management affordance. Screen recording needs a separate
-    # process matcher because nixpkgs execs the binary from a .wrapped path;
-    # its output directory is also created on first use for fresh installs.
+    # panel's Wi-Fi management affordance. The screen recording output
+    # directory is created on first use for fresh installs. (Upstream now
+    # matches the recorder by /proc/<pid>/exe basename, which nixpkgs'
+    # bin/.wrapped/gpu-screen-recorder satisfies, so no process-match patch.)
     patch -d $out -p1 < ${./patches/network-iwd-state.patch}
     patch -d $out -p1 < ${./patches/network-impala-button.patch}
-    patch -d $out -p1 < ${./patches/screenrecord-nix-process-match.patch}
     patch -d $out -p1 < ${./patches/screenrecord-create-output-dir.patch}
 
     # Wrap the entry scripts so their external commands resolve from the

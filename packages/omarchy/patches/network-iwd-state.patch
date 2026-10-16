@@ -1,7 +1,42 @@
-diff -Naur a/shell/plugins/panels/network/Model.js b/shell/plugins/panels/network/Model.js
---- a/shell/plugins/panels/network/Model.js	2026-09-06 12:21:55.737703950 +0900
-+++ b/shell/plugins/panels/network/Model.js	2026-09-06 12:22:26.499412316 +0900
-@@ -14,6 +14,16 @@
+diff --git a/bin/omarchy-network-status b/bin/omarchy-network-status
+index e97c6a29b..6addeb50f 100755
+--- a/bin/omarchy-network-status
++++ b/bin/omarchy-network-status
+@@ -20,7 +20,7 @@ case "${1:-}" in
+ esac
+ 
+ print_status() {
+-  local device nm state ssid signal freq
++  local device nm state ssid signal freq link
+ 
+   device=$(ip route get "$internet_probe" 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i == "dev") { print $(i + 1); exit } }')
+ 
+@@ -34,6 +34,20 @@ print_status() {
+     return
+   fi
+ 
++  # Kebun (iwd): v4.0.2 kept a no-nmcli branch here; without it an iwd host
++  # reads "disconnected" on a live Wi-Fi link. Read the link from iw instead.
++  if ! omarchy-cmd-present nmcli; then
++    link=$(iw dev "$device" link 2>/dev/null)
++    if [[ -z $link || $link == "Not connected"* ]]; then
++      printf 'disconnected\t\t\t\n'
++      return
++    fi
++    ssid=$(awk '/SSID:/ { sub(/.*SSID: /, ""); print; exit }' <<<"$link")
++    freq=$(awk '/freq:/ { print $2; exit }' <<<"$link")
++    printf 'wifi\t%s\t\t%s\n' "${ssid:-$device}" "$freq"
++    return
++  fi
++
+   nm=$(nmcli -t -f GENERAL.STATE,GENERAL.CONNECTION dev show "$device" 2>/dev/null)
+   state=$(awk -F: '$1 == "GENERAL.STATE" { print $2; exit }' <<<"$nm")
+   ssid=$(awk -F: '$1 == "GENERAL.CONNECTION" { print $2; exit }' <<<"$nm")
+diff --git a/shell/plugins/panels/network/Model.js b/shell/plugins/panels/network/Model.js
+index 36a62b1ed..c18122606 100644
+--- a/shell/plugins/panels/network/Model.js
++++ b/shell/plugins/panels/network/Model.js
+@@ -20,6 +20,16 @@ function wifiIconFor(strength) {
    return icons[index]
  }
  
@@ -15,23 +50,24 @@ diff -Naur a/shell/plugins/panels/network/Model.js b/shell/plugins/panels/networ
 +  return Math.max(0, Math.min(100, Math.round((value + 100) * 2)))
 +}
 +
- function connectionIcon(kind, signalStrength) {
-   if (kind === "wifi") return wifiIconFor(signalStrength)
-   if (kind === "ethernet") return "󰈀"
-@@ -351,6 +361,7 @@
+ // The connected network's own strength comes from the access points
+ // Quickshell grouped under its SSID. When it has none (an OWE transition-mode
+ // network between scans files the in-use access point under its hidden
+@@ -409,6 +419,7 @@ if (typeof module !== "undefined") {
    module.exports = {
      parseNetworkStatus: parseNetworkStatus,
      wifiIconFor: wifiIconFor,
 +    signalPercentFromDbm: signalPercentFromDbm,
      connectionIcon: connectionIcon,
-     formatHeaderSpeed: formatHeaderSpeed,
-     formatHeaderFreq: formatHeaderFreq,
-diff -Naur a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/network/Panel.qml
---- a/shell/plugins/panels/network/Panel.qml	2026-09-06 12:21:55.737703950 +0900
-+++ b/shell/plugins/panels/network/Panel.qml	2026-09-06 12:22:26.505946879 +0900
-@@ -123,7 +123,10 @@
+     connectedSignalStrength: connectedSignalStrength,
+     parseActiveApSignal: parseActiveApSignal,
+diff --git a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/network/Panel.qml
+index 4b7b2bab9..f156933fa 100644
+--- a/shell/plugins/panels/network/Panel.qml
++++ b/shell/plugins/panels/network/Panel.qml
+@@ -124,7 +124,10 @@ Panel {
    // within header actions, band pills, or DNS providers.
-   property string focusSection: "dns"  // "header" | "band" | "dns" | "wifi"
+   property string focusSection: "dns"  // "header" | "portal" | "band" | "dns" | "wifi"
    property int headerIndex: 0
 +  // Kebun (iwd): without NetworkManager the wifi list is empty, so gate the
 +  // hero phrase on the script-detected link instead of a connected network.
@@ -40,36 +76,45 @@ diff -Naur a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/netwo
    readonly property bool headerHasDisconnect: false
    readonly property bool canShareWifi: info.type === "wifi" && canShareNetwork(connectedWifiNetwork)
    // The hero switch is the Wi-Fi radio, so it only exists when there is a
-@@ -437,13 +440,25 @@
+@@ -441,6 +444,16 @@ Panel {
    // when both are up, matching the default-route device.
    readonly property var wiredDevice: findDevice(DeviceType.Wired)
    readonly property string kind: {
--    if (wiredDevice && wiredDevice.connected) return "ethernet"
--    if (connectedWifiNetwork) return "wifi"
-+    // Kebun (iwd, ADR-0002): with no NetworkManager backend, devices and
++    // Kebun (iwd, ADR-0012): with no NetworkManager backend, devices and
 +    // networks are always empty and the stock logic reads "disconnected" even
 +    // on a live link. Fall back to omarchy-network-status's script data, which
-+    // reports the default route's interface without NetworkManager.
-+    if (networkManagerAvailable) {
-+      if (wiredDevice && wiredDevice.connected) return "ethernet"
-+      if (connectedWifiNetwork) return "wifi"
++    // reports the default route's interface without NetworkManager; info
++    // carries a type only while the default route is up.
++    if (!networkManagerAvailable) {
++      if (info.type === "wifi") return "wifi"
++      if (info.type === "ethernet") return "ethernet"
 +      return "disconnected"
 +    }
-+    // info carries a type only while the default route is up.
-+    if (info.type === "wifi") return "wifi"
-+    if (info.type === "ethernet") return "ethernet"
+     if (wiredDevice && wiredDevice.connected) return "ethernet"
+     if (connectedWifiNetwork) return "wifi"
+     // NetworkManager can leave the active profile out of the device's
+@@ -452,13 +465,16 @@ Panel {
+     if (wifiDevice && wifiDevice.connected) return "wifi"
      return "disconnected"
    }
-   readonly property int signalStrength: connectedWifiNetwork
-     ? Math.round((connectedWifiNetwork.signalStrength || 0) * 100)
+-  readonly property int signalStrength: kind === "wifi"
+-    ? Model.connectedSignalStrength(connectedWifiNetwork ? connectedWifiNetwork.signalStrength : 0, activeApSignal)
 -    : -1
-+    : (!networkManagerAvailable && kind === "wifi"
-+        ? Model.signalPercentFromDbm(info.signal_dbm)
-+        : -1)
- 
-   function copyToClipboard(value) {
-     if (!value || !root.bar) return
-@@ -890,11 +905,15 @@
++  readonly property int signalStrength: kind !== "wifi" ? -1
++    : !networkManagerAvailable
++      // Kebun (iwd): iw reports dBm; there is no nmcli access-point fallback.
++      ? Model.signalPercentFromDbm(info.signal_dbm)
++      : Model.connectedSignalStrength(connectedWifiNetwork ? connectedWifiNetwork.signalStrength : 0, activeApSignal)
+   // Filled by activeApSignalPoll from nmcli while the connected network has no
+   // strength of its own to report.
+   property int activeApSignal: -1
+-  readonly property bool needsActiveApSignal: kind === "wifi"
++  // Kebun (iwd): the fallback reads nmcli, which an iwd host does not have.
++  readonly property bool needsActiveApSignal: networkManagerAvailable && kind === "wifi"
+     && !(connectedWifiNetwork && connectedWifiNetwork.signalStrength > 0)
+   // Bumped whenever the cached reading stops describing the current link, so
+   // an nmcli read still in flight from before cannot write a stale strength.
+@@ -1011,11 +1027,15 @@ Panel {
  
    // Poll details while the panel is open so the IP/route header catches up
    // as soon as NetworkManager finishes activating a connection.
@@ -83,12 +128,12 @@ diff -Naur a/shell/plugins/panels/network/Panel.qml b/shell/plugins/panels/netwo
 +    interval: root.opened ? 1500 : 5000
      repeat: true
 -    running: root.opened
-+    running: true
++    running: root.opened || !root.networkManagerAvailable
      onTriggered: if (!detailsProc.running) detailsProc.running = true
    }
  
-@@ -1095,7 +1114,9 @@
-           color: root.bar.foreground
+@@ -1235,7 +1255,9 @@ Panel {
+           color: root.restricted ? root.bar.urgent : root.bar.foreground
            font.family: root.bar.fontFamily
            font.pixelSize: Style.font.display
 -          opacity: root.networkManagerAvailable ? 1.0 : 0.5
