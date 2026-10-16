@@ -141,13 +141,13 @@
     monitorsLua = ''
       -- Kebun monitor layout — ume's stacked pair, both 27" panels, matched
       -- by EDID description so a DP connector swap can't shuffle them.
-      -- LG UltraFine 4K on top at 1.6x (logical 2400x1350); the Lenovo
-      -- P27Q-40 1440p below at 1.25x and 120 Hz (logical 2048x1152), centered
-      -- under it. Positions are logical pixels: x = (2400 - 2048) / 2,
-      -- y = the LG's logical height.
+      -- LG UltraFine 4K on top at 1.6x (logical 2400x1350), centered over
+      -- the Lenovo P27Q-40 1440p below at 1x and 120 Hz (logical 2560x1440).
+      -- Positions are logical pixels: x = (2560 - 2400) / 2, y = the LG's
+      -- logical height.
       hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
-      hl.monitor({ output = "desc:LG Electronics LG ULTRAFINE 310NTRL2M142", mode = "3840x2160@60", position = "0x0", scale = 1.6 })
-      hl.monitor({ output = "desc:Lenovo Group Limited P27Q-40 V90FTL8P", mode = "2560x1440@120", position = "176x1350", scale = 1.25 })
+      hl.monitor({ output = "desc:LG Electronics LG ULTRAFINE 310NTRL2M142", mode = "3840x2160@60", position = "80x0", scale = 1.6 })
+      hl.monitor({ output = "desc:Lenovo Group Limited P27Q-40 V90FTL8P", mode = "2560x1440@120", position = "0x1350", scale = 1 })
     '';
   };
 
