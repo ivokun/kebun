@@ -6,6 +6,33 @@
   ...
 }: let
   palette = import ../../lib/palette.nix;
+
+  # resurrect's save script, triggerable from outside tmux.
+  #
+  # It is handed to the server via run-shell rather than executed here, so it
+  # inherits the session environment — the same context continuum's own
+  # auto-save runs in. Executed directly from a systemd unit it would instead
+  # get the unit's bare environment, where `hostname`, `bash` (resurrect's
+  # helper scripts carry unpatched `#!/usr/bin/env bash` shebangs) and `ps` are
+  # all missing, and — the silent one — no UTF-8 locale is set, which makes
+  # tmux 3.7 render the tab delimiter of `list-panes -F` as `_`. Every field
+  # then parses empty, every pane is skipped as belonging to a grouped session,
+  # and the resulting 9-byte file takes over the `last` symlink that restore
+  # reads. Verified 2026-10-15: run-shell from `env -i` saves all three panes.
+  tmux-resurrect-save = pkgs.writeShellApplication {
+    name = "tmux-resurrect-save";
+    runtimeInputs = [config.programs.tmux.package];
+    text = ''
+      # No server, or a server with no sessions, means no state to save — and
+      # not a failure. The guard also keeps run-shell from spawning a server
+      # just to save an empty layout over a good one.
+      if ! tmux has-session 2>/dev/null; then
+        exit 0
+      fi
+      exec tmux run-shell \
+        "${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/scripts/save.sh quiet"
+    '';
+  };
 in {
   # ─── Neovim ───
   # LazyVim is best managed outside home-manager since it manages its own plugins.
@@ -205,5 +232,59 @@ in {
 
 
     '';
+  };
+
+  # ─── tmux session persistence across reboots ───
+  # continuum restores on its own (@continuum-restore on, above): a freshly
+  # started server re-runs resurrect's restore script. Saving is the weak half.
+  # continuum auto-saves by prepending an interpolation to status-right, so a
+  # save only happens when the status line redraws — i.e. only while a client
+  # is attached, and only every @continuum-save-interval minutes. A detached
+  # server never saves at all, and a shutdown discards everything since the
+  # last tick.
+  #
+  # These units trigger a save explicitly instead. TMUX_TMPDIR is
+  # pinned to %t because programs.tmux.secureSocket puts the socket under
+  # /run/user/$UID; the unit must not depend on the session env being imported.
+  systemd.user.services.tmux-resurrect-save = {
+    Unit.Description = "Save tmux sessions (tmux-resurrect)";
+    Service = {
+      Type = "oneshot";
+      Environment = "TMUX_TMPDIR=%t";
+      ExecStart = lib.getExe tmux-resurrect-save;
+    };
+  };
+
+  # The reliability floor: saves on a fixed cadence whether or not a client is
+  # attached, so a shutdown can lose at most two minutes of layout.
+  systemd.user.timers.tmux-resurrect-save = {
+    Unit.Description = "Save tmux sessions periodically";
+    Timer = {
+      OnStartupSec = "2m";
+      OnUnitActiveSec = "2m";
+    };
+    Install.WantedBy = ["timers.target"];
+  };
+
+  # One last save as the session is torn down, catching the gap since the last
+  # timer tick. Best-effort by nature: the tmux server lives in the app scope
+  # of whichever terminal spawned it, and systemd stops that scope without any
+  # ordering against this unit. After=graphical-session.target biases the
+  # teardown order in our favour (units stop in reverse), it does not guarantee
+  # it — the timer above, not this hook, is what makes the state survive.
+  systemd.user.services.tmux-resurrect-save-on-exit = {
+    Unit = {
+      Description = "Save tmux sessions when the user session ends";
+      After = ["graphical-session.target"];
+    };
+    Service = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      Environment = "TMUX_TMPDIR=%t";
+      ExecStart = "${pkgs.coreutils}/bin/true";
+      ExecStop = lib.getExe tmux-resurrect-save;
+      TimeoutStopSec = 20;
+    };
+    Install.WantedBy = ["default.target"];
   };
 }
