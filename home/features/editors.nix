@@ -53,10 +53,14 @@ in {
     # shadow these Nix packages.
     # yarn + nodejs feed markdown-preview.nvim's `cd app && yarn install`
     # build hook. Scoped to the nvim wrapper PATH — no globals, no nix-ld.
+    # shellcheck/shfmt back nvim-lint (sh) and conform (sh) — neither is
+    # installed by Mason here, so without them linting fails with ENOENT.
     extraPackages = with pkgs; [
       lua-language-server
       stylua
       rust-analyzer
+      shellcheck
+      shfmt
       yarn
       nodejs
     ];

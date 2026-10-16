@@ -40,30 +40,19 @@ return {
       notify_on_error = true,
     },
   },
-  -- Linter configuration
+  -- Linter configuration. Only linters_by_ft is set here: LazyVim's own
+  -- nvim-lint config merges it and lints on BufWritePost/BufReadPost/InsertLeave
+  -- with a debounce. The old custom config() re-linted on every BufEnter and
+  -- silently dropped opts.linters; the shellcheck "--format gcc" override it
+  -- carried would also break nvim-lint's json1 parser if it were ever applied.
   {
     "mfussenegger/nvim-lint",
-    event = { "BufReadPre", "BufNewFile" },
     opts = {
       linters_by_ft = {
         sh = { "shellcheck" },
         go = { "golangci_lint" },
         python = { "ruff" },
-        -- Add more linters as desired for your filetypes
-      },
-      -- Optional on-attach for format/lint on save:
-      linters = {
-        shellcheck = { args = { "--format", "gcc" } }, -- Match diagnostics_format = "#{m} [#{c}]"
       },
     },
-    config = function(_, opts)
-      require("lint").linters_by_ft = opts.linters_by_ft
-      -- Lint on save / after write
-      vim.api.nvim_create_autocmd({ "BufWritePost", "BufEnter" }, {
-        callback = function()
-          require("lint").try_lint()
-        end,
-      })
-    end,
   },
 }

@@ -30,7 +30,7 @@ local plugins = {
         "elixir-ls",
       }
       opts.ensure_installed = vim.list_extend(vim.list_extend({}, opts.ensure_installed or {}), extra)
-      local native = { "lua-language-server", "stylua", "rust-analyzer" }
+      local native = { "lua-language-server", "stylua", "rust-analyzer", "shellcheck", "shfmt" }
       opts.ensure_installed = vim.tbl_filter(function(tool)
         return not vim.tbl_contains(native, tool)
       end, opts.ensure_installed)
