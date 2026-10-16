@@ -132,41 +132,29 @@ in
       Window.SetBackgroundTopColor(${bgFloats});
       Window.SetBackgroundBottomColor(${bgFloats});
 
-      # --- Logo ---
+      # --- Sprites (positioned by layout() below) ---
       logo_image = Image("logo.png");
       logo_sprite = Sprite(logo_image);
       logo_sprite.SetZ(10);
-      logo_sprite.SetX(Window.GetWidth() / 2 - logo_image.GetWidth() / 2);
-      logo_sprite.SetY(Window.GetHeight() / 2 - logo_image.GetHeight() / 2 - 60);
 
-      # --- Progress bar (bottom of screen) ---
       progress_box_image = Image("progress_box.png");
       progress_box_sprite = Sprite(progress_box_image);
       progress_box_sprite.SetZ(10);
-      progress_box_sprite.SetX(Window.GetWidth() / 2 - progress_box_image.GetWidth() / 2);
-      progress_box_sprite.SetY(Window.GetHeight() - progress_box_image.GetHeight() - 40);
       progress_box_sprite.SetOpacity(0);
 
       progress_bar_image = Image("progress_bar.png");
       progress_bar_sprite = Sprite();
       progress_bar_sprite.SetZ(11);
-      progress_bar_sprite.SetX(Window.GetWidth() / 2 - progress_bar_image.GetWidth() / 2);
-      progress_bar_sprite.SetY(Window.GetHeight() - progress_bar_image.GetHeight() - 40);
       progress_bar_sprite.SetOpacity(0);
 
-      # --- Password dialog assets ---
       entry_image = Image("entry.png");
       entry_sprite = Sprite(entry_image);
       entry_sprite.SetZ(10);
-      entry_sprite.SetX(Window.GetWidth() / 2 - entry_image.GetWidth() / 2);
-      entry_sprite.SetY(Window.GetHeight() / 2 + 60);
       entry_sprite.SetOpacity(0);
 
       lock_image = Image("lock.png");
       lock_sprite = Sprite(lock_image);
       lock_sprite.SetZ(12);
-      lock_sprite.SetX(Window.GetWidth() / 2 - entry_image.GetWidth() / 2 - lock_image.GetWidth() - 12);
-      lock_sprite.SetY(Window.GetHeight() / 2 + 60 + entry_image.GetHeight() / 2 - lock_image.GetHeight() / 2);
       lock_sprite.SetOpacity(0);
 
       # Bullet sprites (pre-create, toggle opacity)
@@ -175,15 +163,55 @@ in
       for (i = 0; i < 21; i++) {
         bullet_sprites[i] = Sprite(bullet_image);
         bullet_sprites[i].SetZ(12);
-        bullet_sprites[i].SetX(Window.GetWidth() / 2 - entry_image.GetWidth() / 2 + 20 + i * 16);
-        bullet_sprites[i].SetY(Window.GetHeight() / 2 + 60 + entry_image.GetHeight() / 2 - bullet_image.GetHeight() / 2);
         bullet_sprites[i].SetOpacity(0);
       }
+
+      # --- Layout ---
+      # Window.GetWidth()/GetHeight() with no index is the canvas spanning the
+      # largest display; every display is a viewport centered on it. That
+      # canvas changes after the script has run: plymouthd starts on the
+      # firmware framebuffer (simpledrm) and amdgpu's real heads replace it a
+      # few seconds later, so positions computed once at load end up
+      # off-center. Re-run the layout whenever the canvas size changes.
+      fun layout () {
+        cx = Window.GetWidth() / 2;
+        cy = Window.GetHeight() / 2;
+
+        # Smallest display height: the progress bar anchors to its bottom
+        # edge so it stays visible on every head, not just the largest.
+        min_h = Window.GetHeight();
+        for (i = 0; Window.GetHeight(i); i++) {
+          if (Window.GetHeight(i) < min_h) min_h = Window.GetHeight(i);
+        }
+        bar_y = cy + min_h / 2 - progress_box_image.GetHeight() - 40;
+
+        logo_sprite.SetX(cx - logo_image.GetWidth() / 2);
+        logo_sprite.SetY(cy - logo_image.GetHeight() / 2 - 60);
+
+        progress_box_sprite.SetX(cx - progress_box_image.GetWidth() / 2);
+        progress_box_sprite.SetY(bar_y);
+        progress_bar_sprite.SetX(cx - progress_bar_image.GetWidth() / 2);
+        progress_bar_sprite.SetY(bar_y);
+
+        entry_sprite.SetX(cx - entry_image.GetWidth() / 2);
+        entry_sprite.SetY(cy + 60);
+        lock_sprite.SetX(cx - entry_image.GetWidth() / 2 - lock_image.GetWidth() - 12);
+        lock_sprite.SetY(cy + 60 + entry_image.GetHeight() / 2 - lock_image.GetHeight() / 2);
+        for (i = 0; i < 21; i++) {
+          bullet_sprites[i].SetX(cx - entry_image.GetWidth() / 2 + 20 + i * 16);
+          bullet_sprites[i].SetY(cy + 60 + entry_image.GetHeight() / 2 - bullet_image.GetHeight() / 2);
+        }
+
+        global.laid_out_w = Window.GetWidth();
+        global.laid_out_h = Window.GetHeight();
+      }
+
+      layout();
 
       # --- Callbacks ---
 
       fun refresh_callback () {
-        # Nothing to animate continuously
+        if (Window.GetWidth() != laid_out_w || Window.GetHeight() != laid_out_h) layout();
       }
 
       fun progress_callback (duration, progress) {
