@@ -78,6 +78,7 @@
         ../home/features/mpv.nix
         ../home/features/webapps.nix
         ../home/features/sleep-lock.nix
+        ../home/features/tailscale-receive.nix
       ];
       _module.args.username = lib.mkForce "ivokun";
       _module.args.system = lib.mkForce "x86_64-linux";

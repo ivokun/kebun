@@ -62,6 +62,12 @@
   services.tailscale = {
     enable = true;
     openFirewall = true;
+    # Let the desktop user drive tailscaled without sudo — the shell's
+    # omarchy.tailscale bar widget toggles up/down, switches accounts and
+    # picks exit nodes as that user. Upstream's install-service script sets
+    # this imperatively; here it is re-applied on every boot. Single-user
+    # hosts, so the first (only) declared user is the operator.
+    extraSetFlags = ["--operator=${builtins.head hostUserNames}"];
   };
 
   # DNS

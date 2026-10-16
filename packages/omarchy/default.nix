@@ -67,11 +67,13 @@
     quickshell
     slurp # omarchy-capture-region
     systemd
+    tailscale # omarchy-tailscale-receive / -send (Taildrop)
     tesseract # omarchy-capture-text (OCR)
     util-linux
     v4l-utils # v4l2-ctl, omarchy-capture-webcam-list/resolution probing
     wireplumber # wpctl, needed by omarchy-audio-input-mute
     wl-clipboard # wl-copy, omarchy-capture-screenshot/text/qr
+    xdg-utils # xdg-open, omarchy-tailscale-receive's click-to-open notification
     xdg-terminal-exec # omarchy-launch-floating-terminal-with-presentation
     zbar # zbarimg, omarchy-capture-qr
   ];
@@ -137,6 +139,11 @@
     "omarchy-bluetooth-device"
     "omarchy-bluetooth-power"
     "omarchy-restart-bluetooth"
+    # Tailscale bar widget (omarchy.tailscale): the panel spawns -send by
+    # name for Taildrop, and home/features/tailscale-receive.nix runs
+    # -receive as a user service that saves incoming files to ~/Downloads.
+    "omarchy-tailscale-send"
+    "omarchy-tailscale-receive"
   ];
 in
   pkgs.runCommand "omarchy-shell-env-4.0.2" {
