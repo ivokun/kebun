@@ -49,7 +49,7 @@
   # Do NOT add swapDevices here.
 
   # ─── Locale / Time ───
-  time.timeZone = "Asia/Tokyo";
+  time.timeZone = "Asia/Kuala_Lumpur";
   i18n = {
     defaultLocale = "en_US.UTF-8";
     extraLocaleSettings = {
