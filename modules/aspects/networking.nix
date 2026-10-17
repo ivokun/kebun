@@ -36,7 +36,17 @@
           allowedTCPPorts = [53317];
           allowedUDPPorts = [53317 5353];
         };
-        tailscale0.allowedTCPPorts = [22];
+        # Mosh bootstraps over SSH, then needs its UDP range — same tailnet-only
+        # scope as SSH (mosh itself is installed by home/common.nix).
+        tailscale0 = {
+          allowedTCPPorts = [22];
+          allowedUDPPortRanges = [
+            {
+              from = 60000;
+              to = 61000;
+            }
+          ];
+        };
       };
     };
   };
