@@ -101,7 +101,8 @@ in {
       tldr
 
       # AI
-      claude-code
+      # nixpkgs' claude-code, re-pointed at a newer release (packages/claude-code)
+      (pkgs.callPackage ../packages/claude-code {})
       inputs.luvus.packages.${system}.default
       # Official Linux beta repackaged from Anthropic's .deb (packages/claude-desktop)
       (pkgs.callPackage ../packages/claude-desktop {})
