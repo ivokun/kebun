@@ -13,6 +13,22 @@ of the plan and its gates; it is **no longer a pre-install snapshot**, and
 > After any repartition, reconcile every `by-uuid` in `hosts/<name>/`
 > against the live machine before switching.
 
+## Post-install gate status (2026-10-17)
+
+| Gate (§6 / §4.1) | Status |
+|---|---|
+| Services / session | ✅ `systemctl --failed` and `--user --failed` clean |
+| LUKS / TPM2 | ✅ slot 0 passphrase (tested), slot 1 TPM2 (unlocks at boot); header backup taken, `age`-encrypted; off-machine copies (Drive + one more) placed by the operator. Login password **not** enrolled as a LUKS key (deliberate) |
+| Storage | ✅ `/mnt/entertainments`, 32 GiB `/swap/swapfile` at prio 0 under zram 100. `/mnt/tubeinas` mounts via the Tailscale subnet route (`tailscale0`, table 52) even on the LAN — the same path used off-LAN |
+| Stale Arch units | ✅ none; `lan-mouse` is the kebun unit, its `pem` + config restored |
+| Calibre | ✅ ported (`services.calibre-server`, :8080, wired-LAN firewall only) |
+| Apps | ✅ Moonlight, Ryubing (nixpkgs' Ryujinx successor), DaVinci Resolve (+ ROCm OpenCL). Dolphin Flatpak and DBeaver dropped |
+| Borg | ✅ daily catch-up job → `borgbackups/ume` (ADR-0018); repokey export done by the operator (not machine-checked). On-site only |
+| SSH | ✅ declarative keys only (`authorizedKeysInHomedir = false`), `tailscale0`-only |
+| Editors | ✅ LuaLS, StyLua, rust-analyzer resolve to Nix and attach; all Mason binaries run. Rust needs a project devshell (no global toolchain, by choice) |
+| Monitors | ✅ per-output rules for the LG/Lenovo stack |
+| Steam 32-bit Vulkan, xpadneo, `:MarkdownPreview` | ⏳ hands-on checks pending |
+
 This was a runbook for installing kebun on `ume` — the ASRock B550M-ITX/ac
 desktop whose hardware was previously the Arch machine `ivokun-htpc`
 (Omarchy 4.0.3). It records the machine's state, the decisions made before
