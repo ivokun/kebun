@@ -154,6 +154,15 @@
   # Wi-Fi networks; ume is wired in normal operation.
   networking.firewall.interfaces."en+".allowedUDPPorts = [4242];
 
+  # ─── SSH authorization: declarative only ───
+  # sshd ignores ~/.ssh/authorized_keys, so only keys in this repo log in.
+  # keys/ume-restored.pub holds the five keys restored from the Arch home
+  # (kept wholesale, 2026-10-17); the shared operator key comes from
+  # modules/users.nix. Network exposure is unchanged: port 22 is open on
+  # tailscale0 only. ume-scoped so sakura's home-dir keys keep working.
+  services.openssh.authorizedKeysInHomedir = false;
+  users.users.ivokun.openssh.authorizedKeys.keyFiles = [../../keys/ume-restored.pub];
+
   # ─── Keyboard ───
   services.xserver.xkb = {
     layout = "us";
