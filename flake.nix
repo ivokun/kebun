@@ -46,6 +46,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Activation-time secret decryption (ADR-0018). Hosts decrypt with their
+    # SSH host key converted to age; secrets live encrypted under secrets/.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Mission control for AI coding agents. Pin release tags deliberately;
     # home/common.nix installs the package for every managed host.
     luvus = {

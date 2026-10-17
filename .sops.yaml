@@ -1,0 +1,13 @@
+# sops recipients (ADR-0018). Hosts decrypt with their SSH host key converted
+# to age (`ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`); the personal
+# key keeps every secret editable from any machine holding it. After changing
+# recipients, run `sops updatekeys secrets/<file>.yaml`.
+keys:
+  - &ivokun age1u4slczc4jf4eccjg3at3w79a94ruqv9hx5qdhj0sgwhsut93q36saesgca
+  - &ume age16mx4w756zu0xk7tswg8y4meq2z5nvwk7gz5rcp90v8l0jx86aeeq4zmlfu
+creation_rules:
+  - path_regex: ^secrets/ume\.yaml$
+    key_groups:
+      - age:
+          - *ivokun
+          - *ume

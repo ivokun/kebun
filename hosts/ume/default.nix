@@ -13,6 +13,7 @@
 }: {
   imports = [
     ./hardware-configuration.nix
+    ./backup.nix
   ];
 
   # ─── AMD Radeon RX 9060 XT / Navi 44 (discrete dGPU, amdgpu) ───
@@ -108,11 +109,36 @@
   # ─── Xpadneo (Xbox controllers over Bluetooth) ───
   hardware.xpadneo.enable = true;
 
+  # ─── Desktop apps carried over from ivokun-htpc ───
+  # Moonlight (game-stream client), Ryubing (the maintained Ryujinx fork —
+  # nixpkgs replaced `ryujinx` with it) and DaVinci Resolve. Resolve's GPU
+  # path on AMD is OpenCL, hence ROCm's OpenCL runtime.
+  hardware.amdgpu.opencl.enable = true;
+
+  # ─── Calibre content server (Kobo library) ───
+  # Ported from the Arch calibre-content-server.service: serves the library
+  # on the media disk at :8080, LAN-only. Runs as ivokun because the library
+  # is ivokun-owned; RequiresMountsFor triggers the media-disk automount.
+  services.calibre-server = {
+    enable = true;
+    user = "ivokun";
+    group = "users";
+    port = 8080;
+    libraries = ["/mnt/entertainments/Calibre Library"];
+  };
+  systemd.services.calibre-server.unitConfig.RequiresMountsFor = ["/mnt/entertainments"];
+  networking.firewall.interfaces."en+".allowedTCPPorts = [8080];
+
   # ─── LAN Mouse ───
   # The certificate and peer authorization remain private runtime state under
   # ~/.config/lan-mouse; restore them separately instead of putting the PEM in
   # the Nix store.
-  environment.systemPackages = [pkgs.lan-mouse];
+  environment.systemPackages = with pkgs; [
+    lan-mouse
+    moonlight-qt
+    ryubing
+    davinci-resolve
+  ];
   systemd.user.services.lan-mouse = {
     description = "LAN Mouse";
     after = ["graphical-session.target"];

@@ -132,7 +132,12 @@ in {
   den.aspects.ume = {
     includes = sharedHostAspects;
 
-    nixos.imports = [../hosts/ume];
+    nixos.imports = [
+      ../hosts/ume
+      # sops-nix (ADR-0018); imported here because `inputs` is lexical in
+      # this file but only a _module.arg inside hosts/ume.
+      inputs.sops-nix.nixosModules.sops
+    ];
   };
 
   # ─── Entity wiring: hosts, ivokun user with homeManager ───
