@@ -10,6 +10,7 @@
   whisperopencodePush = opencodePkgs.whisperopencodePush;
   sourceConfig = builtins.fromJSON (builtins.readFile (opencodeDir + "/opencode.json"));
   sourceServers = sourceConfig.mcp.servers;
+  memoryPolicy = opencodeDir + "/prompts/memory-policy.md";
 
   githubTokenVariables = [
     "GITHUB_TOKEN"
@@ -44,6 +45,11 @@
   "Every local OpenCode MCP server must receive an absolute command in home/features/opencode.nix";
     sourceConfig
     // {
+      # A relative instructions entry is workspace-relative in V2. Resolve
+      # this shared policy to its immutable absolute store path instead.
+      instructions =
+        lib.filter (instruction: instruction != "./prompts/memory-policy.md") (sourceConfig.instructions or [])
+        ++ ["${memoryPolicy}"];
       mcp =
         sourceConfig.mcp
         // {
@@ -66,7 +72,11 @@
               memory =
                 sourceServers.memory
                 // {
-                  command = sanitizedCommand githubTokenVariables "${mcpServers}/bin/mcp-server-memory" [];
+                  command = sanitizedCommand githubTokenVariables "${opencodePkgs.memory}/bin/kebun-memory" [
+                    "mcp-stdio"
+                    "--socket"
+                    "{env:XDG_RUNTIME_DIR}/kebun-memory/memory.sock"
+                  ];
                 };
               sequential-thinking =
                 sourceServers.sequential-thinking
@@ -156,6 +166,7 @@ in {
     # ~/.config/opencode/mcp/).
 
     # Prompts
+    "opencode/prompts/memory-policy.md".source = memoryPolicy;
     "opencode/prompts/ai_engineer.txt".source = opencodeDir + "/prompts/ai_engineer.txt";
     "opencode/prompts/backend.txt".source = opencodeDir + "/prompts/backend.txt";
     "opencode/prompts/bug_hunter.txt".source = opencodeDir + "/prompts/bug_hunter.txt";

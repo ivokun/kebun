@@ -44,7 +44,16 @@ in {
   den.aspects.host-base = {
     includes = [den.batteries.hostname];
 
-    nixos = {host, ...}: {
+    nixos = {
+      host,
+      config,
+      ...
+    }: {
+      # Both hosts can declare runtime secrets once their real SSH/age
+      # recipients are enrolled. Importing the module provisions no secret
+      # and does not invent Sakura's still-unknown recipient.
+      imports = [inputs.sops-nix.nixosModules.sops];
+
       # Typed host surface consumed by Home Manager via osConfig — hosts set
       # these in hosts/<name>/default.nix and HM modules branch on them
       # instead of matching on hostName.
@@ -86,9 +95,78 @@ in {
             leaves this empty gets kebun's single-preferred-output fallback.
           '';
         };
+        memoryAccountId = lib.mkOption {
+          type = lib.types.strMatching "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+          default = "6f67358f-8bbf-48d1-a48f-ec40c3c3fd8d";
+          description = ''
+            Public Kebun memory account UUID shared by this user's devices.
+            This is an identity, not a credential. Changing it against an
+            initialized local store fails closed; migration is explicit.
+          '';
+        };
+        memoryActorId = lib.mkOption {
+          type = lib.types.strMatching "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+          description = ''
+            Public, stable, unique memory actor UUID for this host. Set it
+            in the host module, never infer it from a hostname in Home
+            Manager. Do not reuse another device's initialized identity.
+          '';
+        };
+        memorySync = lib.mkOption {
+          default = {};
+          description = "Optional memory replication; local operation is the default.";
+          type = lib.types.submodule {
+            options = {
+              enable = lib.mkEnableOption "private HTTPS memory synchronization";
+              enrollmentConfirmed = lib.mkOption {
+                type = lib.types.bool;
+                default = false;
+                description = ''
+                  Explicit operator gate: enable only after the private
+                  endpoint, device authorization, backup/restore checks and
+                  actual host SOPS recipient enrollment are complete. No
+                  recipient, credential or service is provisioned here.
+                '';
+              };
+              url = lib.mkOption {
+                type = lib.types.nullOr (lib.types.strMatching "https://[^[:space:]#?@]+");
+                default = null;
+                description = "Private HTTPS sync endpoint; never put a token in this URL.";
+              };
+              tokenFile = lib.mkOption {
+                type = lib.types.nullOr (lib.types.strMatching "/[^[:space:]]+");
+                default = null;
+                description = ''
+                  Absolute runtime path to the user-readable device token,
+                  normally config.sops.secrets.<name>.path after enrollment.
+                  This is a string, not a Nix path: the secret must never be
+                  copied to the store. An absent runtime file only pauses
+                  synchronization; it must not block local readiness.
+                '';
+              };
+            };
+          };
+        };
       };
 
       config = {
+        assertions = let
+          sync = config.kebun.host.memorySync;
+        in [
+          {
+            assertion = !sync.enable || sync.enrollmentConfirmed;
+            message = "Memory sync requires explicit kebun.host.memorySync.enrollmentConfirmed after real host SOPS recipient/device enrollment and private endpoint/backup gates; do not fabricate Sakura's age recipient.";
+          }
+          {
+            assertion = !sync.enable || (sync.url != null && sync.tokenFile != null);
+            message = "Memory sync requires kebun.host.memorySync.url and a runtime tokenFile path. Keep enable = false for local-only operation.";
+          }
+          {
+            assertion = sync.tokenFile == null || !(lib.hasPrefix builtins.storeDir sync.tokenFile);
+            message = "Memory sync tokenFile must point to a runtime secret, never a Nix-store file.";
+          }
+        ];
+
         networking.hostName = host.hostName;
 
         # NixOS-module fn args consumed by hosts/* and shared plain modules.
@@ -134,9 +212,6 @@ in {
 
     nixos.imports = [
       ../hosts/ume
-      # sops-nix (ADR-0018); imported here because `inputs` is lexical in
-      # this file but only a _module.arg inside hosts/ume.
-      inputs.sops-nix.nixosModules.sops
     ];
   };
 

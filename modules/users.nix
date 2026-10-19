@@ -74,6 +74,7 @@
         ../home/features/ghostty.nix
         ../home/features/kitty.nix
         ../home/features/opencode.nix
+        ../home/features/opencode-memory.nix
         ../home/features/helix.nix
         ../home/features/mpv.nix
         ../home/features/webapps.nix

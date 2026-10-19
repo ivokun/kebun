@@ -221,6 +221,7 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 - `OMARCHY_DISCREPANCY_REPORT.md` — historical port-time audit (2026-09-01) that fed ADR-0007; still a useful v4 architecture reference, no longer status
 - `docs/omarchy/quattro-port-inventory.md` — historical port-time inventory (same caveat)
 - `docs/omarchy-parity-backlog.md` — follow-ups, re-scoped post-migration (see its addendum)
+- **Memory:** read `docs/opencode-memory.md` before changing memory tools/policy, enabling sync, migrating/recovering data, upgrading a store, or assessing persistence guarantees.
 - `docs/adr/` — architecture decision records (0013 = Den adoption, 0014 = trust boundaries, 0015 = OpenCode supply chain, 0016 = OpenCode V2 migration, 0017 = multi-host modeling, 0018 = Borg + sops-nix)
 - `docs/omarchy/` — research briefs on upstream Omarchy
 - `thoughts/` — in-progress plans and drafts (not authoritative)

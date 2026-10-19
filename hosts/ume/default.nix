@@ -173,6 +173,7 @@
   kebun.host = {
     isLaptop = false;
     greeterLayout = "us";
+    memoryActorId = "efe55bc9-fa10-4af0-b29b-217338fe7508";
     monitorsLua = ''
       -- Kebun monitor layout — ume's stacked pair, both 27" panels, matched
       -- by EDID description so a DP connector swap can't shuffle them.
