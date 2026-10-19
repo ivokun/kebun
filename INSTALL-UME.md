@@ -20,7 +20,7 @@ of the plan and its gates; it is **no longer a pre-install snapshot**, and
 | Services / session | ✅ `systemctl --failed` and `--user --failed` clean |
 | LUKS / TPM2 | ✅ slot 0 passphrase (tested), slot 1 TPM2 (unlocks at boot); header backup taken, `age`-encrypted; off-machine copies (Drive + one more) placed by the operator. Login password **not** enrolled as a LUKS key (deliberate) |
 | Storage | ✅ `/mnt/entertainments`, 32 GiB `/swap/swapfile` at prio 0 under zram 100. `/mnt/tubeinas` mounts via the Tailscale subnet route (`tailscale0`, table 52) even on the LAN — the same path used off-LAN |
-| Stale Arch units | ✅ none; `lan-mouse` is the kebun unit, its `pem` + config restored |
+| Stale Arch units | ✅ none; `lan-mouse` is the kebun unit, its `pem` restored. `config.toml` came back empty (no peers authorized); the LAN peer's fingerprint was added by hand on 2026-10-19 — GUI "Authorize" does not persist |
 | Calibre | ✅ ported (`services.calibre-server`, :8080, wired-LAN firewall only) |
 | Apps | ✅ Moonlight, Ryubing (nixpkgs' Ryujinx successor), DaVinci Resolve (+ ROCm OpenCL). Dolphin Flatpak and DBeaver dropped |
 | Borg | ✅ daily catch-up job → `borgbackups/ume` (ADR-0018); repokey export done by the operator (not machine-checked). On-site only |
