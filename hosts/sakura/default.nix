@@ -65,6 +65,7 @@
   kebun.host = {
     isLaptop = true;
     greeterLayout = "jp";
+    memoryActorId = "90241cd7-cf71-4927-8ff4-62ecb02ffdca";
     monitorsLua = ''
       -- Kebun monitor layout — moved verbatim from home/sakura.nix (ADR-0007
       -- Stage 3). sakura-specific values (X13 built-in panel + HDMI + 4K DP);

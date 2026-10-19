@@ -1,6 +1,66 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "update": "disable",
+  "instructions": [
+    "./prompts/memory-policy.md"
+  ],
+  "permissions": [
+    {
+      "action": "memory_*",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_create_entities",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_create_relations",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_add_observations",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_delete_entities",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_delete_relations",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_delete_observations",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_remember",
+      "resource": "*",
+      "effect": "deny"
+    },
+    {
+      "action": "memory_read_graph",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "memory_search_nodes",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "memory_open_nodes",
+      "resource": "*",
+      "effect": "allow"
+    }
+  ],
   "agents": {
     "plan": {
       "model": "opencode-go/glm-5.3-flash",
@@ -117,11 +177,46 @@
           "action": "edit",
           "resource": "*",
           "effect": "allow"
+        },
+        {
+          "action": "memory_create_entities",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "memory_create_relations",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "memory_add_observations",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "memory_delete_entities",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "memory_delete_relations",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "memory_delete_observations",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "memory_remember",
+          "resource": "*",
+          "effect": "allow"
         }
       ]
     },
     "explore": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -155,7 +250,7 @@
       ]
     },
     "librarian": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -189,7 +284,7 @@
       ]
     },
     "oracle": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -233,7 +328,7 @@
       ]
     },
     "backend-architect": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -272,7 +367,7 @@
       ]
     },
     "frontend-maintainer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -311,7 +406,7 @@
       ]
     },
     "code-reviewer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -345,7 +440,7 @@
       ]
     },
     "bug-hunter": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -389,7 +484,7 @@
       ]
     },
     "refactor-specialist": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -428,7 +523,7 @@
       ]
     },
     "test-writer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -472,7 +567,7 @@
       ]
     },
     "docs-writer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -511,7 +606,7 @@
       ]
     },
     "git-specialist": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "system": "{file:./prompts/git.txt}",
       "description": "Git operations expert - commits, rebases, history surgery",
       "mode": "subagent",
@@ -545,7 +640,7 @@
       ]
     },
     "performance-optimizer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -589,7 +684,7 @@
       ]
     },
     "security-auditor": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -628,7 +723,7 @@
       ]
     },
     "ai-engineer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -672,7 +767,7 @@
       ]
     },
     "devops-engineer": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -716,7 +811,7 @@
       ]
     },
     "general": {
-      "model": "opencode-go/glm-5.3-flash",
+      "model": "opencode-go/glm-5.3-flash#max",
       "mode": "subagent"
     }
   },
@@ -751,7 +846,10 @@
           "GITHUB_ENTERPRISE_TOKEN",
           "-u",
           "GH_ENTERPRISE_TOKEN",
-          "mcp-server-memory"
+          "kebun-memory",
+          "mcp-stdio",
+          "--socket",
+          "{env:XDG_RUNTIME_DIR}/kebun-memory/memory.sock"
         ],
         "disabled": false
       },

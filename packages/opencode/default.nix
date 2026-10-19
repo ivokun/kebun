@@ -5,8 +5,9 @@
 # unmanaged runtime prerequisite, see below), while the wrapper and its
 # interpreter/readlink are still Nix-store paths.
 #
-# - mcp-server-memory and mcp-nixos come from pinned nixpkgs. Sequential
-#   thinking 2026.8.31 and github-mcp-server 1.12.2 are reproducible security/
+# - mcp-nixos comes from pinned nixpkgs. Memory is the local Kebun daemon's
+#   lightweight stdio adapter, packaged alongside its independent server.
+#   Sequential thinking 2026.8.31 and github-mcp-server 1.12.2 are security/
 #   compatibility backports in this directory.
 # - browsermcp and gitnexus are packed from their npm registry tarballs
 #   with lockfile-pinned dependency trees (./*.nix + ./*-package-lock.json).
@@ -22,6 +23,7 @@
   gitnexus = pkgs.callPackage ./gitnexus.nix {};
   githubMcpServer = pkgs.callPackage ./github-mcp-server.nix {};
   sequentialThinking = pkgs.callPackage ./sequential-thinking.nix {};
+  memory = pkgs.callPackage ./memory.nix {};
   whisperopencodePush = pkgs.callPackage ./whisperopencode-push.nix {};
 
   # Excalidraw MCP dist (prebuilt bundle from the repo) kept in the Nix
@@ -30,14 +32,11 @@
     mkdir -p $out
     cp -r ${../../home/opencode/mcp/excalidraw-mcp/dist}/. $out/
   '';
-  # mcp-server-memory and mcp-server-sequential-thinking each install the
-  # full @modelcontextprotocol/servers mono-repo tree in nixpkgs, which
-  # collides when both land in one home.packages buildEnv. Only their bin
-  # wrappers need to be on PATH (each wrapper execs its own store path), so
-  # expose a link farm of the four MCP server executables instead.
+  # Expose only the MCP executables on PATH, not their full package trees.
+  # The legacy mcp-server-memory backend/link is deliberately absent: all
+  # memory adapters connect to the single owning kebun-memory daemon.
   mcp-servers = pkgs.runCommand "opencode-mcp-servers" {} ''
     mkdir -p $out/bin
-    ln -s ${pkgs.mcp-server-memory}/bin/mcp-server-memory $out/bin/mcp-server-memory
     ln -s ${sequentialThinking}/bin/mcp-server-sequential-thinking $out/bin/mcp-server-sequential-thinking
     ln -s ${pkgs.mcp-nixos}/bin/mcp-nixos $out/bin/mcp-nixos
     ln -s ${githubMcpServer}/bin/github-mcp-server $out/bin/github-mcp-server
@@ -75,6 +74,7 @@ in {
     gitnexus
     githubMcpServer
     mcp-servers
+    memory
     opencode-pencil-mcp
     sequentialThinking
     whisperopencodePush

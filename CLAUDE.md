@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Kebun is a NixOS system flake for two machines, one user (`ivokun`): `sakura`, a ThinkPad X13 Gen 1 laptop (AMD Renoir APU, live since 2026-09-04), and `ume`, an ASRock B550M-ITX/ac desktop (Ryzen 9 5900X, RX 9060 XT) — the former ivokun-htpc hardware, **installed 2026-10-15** (runbook: `INSTALL-UME.md`; its `hosts/ume/hardware-configuration.nix` is the real post-install layout, verified against the live machine on 2026-10-15). It is a configuration repo, not a software project: there are no tests, no CI, and no build pipeline. Changes take effect by rebuilding the matching host. The desktop is kebun's port of [Omarchy](https://omarchy.org) v4 ("Quattro") to NixOS idioms — quickshell shell, Hyprland Lua config, palette-driven theming. The migration is complete (ADR-0007, stages 1–6) and deployed on sakura; first-deploy fixes plus the auth/greeter overhaul are in ADR-0009–0011, and the multi-host modeling is ADR-0017.
+Kebun is a NixOS system flake for two machines, one user (`ivokun`): `sakura`, a ThinkPad X13 Gen 1 laptop (AMD Renoir APU, live since 2026-09-04), and `ume`, an ASRock B550M-ITX/ac desktop (Ryzen 9 5900X, RX 9060 XT) — the former ivokun-htpc hardware, **installed 2026-10-15** (runbook: `INSTALL-UME.md`; its `hosts/ume/hardware-configuration.nix` is the real post-install layout, verified against the live machine on 2026-10-15). It is primarily a configuration repo, with no CI or general system test suite; the embedded OpenCode memory application has isolated tests and a Nix check (ADR-0019). Changes take effect by rebuilding the matching host. The desktop is kebun's port of [Omarchy](https://omarchy.org) v4 ("Quattro") to NixOS idioms — quickshell shell, Hyprland Lua config, palette-driven theming. The migration is complete (ADR-0007, stages 1–6) and deployed on sakura; first-deploy fixes plus the auth/greeter overhaul are in ADR-0009–0011, and the multi-host modeling is ADR-0017.
 
 ## Commands
 
@@ -15,6 +15,10 @@ nixos-rebuild build --flake .#ume      # on ume (post-install only)
 # nixos-rebuild is not installed on the Arch reference host.
 nix build .#nixosConfigurations.sakura.config.system.build.toplevel
 nix build .#nixosConfigurations.ume.config.system.build.toplevel
+
+# For memory application, protocol, or packaging changes: build and test the
+# installed artifact against private temporary PGlite/PostgreSQL 16 fixtures.
+nix build .#checks.x86_64-linux.kebun-memory
 
 # Apply the config — run ON the matching host (sakura switches sakura,
 # ume switches ume; never build-then-switch cross-host). nh is installed
@@ -38,7 +42,7 @@ nix flake update nixpkgs
 ./fix-and-rebuild.sh
 ```
 
-Verifying a change is a runtime activity, not a test run. After `switch`, check
+Package tests do not replace runtime verification of system changes. After `switch`, check
 `systemctl --failed`, `systemctl --user --failed`, and `journalctl -b -p warning`. Hyprland
 config changes apply on reload; UWSM/session changes need a re-login.
 
@@ -221,6 +225,7 @@ Architecture decisions get an ADR in `docs/adr/` (see `template.md`).
 - `OMARCHY_DISCREPANCY_REPORT.md` — historical port-time audit (2026-09-01) that fed ADR-0007; still a useful v4 architecture reference, no longer status
 - `docs/omarchy/quattro-port-inventory.md` — historical port-time inventory (same caveat)
 - `docs/omarchy-parity-backlog.md` — follow-ups, re-scoped post-migration (see its addendum)
+- **Memory:** read `docs/opencode-memory.md` before changing memory tools/policy, enabling sync, migrating/recovering data, upgrading a store, or assessing persistence guarantees.
 - `docs/adr/` — architecture decision records (0013 = Den adoption, 0014 = trust boundaries, 0015 = OpenCode supply chain, 0016 = OpenCode V2 migration, 0017 = multi-host modeling, 0018 = Borg + sops-nix)
 - `docs/omarchy/` — research briefs on upstream Omarchy
 - `thoughts/` — in-progress plans and drafts (not authoritative)
