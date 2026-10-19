@@ -4,7 +4,20 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  # The tailnet advertises the home LAN as a subnet route, and with
+  # --accept-routes Tailscale's table 52 (rule 5270) shadows the connected
+  # route: LAN replies leave via tailscale0 and rpfilter drops inbound LAN
+  # traffic (lan-mouse, Calibre, LocalSend). Consult main first, but
+  # suppress its default route, so the LAN goes direct when attached and
+  # falls through to the subnet route when away.
+  lanFirst = {
+    To = "192.168.100.0/24";
+    Table = "main";
+    SuppressPrefixLength = 0;
+    Priority = 5200;
+  };
+in {
   networking = {
     # Use iwd standalone for WiFi (required by impala)
     # NetworkManager is intentionally NOT used — it conflicts with iwd
@@ -59,11 +72,13 @@
       "10-wired" = {
         matchConfig.Name = "en*";
         networkConfig.DHCP = true;
+        routingPolicyRules = [lanFirst];
       };
       # WiFi is managed by iwd (iwd handles its own DHCP via systemd-networkd integration)
       "20-wifi" = {
         matchConfig.Name = "wl*";
         networkConfig.DHCP = true;
+        routingPolicyRules = [lanFirst];
       };
     };
   };
