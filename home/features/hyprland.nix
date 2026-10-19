@@ -56,6 +56,22 @@
   bindBatteryStatus = lib.optionalString laptop "o.bind(\"SUPER + SHIFT + Y\", \"Show battery status\", \"omarchy-notification-battery\")";
   bindToggleLaptopDisplay = lib.optionalString laptop "o.bind(\"SUPER + CTRL + DELETE\", \"Toggle laptop display\", \"toggle-laptop-display\")";
   bindShowBattery = lib.optionalString laptop "o.bind(\"SUPER + CTRL + ALT + B\", \"Show battery\", \"show-battery\")";
+
+  hyprland = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+
+  # HyprMon (monitor layout TUI + profiles). When it saves — `S`, and every
+  # `--profile` apply — it writes its rules to a hyprmon.lua sidecar next to
+  # the Lua entry and then rewrites the entry itself to add the require. Our
+  # entry is an HM symlink into the store, so that rewrite would fail (and
+  # skip the reload). $HYPRLAND_CONFIG — read by HyprMon, not by Hyprland —
+  # points it at a writable decoy entry in the same directory instead; the
+  # sidecar still lands at ~/.config/hypr/hyprmon.lua, which the real entry
+  # loads as hypr.hyprmon (see below).
+  hyprmon = pkgs.writeShellScriptBin "hyprmon" ''
+    export PATH=${hyprland}/bin:$PATH
+    export HYPRLAND_CONFIG="''${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprmon-entry.lua"
+    exec ${pkgs.hyprmon}/bin/hyprmon "$@"
+  '';
 in {
   # ─── Hyprland — Lua layer (ADR-0007 Stage 3) ───
   #
@@ -99,10 +115,12 @@ in {
   # - pavucontrol is the audio panel (SUPER+CTRL+A)
   # - hyprsunset is the nightlight binary — the shell's
   #   omarchy-toggle-nightlight verb drives it via `hyprctl hyprsunset temperature`
+  # - hyprmon is the monitor layout/profile TUI (wrapped above)
   home.packages = [
-    inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland
+    hyprland
     pkgs.pavucontrol
     pkgs.hyprsunset
+    hyprmon
   ];
 
   # ─── Lua layer entry ───
@@ -127,6 +145,11 @@ in {
     -- Kebun overrides, loaded after the defaults so they win.
     require("hypr.envs")
     require("hypr.monitors")
+    -- HyprMon's saved layout/profile, when one exists, overrides the host
+    -- layout above. Loaded as hypr.hyprmon (not upstream's bare "hyprmon") so
+    -- bootstrap.lua's reload-prefix list re-executes it on `hyprctl reload`.
+    -- Delete ~/.config/hypr/hyprmon.lua + reload to return to monitors.lua.
+    require("default.hypr.require_optional").module("hypr.hyprmon")
     require("hypr.input")
     require("hypr.bindings")
     require("hypr.windows")
@@ -134,8 +157,7 @@ in {
     require("hypr.autostart")
 
     -- Deliberately absent vs the reference entry: default.hypr.toggles (kebun has
-    -- its own toggle scripts, no ~/.local/state/omarchy/toggles tree) and hyprmon
-    -- (no HyprMon; a plain require would error without the file).
+    -- its own toggle scripts, no ~/.local/state/omarchy/toggles tree).
   '';
 
   # Kebun env deltas over upstream default/hypr/envs.lua. Upstream already sets
@@ -447,6 +469,7 @@ in {
     o.bind("CTRL + ALT + DELETE", "Close all windows", "close-all-windows")
     o.bind("CTRL + ALT + TAB", "Cycle monitors", "cycle-monitors")
     o.bind("SUPER + slash", "Cycle monitor scaling", "cycle-monitor-scaling")
+    o.bind("SUPER + CTRL + ALT + M", "Monitor profiles", "uwsm app -- alacritty -e hyprmon profiles")
 
     -- ─── Menus (extended) ───
     o.bind("SUPER + CTRL + C", "Capture menu", "omarchy-menu toggle capture")
