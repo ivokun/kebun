@@ -121,6 +121,7 @@ Build the package or either host closure without activating anything:
 
 ```bash
 nix build .#kebun-memory
+nix build .#checks.x86_64-linux.kebun-memory
 nix build .#nixosConfigurations.ume.config.system.build.toplevel
 # Or use the sakura output. Activation is ON the matching machine only:
 # nh os switch .
