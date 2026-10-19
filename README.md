@@ -82,6 +82,7 @@ nix run .#update-readme               # regenerate the mermaid graphs section
 - [ADR-0017 — Multi-host modeling](docs/adr/0017-model-multiple-hosts-with-host-owned-hardware.md)
 - [INSTALL.md](INSTALL.md) — full install guide (LUKS + BTRFS + flakes), sakura-specific
 - [INSTALL-UME.md](INSTALL-UME.md) — ume migration runbook (executed 2026-10-15; post-install disk facts)
+- [docs/amp-runner.md](docs/amp-runner.md) — permanent Amp runner on ume (system service, first login, updates)
 - [CLAUDE.md](CLAUDE.md) — agent-facing conventions and gotchas (AGENTS.md symlinks to it)
 - Graph packages: `diagrams-mermaid` (raw .mmd), `graph` (text summary for LLMs), `update-readme` (regen README section)
 - `docs/omarchy/` — upstream Omarchy research briefs
