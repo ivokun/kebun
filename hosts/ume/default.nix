@@ -14,6 +14,7 @@
   imports = [
     ./hardware-configuration.nix
     ./backup.nix
+    ./amp-runner.nix
   ];
 
   # ─── AMD Radeon RX 9060 XT / Navi 44 (discrete dGPU, amdgpu) ───
