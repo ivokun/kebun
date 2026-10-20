@@ -216,7 +216,7 @@
       ]
     },
     "explore": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -250,7 +250,7 @@
       ]
     },
     "librarian": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -284,7 +284,7 @@
       ]
     },
     "oracle": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -328,7 +328,7 @@
       ]
     },
     "backend-architect": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -367,7 +367,7 @@
       ]
     },
     "frontend-maintainer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -406,7 +406,7 @@
       ]
     },
     "code-reviewer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -440,7 +440,7 @@
       ]
     },
     "bug-hunter": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -484,7 +484,7 @@
       ]
     },
     "refactor-specialist": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -523,7 +523,7 @@
       ]
     },
     "test-writer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -567,7 +567,7 @@
       ]
     },
     "docs-writer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -606,7 +606,7 @@
       ]
     },
     "git-specialist": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "system": "{file:./prompts/git.txt}",
       "description": "Git operations expert - commits, rebases, history surgery",
       "mode": "subagent",
@@ -640,7 +640,7 @@
       ]
     },
     "performance-optimizer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -684,7 +684,7 @@
       ]
     },
     "security-auditor": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -723,7 +723,7 @@
       ]
     },
     "ai-engineer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -767,7 +767,7 @@
       ]
     },
     "devops-engineer": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
         "body": {
           "reasoningEffort": "max"
@@ -811,7 +811,7 @@
       ]
     },
     "general": {
-      "model": "opencode-go/glm-5.3-flash#max",
+      "model": "opencode-go/deepseek-v4.1-flash#max",
       "mode": "subagent"
     }
   },
