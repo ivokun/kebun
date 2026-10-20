@@ -129,7 +129,8 @@ in {
   #
   # No plugin is fetched from the npm registry at startup: native V2 plugins
   # come from ~/.config/opencode/plugins/ — env-protection.js is a repo file
-  # layered with the config's hard dotenv-read policy, and
+  # layered with the config's hard dotenv-read policy, shell-timeout.js
+  # raises the shell tool's omitted-timeout default from 2 to 10 minutes, and
   # whisperopencode-push.js is the Nix-built, bundled plugin file.
   # Run `opencode reload` after managed config, agent, skill, or MCP changes;
   # use `opencode service restart` only when reload cannot recover the service.
@@ -159,6 +160,7 @@ in {
 
     # Plugins (auto-loaded by OpenCode from ~/.config/opencode/plugins/)
     "opencode/plugins/env-protection.js".source = opencodeDir + "/plugins/env-protection.js";
+    "opencode/plugins/shell-timeout.js".source = opencodeDir + "/plugins/shell-timeout.js";
     "opencode/plugins/whisperopencode-push.js".source = "${whisperopencodePush}/whisperopencode-push.js";
 
     # MCP server — excalidraw: the prebuilt dist stays in the Nix store;
@@ -186,11 +188,33 @@ in {
     "opencode/prompts/test_writer.txt".source = opencodeDir + "/prompts/test_writer.txt";
 
     # Skills
-    "opencode/skills/gitnexus-cli/SKILL.md".source = opencodeDir + "/skills/gitnexus-cli/SKILL.md";
-    "opencode/skills/gitnexus-debugging/SKILL.md".source = opencodeDir + "/skills/gitnexus-debugging/SKILL.md";
-    "opencode/skills/gitnexus-exploring/SKILL.md".source = opencodeDir + "/skills/gitnexus-exploring/SKILL.md";
-    "opencode/skills/gitnexus-guide/SKILL.md".source = opencodeDir + "/skills/gitnexus-guide/SKILL.md";
-    "opencode/skills/gitnexus-impact-analysis/SKILL.md".source = opencodeDir + "/skills/gitnexus-impact-analysis/SKILL.md";
-    "opencode/skills/gitnexus-refactoring/SKILL.md".source = opencodeDir + "/skills/gitnexus-refactoring/SKILL.md";
+    # Linked per directory (recursive) so each SKILL.md resolves inside its
+    # own store directory. A per-file source resolves to
+    # /nix/store/<hash>-hm_SKILL.md, and OpenCode then watches the parent of
+    # that real path — all of /nix/store — which times out every startup.
+    "opencode/skills/gitnexus-cli" = {
+      source = opencodeDir + "/skills/gitnexus-cli";
+      recursive = true;
+    };
+    "opencode/skills/gitnexus-debugging" = {
+      source = opencodeDir + "/skills/gitnexus-debugging";
+      recursive = true;
+    };
+    "opencode/skills/gitnexus-exploring" = {
+      source = opencodeDir + "/skills/gitnexus-exploring";
+      recursive = true;
+    };
+    "opencode/skills/gitnexus-guide" = {
+      source = opencodeDir + "/skills/gitnexus-guide";
+      recursive = true;
+    };
+    "opencode/skills/gitnexus-impact-analysis" = {
+      source = opencodeDir + "/skills/gitnexus-impact-analysis";
+      recursive = true;
+    };
+    "opencode/skills/gitnexus-refactoring" = {
+      source = opencodeDir + "/skills/gitnexus-refactoring";
+      recursive = true;
+    };
   };
 }
