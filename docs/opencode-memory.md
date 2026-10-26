@@ -3,10 +3,11 @@
 ## Rollout boundary
 
 The v1 design is accepted in [ADR-0019](adr/0019-use-local-first-curated-opencode-memory.md).
-Kebun initially enables **local memory only**. Remote synchronization is an
-explicit later opt-in, not an existing endpoint or a deployment claim. The
-server rollout gates live in Pasal's `docs/memory-sync.md`; none is waived by
-building the client package.
+Local memory remains the baseline. ume declares remote sync through
+`kebun.host.memorySync` in `hosts/ume/default.nix`; sakura stays local-only.
+That opt-in records operator completion of the server gates in Pasal's
+`docs/memory-sync.md`, not automated enrollment. Building the package or a host
+closure does not waive those gates or prove runtime behavior.
 
 ## Ownership and data flow
 
@@ -54,7 +55,7 @@ loss window**; the sync polling interval is not one. Local status reports
 `"durability": "best-effort"`, and the daemon emits one warning at startup;
 these disclose the limitation, not detect or repair storage damage.
 
-Once remote sync is deployed, orbit001 can protect only events already uploaded
+With remote sync enabled, orbit001 can protect only events already uploaded
 and committed there, not locally acknowledged work that never reached it.
 Consistent exports and verified independent backups remain separate recovery
 measures. Neither replication nor this storage choice replaces them.
@@ -240,18 +241,32 @@ Clients retain other actors' events but cannot upload them under their own
 credentials; complete recovery needs the server backup and/or each actor's
 surviving store/export. Never hand-edit cursors or manufacture an epoch reset.
 
-## Later remote enrollment
+## Remote sync enrollment
 
-Wait for Pasal's artifact pin, PostgreSQL authentication/inventory, private
-tailnet/ACL, device registry, and backup/restore gates. The host opt-in is
+Before enabling another host, complete Pasal's artifact pin, PostgreSQL
+authentication/inventory, private tailnet/ACL, device registry, and
+backup/restore gates. The host opt-in is
 `kebun.host.memorySync`: `enable`, `enrollmentConfirmed`, `url` (HTTPS), and
 `tokenFile` (absolute runtime string path). Both booleans default to false;
 confirmation records operator completion, not automated enrollment. HM passes
 `--sync-url` and `--token-file` only when enabled. The token is read at each
 sync cycle. Tokens belong in runtime secret files, never the repository, Nix
-store, command arguments, or memory records. ume uses
-sops-nix; sakura's missing host recipient must be obtained and enrolled, not
-invented to make an opt-in evaluate.
+store, command arguments, or memory records.
+
+ume is the only host opted in today: `hosts/ume/default.nix` declares
+`enable`, `enrollmentConfirmed`, the private endpoint, and the token path
+`/home/ivokun/.local/share/kebun-memory-tokens/ume.token`. That file is
+operator-provisioned and kept mode 0600, not a sops-nix secret; only its path
+is in Nix. ume otherwise uses sops-nix. Sakura stays local-only; its missing
+host recipient must be obtained and enrolled before opting in, not invented
+to make an opt-in evaluate.
+
+Remove any unmanaged `sync.conf` systemd user drop-in for
+`kebun-memory.service`, but only after the new declarative base unit is
+activated on the matching host. A stale drop-in `ExecStart=` overrides the
+HM-owned unit, and deleting it before that activation would drop sync flags
+the old base unit does not yet carry. After removal, reload the user manager
+and restart the service so the declarative unit takes effect.
 
 The private remote API is **not MCP**: only the daemon talks to it. It uses
 authenticated `/v1/sync/info`, `/v1/sync/push`, and `/v1/sync/pull` routes and
