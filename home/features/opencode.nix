@@ -25,6 +25,7 @@
     "gitnexus"
     "memory"
     "nixos"
+    "obsidian-multivault"
     "pencil"
     "sequential-thinking"
   ];
@@ -97,6 +98,15 @@
                 sourceServers.gitnexus
                 // {
                   command = sanitizedCommand githubTokenVariables "${opencodePkgs.gitnexus}/bin/gitnexus" ["mcp"];
+                };
+              # Remote runtime dependency: ssh connects to another machine, so
+              # the target's node and its /nix/store/... executable are external
+              # state, not part of this host's closure. That store path can
+              # disappear when orbit001 is upgraded or garbage-collected.
+              obsidian-multivault =
+                sourceServers."obsidian-multivault"
+                // {
+                  command = sanitizedCommand githubTokenVariables "${pkgs.openssh}/bin/ssh" (builtins.tail sourceServers."obsidian-multivault".command);
                 };
             };
         };

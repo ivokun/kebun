@@ -910,6 +910,33 @@
         ],
         "disabled": false
       },
+      "obsidian-multivault": {
+        "type": "local",
+        "command": [
+          "ssh",
+          "-T",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ConnectTimeout=10",
+          "-o",
+          "IdentityFile=~/.ssh/id_ed25519_htpc",
+          "-o",
+          "IdentityFile=~/.ssh/id_ed25519",
+          "-o",
+          "ServerAliveInterval=30",
+          "-o",
+          "ServerAliveCountMax=3",
+          "obsidian@103.235.75.49",
+          "node",
+          "/nix/store/ldyhb3inx99y2zijhv2z24wqv4m04lz9-obsidian-multivault-mcp-2026-07-09/lib/obsidian-multivault-mcp/index.js",
+          "/var/lib/obsidian/vault",
+          "--stdio"
+        ],
+        "disabled": false
+      },
       "obsidian": {
         "type": "remote",
         "url": "https://obsidian.ivokun.com/mcp",
