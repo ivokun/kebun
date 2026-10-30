@@ -72,6 +72,37 @@ nix run .#update-readme               # regenerate the mermaid graphs section
 | `packages/` | Script derivations, vendored Omarchy env/theme, wordmark, Plymouth |
 | `docs/adr/` | Architecture decision records |
 
+## Printing
+
+Both hosts declare the shared Canon E470 (`modules/aspects/printing.nix`):
+`Canon_E470` is the default queue on `socket://192.168.100.21:9100` — a raw
+transport, because IPP capability probing fails on this unit — using the
+already-installed Gutenprint driver. `.21` is DHCP-reserved for the printer's
+MAC (`dc:c2:c9:c4:15:1e`); the raw queue has been verified with a normal PDF
+test print.
+
+`programs.system-config-printer.enable = true` supplies the **Print Settings**
+launcher and the `system-config-printer` command, which discovers network
+printers through Avahi/CUPS. Add queues with Add → Network Printer, or launch
+from a terminal through UWSM:
+
+```bash
+uwsm app -- system-config-printer
+```
+
+`cups-browsed` is deliberately disabled — it creates unsolicited, often broken
+queues, and discovery works without it. CUPS listens on localhost only and the
+queue is not network-shared. Queues created in the GUI are local runtime
+state: they are not written back to this repo and not shared between hosts. To
+make a printer permanent everywhere, declare it in
+`hardware.printers.ensurePrinters` in the shared aspect and add any required
+driver package there rather than installing drivers imperatively; keep the
+managed Canon queue and default in Nix, since `ensure-printers` can overwrite
+GUI edits. If the GUI misbehaves, fall back to <http://localhost:631>.
+
+Apply on each matching host (`nh os switch .`), then verify with `lpstat -t`
+and `systemctl status ensure-printers`.
+
 ## Docs
 
 - [ADR-0013 — Den adoption](docs/adr/0013-adopt-den-aspect-oriented-framework.md)
