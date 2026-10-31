@@ -26,6 +26,15 @@
   batteryMenuCase = pkgs.lib.optionalString laptop ''
     "Battery status") omarchy-notification-battery ;;
   '';
+  # steam-repair-bootstrap: every external command is a store path, and the
+  # bootstrap payload comes from the immutable archive in steam-unwrapped.
+  steamCu = "${pkgs.coreutils}/bin";
+  steamTar = "${pkgs.gnutar}/bin/tar";
+  steamXz = "${pkgs.xz}/bin/xz";
+  steamGrep = "${pkgs.gnugrep}/bin/grep";
+  steamPgrep = "${pkgs.procps}/bin/pgrep";
+  steamFlock = "${pkgs.util-linux}/bin/flock";
+  steamFind = "${pkgs.findutils}/bin/find";
 in {
   # Screenshot annotation editor, invoked as OMARCHY_SCREENSHOT_EDITOR by the
   # vendored omarchy-capture-screenshot. Upstream defaults to tensaku-edit,
@@ -697,5 +706,597 @@ in {
       ${pkgs.procps}/bin/pkill -x hyprmag
       omarchy-notification-send "Cursor Zoom" "Magnifier disabled"
     fi
+  '';
+
+  # ─── Steam Bootstrap Repair ───
+  # Steam skips bootstrap installation when steam.sh exists. A partial restore
+  # can retain that script without its payload, causing runtime-unpack error 1
+  # before the updater can repair it (the disk-space warning is misleading).
+  # Restores only the two bootstrap directories the native Steam client needs
+  # (ubuntu12_32/, linux32/) from the immutable archive shipped by the pinned
+  # steam-unwrapped package. It never deletes existing Steam data, merges,
+  # overwrites, restores top-level files, or launches Steam. An existing target
+  # missing its structural markers is refused. Read-only by default; --apply is explicit.
+  steam-repair-bootstrap = pkgs.writeShellScriptBin "steam-repair-bootstrap" ''
+    set -euo pipefail
+
+    ARCHIVE="${pkgs.steam-unwrapped}/lib/steam/bootstraplinux_ubuntu12_32.tar.xz"
+    CU="${steamCu}"
+    TAR="${steamTar}"
+    XZ="${steamXz}"
+    GREP="${steamGrep}"
+    PGREP="${steamPgrep}"
+    FLOCK="${steamFlock}"
+    FIND="${steamFind}"
+
+    say() { printf '%s\n' "$*"; }
+    err() { printf 'steam-repair-bootstrap: %s\n' "$*" >&2; }
+
+    usage() {
+      "$CU/cat" <<'EOF'
+    steam-repair-bootstrap - restore Steam's bootstrap runtime (ubuntu12_32, linux32)
+
+    Usage:
+      steam-repair-bootstrap [--check]   Read-only structural check (default)
+      steam-repair-bootstrap --apply     Add absent ubuntu12_32/ and linux32/ only
+      steam-repair-bootstrap --self-test Test recovery against private fixtures
+      steam-repair-bootstrap --help      Show this help
+
+    Check exit codes:
+      0  structurally healthy
+      1  bootstrap directories missing and safe to repair
+      2  unsafe/invalid root or target, or Steam running (repair refused)
+
+    --apply exits 0 on success or when already healthy. It never deletes
+    existing Steam data, merges, overwrites, or launches Steam. Stop Steam before
+    applying. The lock only serializes repair invocations; it cannot stop Steam starting.
+    EOF
+    }
+
+    detect_root() {
+      local link resolved
+      link="$HOME/.steam/steam"
+      if [ -L "$link" ]; then
+        if ! resolved=$("$CU/readlink" -e -- "$link" 2>/dev/null); then
+          err "Steam root link is dangling; inspect it before repairing: $link"
+          return 2
+        fi
+        printf '%s\n' "$resolved"
+        return 0
+      fi
+      printf '%s\n' "''${XDG_DATA_HOME:-$HOME/.local/share}/Steam"
+    }
+
+    guard_root() {
+      local root=$1
+      if [ "$("$CU/id" -u)" -eq 0 ]; then err "refusing to run as root"; return 2; fi
+      case "$root" in
+        /|""|"$HOME") err "refusing unsafe root path: $root"; return 2 ;;
+        /*) ;;
+        *) err "Steam root path is not absolute: $root"; return 2 ;;
+      esac
+      if [ ! -d "$root" ] || [ -L "$root" ]; then err "Steam root is not a directory: $root"; return 2; fi
+      if [ ! -O "$root" ]; then err "Steam root is not owned by the current user: $root"; return 2; fi
+      if [ ! -w "$root" ]; then err "Steam root is not writable by the current user: $root"; return 2; fi
+      if [ ! -f "$root/steam.sh" ] || [ -L "$root/steam.sh" ] || [ ! -x "$root/steam.sh" ]; then
+        err "not a bootstrapped native Steam root (missing executable steam.sh): $root"
+        return 2
+      fi
+      return 0
+    }
+
+    ubuntu_ok() {
+      local d=$1
+      [ -d "$d" ] && [ ! -L "$d" ] &&
+        [ -f "$d/steam" ] && [ ! -L "$d/steam" ] && [ -x "$d/steam" ] &&
+        [ ! -L "$d/steam-runtime" ] &&
+        [ -f "$d/steam-runtime/setup.sh" ] && [ ! -L "$d/steam-runtime/setup.sh" ]
+    }
+
+    linux_ok() {
+      local d=$1
+      [ -d "$d" ] && [ ! -L "$d" ] &&
+        [ -f "$d/steamerrorreporter" ] && [ ! -L "$d/steamerrorreporter" ] &&
+        [ -x "$d/steamerrorreporter" ]
+    }
+
+    scan_targets() {
+      local p
+      ROOT_STATE_UBUNTU=absent
+      ROOT_STATE_LINUX=absent
+      UNSAFE=""
+      MISSING=""
+
+      p="$root/ubuntu12_32"
+      if [ -L "$p" ]; then
+        UNSAFE="$UNSAFE ubuntu12_32 is a symlink;"
+      elif [ -e "$p" ]; then
+        if [ -d "$p" ]; then
+          if ubuntu_ok "$p"; then
+            ROOT_STATE_UBUNTU=present
+          else
+            ROOT_STATE_UBUNTU=incomplete
+            UNSAFE="$UNSAFE ubuntu12_32 is incomplete (needs steam and steam-runtime/setup.sh);"
+          fi
+        else
+          UNSAFE="$UNSAFE ubuntu12_32 is not a directory;"
+        fi
+      else
+        MISSING="$MISSING ubuntu12_32"
+      fi
+
+      p="$root/linux32"
+      if [ -L "$p" ]; then
+        UNSAFE="$UNSAFE linux32 is a symlink;"
+      elif [ -e "$p" ]; then
+        if [ -d "$p" ]; then
+          if linux_ok "$p"; then
+            ROOT_STATE_LINUX=present
+          else
+            ROOT_STATE_LINUX=incomplete
+            UNSAFE="$UNSAFE linux32 is incomplete (needs steamerrorreporter);"
+          fi
+        else
+          UNSAFE="$UNSAFE linux32 is not a directory;"
+        fi
+      else
+        MISSING="$MISSING linux32"
+      fi
+    }
+
+    report_state() {
+      say "Steam root: $root"
+      say "  ubuntu12_32: $ROOT_STATE_UBUNTU"
+      say "  linux32:     $ROOT_STATE_LINUX"
+      if [ -n "$UNSAFE" ]; then say "Unsafe:$UNSAFE"; fi
+      if [ -n "$MISSING" ]; then say "Missing:$MISSING"; fi
+    }
+
+    pid_is_steam() {
+      local pid=$1 comm
+      [ -d "/proc/$pid" ] || return 1
+      comm=$("$CU/cat" "/proc/$pid/comm" 2>/dev/null) || return 1
+      case "$comm" in steam|steamwebhelper|steam.sh) return 0 ;; esac
+      return 1
+    }
+
+    process_guard() {
+      local uid name pid f found=""
+      uid=$("$CU/id" -u)
+      for name in steam steamwebhelper steam.sh; do
+        pid=$("$PGREP" -u "$uid" -x "$name" 2>/dev/null || true)
+        if [ -n "$pid" ]; then found="$found $name"; fi
+      done
+      for f in "$HOME/.steam/steam.pid" "$root/steam.pid"; do
+        if [ ! -f "$f" ] || [ -L "$f" ]; then continue; fi
+        pid=$("$CU/cat" -- "$f" 2>/dev/null || true)
+        case "$pid" in ""|0*|*[!0-9]*) continue ;; esac
+        if [ "''${#pid}" -gt 9 ]; then continue; fi
+        if [ "$pid" -lt 2 ]; then continue; fi
+        if [ -d "/proc/$pid" ] && [ "$("$CU/stat" -c %u "/proc/$pid" 2>/dev/null || echo x)" = "$uid" ] && pid_is_steam "$pid"; then
+          found="$found pidfile:$f(pid $pid)"
+        fi
+      done
+      if [ -n "$found" ]; then
+        err "Steam is running:$found"
+        err "exit Steam, then retry --apply"
+        return 1
+      fi
+      return 0
+    }
+
+    acquire_lock() {
+      if ! exec 9<"$root"; then err "cannot open Steam root for locking"; return 2; fi
+      if ! "$FLOCK" -n 9; then
+        exec 9<&-
+        err "another repair invocation is already running for this root"
+        return 2
+      fi
+      return 0
+    }
+
+    release_lock() { exec 9<&-; }
+
+    stage=""
+    cleanup_stage() {
+      if [ -n "$stage" ] && [ -d "$stage" ] && [ ! -L "$stage" ]; then
+        case "$stage" in */.steam-repair.*) "$CU/rm" -rf -- "$stage" ;; esac
+      fi
+      stage=""
+    }
+
+    validate_archive() {
+      local archive=$1 list req
+      if [ ! -x "$TAR" ] || [ ! -x "$XZ" ]; then err "tar/xz unavailable"; return 2; fi
+      if [ ! -f "$archive" ] || [ -L "$archive" ] || [ ! -r "$archive" ]; then
+        err "bootstrap archive is not a readable regular file: $archive"
+        return 2
+      fi
+      if ! list=$("$TAR" --use-compress-program="$XZ" --list --file="$archive" 2>/dev/null); then
+        err "bootstrap archive failed xz/tar validation"
+        return 2
+      fi
+      if "$GREP" -Eq '(^/|(^|/)\.\.(/|$))' <<< "$list"; then
+        err "bootstrap archive contains unsafe paths"
+        return 2
+      fi
+      for req in ubuntu12_32/steam ubuntu12_32/steam-runtime/setup.sh linux32/steamerrorreporter; do
+        if ! "$GREP" -Fqx -- "$req" <<< "$list"; then
+          err "bootstrap archive is missing $req"
+          return 2
+        fi
+      done
+      return 0
+    }
+
+    validate_staged() {
+      if ! ubuntu_ok "$stage/ubuntu12_32"; then
+        err "staged ubuntu12_32 payload is incomplete or unsafe"
+        return 1
+      fi
+      if ! linux_ok "$stage/linux32"; then
+        err "staged linux32 payload is incomplete or unsafe"
+        return 1
+      fi
+      return 0
+    }
+
+    stage_payload() {
+      local root=$1 archive=$2
+      stage=$("$CU/mktemp" -d "$root/.steam-repair.XXXXXXXX") || {
+        stage=""
+        err "cannot create staging directory under Steam root"
+        return 1
+      }
+      "$CU/chmod" 700 "$stage" || { cleanup_stage; return 1; }
+      if ! (
+        umask 077
+        "$TAR" --use-compress-program="$XZ" --extract --file="$archive" --directory="$stage" \
+          --no-same-owner --no-same-permissions -- ubuntu12_32 linux32
+      ); then
+        err "failed to extract pinned bootstrap archive"
+        cleanup_stage
+        return 1
+      fi
+      return 0
+    }
+
+    do_check() {
+      root=$1
+      local skip=''${2:-0}
+      guard_root "$root" || return 2
+      scan_targets
+      report_state
+      if [ -n "$UNSAFE" ]; then err "unsafe/invalid target; no repair attempted"; return 2; fi
+      if [ -z "$MISSING" ]; then say "Result: healthy"; return 0; fi
+      if [ "$skip" -ne 1 ] && ! process_guard; then
+        err "bootstrap directories are missing, but Steam is running (exit 2)"
+        return 2
+      fi
+      say "Result: recoverable (run --apply)"
+      return 1
+    }
+
+    do_apply() {
+      root=$1
+      local archive=$2 skip=''${3:-0}
+      local entry missing
+      guard_root "$root" || return 2
+      scan_targets
+      report_state
+      if [ -n "$UNSAFE" ]; then
+        err "unsafe/invalid target; refusing to merge, overwrite, or delete"
+        return 2
+      fi
+      if [ -z "$MISSING" ]; then say "Result: healthy; nothing to do"; return 0; fi
+      if [ "$skip" -ne 1 ] && ! process_guard; then return 2; fi
+
+      acquire_lock || return 2
+
+      if ! validate_archive "$archive"; then release_lock; return 2; fi
+      if ! stage_payload "$root" "$archive"; then release_lock; return 1; fi
+      if ! validate_staged; then cleanup_stage; release_lock; return 1; fi
+
+      # Recheck guards and absence after extraction, immediately before writes.
+      if [ "$skip" -ne 1 ] && ! process_guard; then cleanup_stage; release_lock; return 2; fi
+      scan_targets
+      if [ -n "$UNSAFE" ]; then
+        cleanup_stage
+        release_lock
+        err "target changed during repair; refusing to write"
+        return 2
+      fi
+      missing=$MISSING
+      if [ -z "$missing" ]; then
+        cleanup_stage
+        release_lock
+        say "Result: healthy; nothing to do"
+        return 0
+      fi
+
+      # shellcheck disable=SC2086
+      for entry in $missing; do
+        if [ -e "$root/$entry" ] || [ -L "$root/$entry" ]; then
+          err "$entry appeared during repair; refusing to overwrite"
+          cleanup_stage
+          release_lock
+          return 2
+        fi
+        if [ ! -d "$stage/$entry" ] || [ -L "$stage/$entry" ]; then
+          err "staged $entry is missing or unsafe"
+          cleanup_stage
+          release_lock
+          return 1
+        fi
+        if ! "$CU/mv" -T -n -- "$stage/$entry" "$root/$entry"; then
+          err "failed to move $entry into place"
+          cleanup_stage
+          release_lock
+          return 1
+        fi
+        if [ ! -d "$root/$entry" ] || [ -L "$root/$entry" ] || [ -e "$stage/$entry" ] || [ -L "$stage/$entry" ]; then
+          err "move verification failed for $entry (possible silent skip)"
+          cleanup_stage
+          release_lock
+          return 1
+        fi
+        say "Restored $entry"
+      done
+
+      cleanup_stage
+      release_lock
+
+      if ubuntu_ok "$root/ubuntu12_32" && linux_ok "$root/linux32"; then
+        say "Result: repaired. Start Steam when ready."
+        return 0
+      fi
+      err "post-repair verification failed"
+      return 1
+    }
+
+    ST_FAIL=0
+    st_pass() { say "ok - $1"; }
+    st_fail() { err "not ok - $1"; ST_FAIL=$((ST_FAIL + 1)); }
+    expect_rc() {
+      local want=$1 got=$2 name=$3
+      if [ "$got" -eq "$want" ]; then st_pass "$name"; else st_fail "$name (expected $want, got $got)"; fi
+    }
+    expect_eq() {
+      if [ "$1" = "$2" ]; then st_pass "$3"; else st_fail "$3"; fi
+    }
+    capture() {
+      local rc
+      set +e
+      "$@" >/dev/null 2>&1
+      rc=$?
+      set -e
+      printf '%s\n' "$rc"
+    }
+
+    make_root() {
+      local r=$1
+      "$CU/mkdir" -p "$r/config" "$r/steamapps/common" "$r/userdata/1/remote"
+      printf '#!/bin/sh\nexit 0\n' > "$r/steam.sh"
+      "$CU/chmod" 755 "$r/steam.sh"
+      printf 'config\n' > "$r/config/config.vdf"
+      printf 'app\n' > "$r/steamapps/common/sentinel.txt"
+      printf 'save\n' > "$r/userdata/1/remote/sentinel.sav"
+    }
+
+    make_archive() {
+      local out=$1 src=$2
+      "$CU/mkdir" -p "$src/ubuntu12_32/steam-runtime" "$src/linux32"
+      printf '#!/bin/sh\nexit 0\n' > "$src/ubuntu12_32/steam"
+      printf '#!/bin/sh\nexit 0\n' > "$src/ubuntu12_32/steam-runtime/setup.sh"
+      printf '#!/bin/sh\nexit 0\n' > "$src/linux32/steamerrorreporter"
+      printf '#!/bin/sh\nexit 0\n' > "$src/steam.sh"
+      "$CU/chmod" 755 "$src/ubuntu12_32/steam" "$src/ubuntu12_32/steam-runtime/setup.sh" \
+        "$src/linux32/steamerrorreporter" "$src/steam.sh"
+      "$TAR" --use-compress-program="$XZ" -c -f "$out" -C "$src" ubuntu12_32 linux32 steam.sh
+    }
+
+    tree_snapshot() {
+      "$FIND" "$1" -mindepth 1 -printf '%P|%y|%s|%T@\n' | "$CU/sort"
+    }
+
+    sentinels() {
+      "$CU/sha256sum" "$1/steam.sh" "$1/config/config.vdf" "$1/steamapps/common/sentinel.txt" \
+        "$1/userdata/1/remote/sentinel.sav"
+    }
+
+    self_test() {
+      local base root rc before
+      base=$("$CU/mktemp" -d "''${TMPDIR:-/tmp}/steam-repair-selftest.XXXXXXXX") || {
+        err "cannot create self-test fixture"
+        return 1
+      }
+      TEST_BASE=$base
+      HOME="$base/home"
+      XDG_DATA_HOME="$HOME/.local/share"
+      export HOME XDG_DATA_HOME
+      "$CU/mkdir" -p "$HOME"
+
+      make_archive "$base/good.tar.xz" "$base/src"
+      "$CU/head" -c 64 "$base/good.tar.xz" > "$base/corrupt.tar.xz"
+
+      # 1. Both directories missing; apply; check healthy; rerun is a no-op.
+      root="$base/case1"
+      make_root "$root"
+      before=$(sentinels "$root")
+      rc=$(capture do_check "$root" 1)
+      expect_rc 1 "$rc" "check: both bootstrap dirs missing"
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 0 "$rc" "apply: restores both dirs"
+      if ubuntu_ok "$root/ubuntu12_32" && linux_ok "$root/linux32"; then
+        st_pass "apply: payload markers valid"
+      else
+        st_fail "apply: payload markers valid"
+      fi
+      rc=$(capture do_check "$root" 1)
+      expect_rc 0 "$rc" "check: healthy after apply"
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 0 "$rc" "apply: repeated run is a no-op"
+      expect_eq "$before" "$(sentinels "$root")" "protected steam.sh/config/steamapps/userdata unchanged"
+      if [ -z "$("$FIND" "$root" -maxdepth 1 -name '.steam-repair.*' -print -quit)" ]; then
+        st_pass "apply: staging cleaned up"
+      else
+        st_fail "apply: staging cleaned up"
+      fi
+
+      # 2. One directory absent, the other intact and untouched.
+      root="$base/case2"
+      make_root "$root"
+      "$CU/cp" -a "$base/src/linux32" "$root/linux32"
+      before=$(tree_snapshot "$root/linux32")
+      rc=$(capture do_check "$root" 1)
+      expect_rc 1 "$rc" "check: single dir missing"
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 0 "$rc" "apply: restores only the absent dir"
+      expect_eq "$before" "$(tree_snapshot "$root/linux32")" "apply: existing linux32 unchanged"
+
+      # 3. Corrupt archive is rejected before any change.
+      root="$base/case3"
+      make_root "$root"
+      before=$(tree_snapshot "$root")
+      rc=$(capture do_apply "$root" "$base/corrupt.tar.xz" 1)
+      expect_rc 2 "$rc" "apply: corrupt archive rejected"
+      expect_eq "$before" "$(tree_snapshot "$root")" "corrupt archive: root unchanged"
+      if [ ! -e "$root/ubuntu12_32" ] && [ ! -e "$root/linux32" ]; then
+        st_pass "corrupt archive: no target created"
+      else
+        st_fail "corrupt archive: no target created"
+      fi
+
+      # 4. Existing partial target is refused, not merged.
+      root="$base/case4"
+      make_root "$root"
+      "$CU/mkdir" "$root/ubuntu12_32"
+      printf 'junk\n' > "$root/ubuntu12_32/junk"
+      before=$(tree_snapshot "$root")
+      rc=$(capture do_check "$root" 1)
+      expect_rc 2 "$rc" "check: partial target is unsafe"
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 2 "$rc" "apply: partial target refused"
+      expect_eq "$before" "$(tree_snapshot "$root")" "partial target: unchanged"
+      if [ ! -e "$root/linux32" ]; then st_pass "partial target: no sibling written"; else st_fail "partial target: no sibling written"; fi
+
+      # 5. Symlink targets, live and dangling, are refused.
+      root="$base/case5"
+      make_root "$root"
+      "$CU/mkdir" "$base/outside"
+      printf 'keep\n' > "$base/outside/sentinel"
+      "$CU/ln" -s "$base/outside" "$root/ubuntu12_32"
+      before=$(tree_snapshot "$base/outside")
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 2 "$rc" "apply: symlink target refused"
+      expect_eq "$before" "$(tree_snapshot "$base/outside")" "symlink target: link destination unchanged"
+      if [ -L "$root/ubuntu12_32" ] && [ ! -e "$root/linux32" ]; then
+        st_pass "symlink target: link kept, no sibling written"
+      else
+        st_fail "symlink target: link kept, no sibling written"
+      fi
+
+      root="$base/case5b"
+      make_root "$root"
+      "$CU/ln" -s "$base/does-not-exist" "$root/linux32"
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 2 "$rc" "apply: dangling symlink target refused"
+      if [ -L "$root/linux32" ] && [ ! -e "$root/ubuntu12_32" ]; then
+        st_pass "dangling symlink: link kept, no sibling written"
+      else
+        st_fail "dangling symlink: link kept, no sibling written"
+      fi
+
+      # 6. Check mode is read-only.
+      root="$base/case6"
+      make_root "$root"
+      before=$(tree_snapshot "$root")
+      rc=$(capture do_check "$root" 1)
+      expect_rc 1 "$rc" "check: reports recoverable"
+      expect_eq "$before" "$(tree_snapshot "$root")" "check: writes nothing"
+      if [ -z "$("$FIND" "$root" -maxdepth 1 -name '.steam-repair.*' -print -quit)" ]; then
+        st_pass "check: no staging or lock files"
+      else
+        st_fail "check: no staging or lock files"
+      fi
+
+      # 7. The directory-FD lock serializes repair invocations.
+      root="$base/case7"
+      make_root "$root"
+      exec 7<"$root"
+      "$FLOCK" -n 7
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 2 "$rc" "apply: concurrent repair refused"
+      exec 7<&-
+      rc=$(capture do_apply "$root" "$base/good.tar.xz" 1)
+      expect_rc 0 "$rc" "apply: succeeds after lock release"
+
+      # 8. A dangling preferred root must not silently select another tree.
+      root="$XDG_DATA_HOME/Steam"
+      make_root "$root"
+      "$CU/mkdir" -p "$HOME/.steam"
+      "$CU/ln" -s "$base/absent/parent/Steam" "$HOME/.steam/steam"
+      before=$(tree_snapshot "$root")
+      rc=$(capture detect_root)
+      expect_rc 2 "$rc" "root detection: dangling preferred link refused"
+      expect_eq "$before" "$(tree_snapshot "$root")" "root detection: fallback tree unchanged"
+
+      # 9. An early unsafe name must be rejected even beyond a pipe buffer.
+      local long_name i
+      local -a archive_members=(unsafe-entry)
+      printf -v long_name '%0200d' 0
+      printf 'fixture\n' > "$base/src/$long_name"
+      printf 'unsafe\n' > "$base/src/unsafe-entry"
+      for ((i = 0; i < 2048; i++)); do archive_members+=("$long_name"); done
+      archive_members+=(ubuntu12_32 linux32)
+      "$TAR" --use-compress-program="$XZ" --create --file="$base/large-unsafe.tar.xz" \
+        --directory="$base/src" --transform='s|^unsafe-entry$|../unsafe-entry|' \
+        "''${archive_members[@]}"
+      rc=$(capture validate_archive "$base/large-unsafe.tar.xz")
+      expect_rc 2 "$rc" "archive validation: large listing with early unsafe name refused"
+
+      "$CU/rm" -rf -- "$base"
+      TEST_BASE=""
+      if [ "$ST_FAIL" -eq 0 ]; then
+        say "self-test: all checks passed"
+        return 0
+      fi
+      err "self-test: $ST_FAIL check(s) failed"
+      return 1
+    }
+
+    TEST_BASE=""
+    # shellcheck disable=SC2329  # invoked by trap
+    cleanup_all() {
+      cleanup_stage
+      if [ -n "$TEST_BASE" ] && [ -d "$TEST_BASE" ] && [ ! -L "$TEST_BASE" ]; then
+        "$CU/rm" -rf -- "$TEST_BASE"
+      fi
+    }
+    trap cleanup_all EXIT
+
+    mode=check
+    if [ "$#" -gt 1 ]; then err "too many arguments"; usage >&2; exit 2; fi
+    case "''${1:-}" in
+      ""|--check) mode=check ;;
+      --apply) mode=apply ;;
+      --self-test) mode=self-test ;;
+      -h|--help) usage; exit 0 ;;
+      *) err "unknown argument: $1"; usage >&2; exit 2 ;;
+    esac
+
+    if [ "$mode" = self-test ]; then
+      self_test
+      exit $?
+    fi
+
+    if [ -z "''${HOME:-}" ]; then err "HOME is not set"; exit 2; fi
+    root=$(detect_root)
+    if [ "$mode" = apply ]; then
+      do_apply "$root" "$ARCHIVE" 0
+      exit $?
+    fi
+    do_check "$root" 0
+    exit $?
   '';
 }

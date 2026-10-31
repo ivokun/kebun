@@ -1105,9 +1105,10 @@ section** (read for the operator; nothing here executes them):
   decision declared it, and `borg-backup.timer` is neither loaded nor
   firing unless a verified kebun backup design replaced it.
 - **Hardware.** `amdgpu` drives the RX 9060 XT with the expected 32-bit
-  Vulkan available (Steam test launch); Bluetooth sees the Intel
-  controller; xpadneo pairs an Xbox controller; `grep amdgpu /proc/modules`
-  (or an equivalent) so no fallback mode is running.
+  Vulkan available (Steam test launch; if it aborts with the bootstrap
+  error, see *Steam runtime bootstrap recovery* below); Bluetooth sees the
+  Intel controller; xpadneo pairs an Xbox controller;
+  `grep amdgpu /proc/modules` (or an equivalent) so no fallback mode is running.
 - **TPM2/PCRs.** If LUKS TPM2 enrollment was part of install
   (`systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7`), verify the
   first TPM2-unlocked boot. Separately verify that the login password was
@@ -1139,6 +1140,45 @@ section** (read for the operator; nothing here executes them):
   .#nixosConfigurations.ume.config.system.build.toplevel`
   re-evaluates green. After this, ume's record in this repo is
   post-install truth, not a snapshot.
+
+### Steam runtime bootstrap recovery (confirmed 2026-10-31)
+
+Steam's main client window failed to open during the §6 hardware gate with
+`Unpack runtime failed, error code 1`, then `Couldn't set up the Steam
+Runtime. Are you running low on disk space?`. The `ubuntu12_32` and
+`linux32` bootstrap folders were missing — including
+`ubuntu12_32/steam-runtime/…` — while `steam.sh` remained and the filesystem
+had over 200 GiB free. The disk-space hint was misleading.
+
+`steam-repair-bootstrap` is the sanctioned repair. It is installed only
+where NixOS Steam is enabled (gated in `home/common.nix`) and repairs from
+the pinned Steam package's immutable bootstrap tarball in the Nix store,
+not from the writable `~/.local/share/Steam/bootstrap.tar.xz`, which Steam
+itself can replace. Run it **as ivokun, never sudo**:
+
+```bash
+nh os switch .                    # ON ume only: installs/updates the command
+steam-repair-bootstrap --check    # report state; writes nothing
+steam-repair-bootstrap --apply    # add-only repair
+uwsm app -- steam                 # let startup/update finish
+```
+
+`--apply` only creates the missing runtime folders. It refuses an existing
+target missing its structural marker files (inspect it; do not delete it)
+and refuses repairs while Steam is running. This is a structural check,
+not a complete runtime-integrity check. `steamapps/`, `userdata/`,
+`config/`, and `steam.sh` are left untouched; `--self-test` exercises the
+command against fixtures without touching the real Steam root.
+
+The rebuild and Home Manager never mutate the Steam root automatically,
+and there is no `--reset` or `rm` of the Steam root: this repairs the
+current missing-bootstrap state only, not a promise against future state
+deletion. Bootstrap recovery ran on ume on 2026-10-31: `--check` reported
+healthy, and all 9,727 protected entries (including `steam.sh`, the local
+bootstrap archive, `config/`, `userdata/`, and `steamapps/`) retained their
+contents and metadata before launching Steam. A stable, visible Steam
+client window and running `steamwebhelper` were subsequently verified on
+ume. The Vulkan and controller gates remain separate.
 
 ## 7. Rollback and stop conditions
 

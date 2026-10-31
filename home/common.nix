@@ -12,6 +12,9 @@
   # hosts/<name>/default.nix). The `or` guard keeps bare `nix eval` honest;
   # on the real host osConfig is always present.
   laptop = osConfig.kebun.host.isLaptop or false;
+  # Steam's client payload is mutable user state; install an explicit recovery
+  # command where Steam is enabled, without modifying that state on activation.
+  steamEnabled = osConfig.programs.steam.enable or false;
 
   # Scripts get the compositor's own hyprctl (the flake input), not nixpkgs'
   # pkgs.hyprland — the versions drift and a mismatched client misleads scripts.
@@ -190,6 +193,9 @@ in {
       window-pop
       check-updates
     ])
+    ++ lib.optionals steamEnabled [
+      scripts.steam-repair-bootstrap
+    ]
     # Battery readouts (laptop only)
     ++ lib.optionals laptop [
       scripts.battery-remaining-time
