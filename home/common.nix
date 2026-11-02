@@ -117,6 +117,7 @@ in {
       mosh
 
       # Nix helpers
+      devenv
       nh
       nix-output-monitor
 
