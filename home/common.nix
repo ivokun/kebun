@@ -47,6 +47,7 @@ in {
       ripgrep
       fzf
       btop
+      nvtopPackages.amd
       fastfetch
       lazygit
       lazydocker
