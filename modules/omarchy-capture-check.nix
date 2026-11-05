@@ -21,6 +21,7 @@
         nativeBuildInputs = [omarchy];
       } ''
         export QT_QPA_PLATFORM=offscreen
+        unset WAYLAND_DISPLAY DISPLAY
         export HOME="$TMPDIR/home"
         mkdir -p "$HOME/.local/state/omarchy"
 
@@ -29,16 +30,21 @@
         grep -q "omasnap" help.txt
 
         # Clipboard-history image action: same omasnap dependency, reached
-        # through jq. A missing image makes omasnap exit non-zero, but it must
-        # have been executed — 127 means the wrapper's PATH lost omasnap/jq.
-        printf '[{"type":"image","path":"/nonexistent/omasnap-check.png"}]' \
+        # through jq. The fixture must be readable, or the script exits at its
+        # own readability guard before exec'ing omasnap and the assertion
+        # proves nothing. A file literally named `--version` passes that guard
+        # and omasnap treats the dispatched path as its version flag — a
+        # deterministic, non-interactive observable that the image branch
+        # actually executed omasnap. No Wayland, capture, or overlay involved.
+        : > ./--version
+        printf '[{"type":"image","path":"--version"}]' \
           > "$HOME/.local/state/omarchy/clipboard-history.json"
-        set +e
-        omarchy-clipboard-open --history-index 0 > /dev/null 2> clipboard.err
-        status=$?
-        set -e
-        test "$status" -ne 127
-        ! grep -qi "not found" clipboard.err
+        omarchy-clipboard-open --history-index 0 > clipboard.out
+        grep -q '^omasnap [0-9]' clipboard.out || {
+          echo "clipboard image action did not execute omasnap:" >&2
+          cat clipboard.out >&2
+          exit 1
+        }
 
         touch $out
       '';
