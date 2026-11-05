@@ -31,6 +31,12 @@
   };
 
   # ─── Machine-specific kernel wiring (B550 / Vermeer desktop) ───
+  # Follow the highest stable mainline kernel in the pinned nixpkgs
+  # (linuxPackages_latest = 7.3.x) instead of the 6.18 LTS default. The
+  # out-of-tree xpadneo driver is taken from boot.kernelPackages, so it is
+  # rebuilt against this kernel automatically.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
   # vhost_vsock is required by claude-desktop's Cowork VM; btusb serves the
   # board's Intel AC 3168 Bluetooth controller.
   boot.kernelModules = ["amdgpu" "kvm-amd" "btusb" "vhost_vsock"];
