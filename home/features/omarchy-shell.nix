@@ -15,7 +15,7 @@
 }: let
   omarchy = import ../../packages/omarchy {
     inherit pkgs;
-    hyprland = inputs.hyprland.packages.${system}.hyprland;
+    hyprland = import ../../lib/hyprland.nix {inherit inputs system;};
   };
   theme = import ../../packages/omarchy/theme.nix {inherit pkgs omarchy;};
 in {

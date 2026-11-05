@@ -18,9 +18,12 @@
 }: let
   omarchyEnv = import ../../packages/omarchy {
     inherit pkgs;
-    # The pinned compositor build (flake input), not nixpkgs' — same source
-    # the desktop aspect and hyprland feature already use.
-    hyprland = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    # The pinned compositor build (flake input plus lib/hyprland.nix), not
+    # nixpkgs' — same source the desktop aspect and hyprland feature use.
+    hyprland = import ../../lib/hyprland.nix {
+      inherit inputs;
+      system = pkgs.stdenv.hostPlatform.system;
+    };
   };
 in {
   systemd.user.services.omarchy-sleep-lock = {

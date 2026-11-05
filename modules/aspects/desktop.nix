@@ -47,12 +47,18 @@
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList block luksDevices)}
   '');
 
+  # Pinned compositor (flake input) with the nixpkgs-26.11 compatibility
+  # overrides in lib/hyprland.nix; used for the session, greeter and shell env.
+  hyprland = import ../../lib/hyprland.nix {
+    inherit inputs;
+    system = pkgs.stdenv.hostPlatform.system;
+  };
+
   # Vendored Omarchy env (pinned upstream tree), reused by the SDDM theme and
   # greeter compositor config below — same store path the shell already
   # imports, so nothing is rebuilt twice.
   omarchyEnv = import ../../packages/omarchy {
-    inherit pkgs;
-    hyprland = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    inherit pkgs hyprland;
   };
 
   # Single-sourced Rose Pine Dawn palette (same file the shell theme renders
@@ -124,7 +130,7 @@ in {
   # ─── Hyprland ───
   programs.hyprland = {
     enable = true;
-    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    package = hyprland;
     withUWSM = true;
   };
 
@@ -217,7 +223,7 @@ in {
     # badly. The NixOS module only offers kwin/weston enums, so the command
     # is overridden directly (settings wins over module defaults). The
     # absolute path keeps the sddm service free of PATH assumptions.
-    settings.Wayland.CompositorCommand = "${inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland}/bin/start-hyprland -- --config /etc/sddm-greeter/hyprland.lua";
+    settings.Wayland.CompositorCommand = "${hyprland}/bin/start-hyprland -- --config /etc/sddm-greeter/hyprland.lua";
 
     # No autologin: LUKS auto-unlocks via TPM2 at boot (hosts/sakura), so the
     # single SDDM password is the machine's only prompt — and it unlocks the

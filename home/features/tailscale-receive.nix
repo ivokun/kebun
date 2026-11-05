@@ -17,7 +17,10 @@
 }: let
   omarchyEnv = import ../../packages/omarchy {
     inherit pkgs;
-    hyprland = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    hyprland = import ../../lib/hyprland.nix {
+      inherit inputs;
+      system = pkgs.stdenv.hostPlatform.system;
+    };
   };
 in {
   systemd.user.services.omarchy-tailscale-receive = {

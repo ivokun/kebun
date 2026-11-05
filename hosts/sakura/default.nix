@@ -77,9 +77,8 @@
   };
 
   # ─── LUKS TPM2 auto-unlock ───
-  # Use systemd initrd so crypttab supports tpm2-device=auto
-  boot.initrd.systemd.enable = true;
-
+  # NixOS 26.11 removed the scripted initrd; systemd's crypttab supports
+  # tpm2-device=auto unconditionally.
   boot.initrd.luks.devices."luks-5525027e-a087-470e-a530-3ab692f4a14c" = {
     device = "/dev/disk/by-uuid/5525027e-a087-470e-a530-3ab692f4a14c";
     crypttabExtraOpts = ["tpm2-device=auto" "tpm2-measure-pcr=yes"];

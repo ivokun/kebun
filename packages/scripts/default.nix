@@ -3,7 +3,7 @@
   laptop ? false,
   # The compositor's own hyprctl (the flake input), not nixpkgs' pkgs.hyprland —
   # the two versions drift and a mismatched client misleads hyprctl-driven scripts.
-  # Callers pass inputs.hyprland.packages.${system}.hyprland.
+  # Callers pass lib/hyprland.nix's overridden flake package.
   hyprland ? pkgs.hyprland,
   ...
 }: let

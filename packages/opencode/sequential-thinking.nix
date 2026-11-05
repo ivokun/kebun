@@ -4,7 +4,6 @@
   lib,
   buildNpmPackage,
   fetchFromGitHub,
-  typescript,
 }:
 buildNpmPackage (finalAttrs: {
   pname = "mcp-server-sequential-thinking";
@@ -17,7 +16,9 @@ buildNpmPackage (finalAttrs: {
     hash = "sha256-6woyDFfHbv8oZDN7lXrNnjZM8viYsBfMe/NtcHdDZcw=";
   };
 
-  nativeBuildInputs = [typescript];
+  # nixpkgs 26.11's `typescript` is 7.x, whose removed automatic @types
+  # inclusion shadows the workspace's own devDependency and fails the build.
+  # Use the package-lock's TypeScript 5.9.3 through npm's local .bin instead.
 
   dontNpmPrune = true;
   npmWorkspace = "src/sequentialthinking";

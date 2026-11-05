@@ -1,6 +1,6 @@
 # Claude Code — nixpkgs' derivation, re-pointed at a newer upstream release.
 #
-# The pinned nixpkgs revision trails Anthropic's release channel by weeks, and
+# The pinned nixpkgs revision trails Anthropic's release channel by days, and
 # the CLI's auto-updater is disabled in the store (DISABLE_AUTOUPDATER=1), so
 # the version is whatever this repo says it is. nixpkgs' package already takes
 # the release `manifest` as an argument, so the whole override is swapping in a
@@ -9,18 +9,16 @@
 #
 # Updates: re-fetch the manifest for the newest release —
 #   curl -fsSL https://downloads.claude.ai/claude-code-releases/latest
-#   curl -fsSL https://downloads.claude.ai/claude-code-releases/<ver>/manifest.json \
-#     --output packages/claude-code/manifest.json
+#   curl -fsSL https://downloads.claude.ai/claude-code-releases/<ver>/manifest.zst.json \
+#     --output packages/claude-code/manifest.zst.json
 # ("latest" is the newest build; "stable" is the slower channel — nixpkgs
 # tracks "latest".) The checksums in the manifest *are* the fixed-output
 # hashes, so there is nothing else to prefetch.
 #
-# Caveat on nixpkgs bumps: this manifest must match the shape the pinned
-# derivation expects — the plain `claude` binary. Newer nixpkgs revisions fetch
-# the zstd-compressed artifact and read `manifest.zst.json` instead; after a
-# flake update, re-fetch accordingly (`.../manifest.zst.json`) or drop this
-# override if nixpkgs has caught up. A mismatch fails the build, not silently
-# at runtime.
+# nixpkgs 26.11 ships the zstd channel format: platforms.<key>.binary is
+# `claude.zst`, which the upstream derivation decompresses in installPhase.
+# A plain (non-zst) manifest builds the same derivation but fails at `unzstd`
+# with "unsupported format", so keep this file in the manifest.zst.json shape.
 #
 # Drop this directory entirely once the pinned nixpkgs ships a version that is
 # new enough.
@@ -29,5 +27,5 @@
   claude-code,
 }:
 claude-code.override {
-  manifest = lib.importJSON ./manifest.json;
+  manifest = lib.importJSON ./manifest.zst.json;
 }

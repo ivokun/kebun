@@ -16,11 +16,12 @@
   # command where Steam is enabled, without modifying that state on activation.
   steamEnabled = osConfig.programs.steam.enable or false;
 
-  # Scripts get the compositor's own hyprctl (the flake input), not nixpkgs'
-  # pkgs.hyprland — the versions drift and a mismatched client misleads scripts.
+  # Scripts get the compositor's own hyprctl (the pinned flake input, with the
+  # lib/hyprland.nix compatibility overrides), not nixpkgs' pkgs.hyprland —
+  # the versions drift and a mismatched client misleads scripts.
   scripts = import ../packages/scripts {
     inherit laptop pkgs;
-    hyprland = inputs.hyprland.packages.${system}.hyprland;
+    hyprland = import ../lib/hyprland.nix {inherit inputs system;};
   };
 in {
   nixpkgs.config.allowUnfree = true;
@@ -158,7 +159,7 @@ in {
       cliamp
 
       # Office/productivity
-      libreoffice-fresh
+      libreoffice
       evince
 
       # System utilities

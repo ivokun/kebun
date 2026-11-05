@@ -57,7 +57,10 @@
   bindToggleLaptopDisplay = lib.optionalString laptop "o.bind(\"SUPER + CTRL + DELETE\", \"Toggle laptop display\", \"toggle-laptop-display\")";
   bindShowBattery = lib.optionalString laptop "o.bind(\"SUPER + CTRL + ALT + B\", \"Show battery\", \"show-battery\")";
 
-  hyprland = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+  hyprland = import ../../lib/hyprland.nix {
+    inherit inputs;
+    system = pkgs.stdenv.hostPlatform.system;
+  };
 
   # HyprMon (monitor layout TUI + profiles). When it saves — `S`, and every
   # `--profile` apply — it writes its rules to a hyprmon.lua sidecar next to
@@ -89,7 +92,7 @@ in {
   # engine swap is Stage 5.
   wayland.windowManager.hyprland = {
     enable = true;
-    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+    package = hyprland;
     # Hyprlang (the .conf renderer) is kept explicit — but nothing is configured
     # through it: the repo's separate xdg-managed hyprland.lua is the real
     # config and Hyprland ≥0.53 prefers the .lua entry over the .conf, so the

@@ -36,13 +36,13 @@
   boot.kernelModules = ["amdgpu" "kvm-amd" "btusb" "vhost_vsock"];
 
   # ─── LUKS TPM2 auto-unlock ───
-  # systemd initrd so crypttab supports tpm2-device=auto. The mapper name
-  # ("root") must match hardware-configuration.nix; if TPM2 policy breaks
-  # (e.g. firmware changes PCR 7) the kernel falls back to the passphrase
-  # prompt. After the login password is separately enrolled with
-  # `cryptsetup luksAddKey`, desktop.nix's PAM hook can reuse it for devices
-  # listed in boot.initrd.luks.devices.
-  boot.initrd.systemd.enable = true;
+  # NixOS 26.11 removed the scripted initrd; systemd's crypttab supports
+  # tpm2-device=auto unconditionally. The mapper name ("root") must match
+  # hardware-configuration.nix; if TPM2 policy breaks (e.g. firmware changes
+  # PCR 7) the kernel falls back to the passphrase prompt. After the login
+  # password is separately enrolled with `cryptsetup luksAddKey`,
+  # desktop.nix's PAM hook can reuse it for devices listed in
+  # boot.initrd.luks.devices.
   boot.initrd.luks.devices."root" = {
     device = "/dev/disk/by-uuid/af6c38b9-e330-47b5-97dd-da19a7f29a00";
     crypttabExtraOpts = ["tpm2-device=auto" "tpm2-measure-pcr=yes"];

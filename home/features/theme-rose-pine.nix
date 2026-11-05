@@ -32,7 +32,9 @@
     enable = true;
     theme = {
       name = "rose-pine-dawn";
-      package = pkgs.rose-pine-gtk-theme;
+      # nixpkgs removed rose-pine-gtk-theme with the GTK2 cleanup; this local
+      # copy keeps the same 2.2.0 payload without the unused GTK2 inputs.
+      package = pkgs.callPackage ../../packages/rose-pine-gtk-theme {};
     };
     iconTheme = {
       name = "Yaru-blue";

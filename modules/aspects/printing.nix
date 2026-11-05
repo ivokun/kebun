@@ -50,6 +50,6 @@
     nssmdns4 = true;
     # UDP 5353 is opened only on physical LAN links in networking.nix.
     openFirewall = false;
-    denyInterfaces = ["tailscale0" "docker0"];
+    settings.server.deny-interfaces = ["tailscale0" "docker0"];
   };
 }
