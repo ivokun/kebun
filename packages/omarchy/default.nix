@@ -38,6 +38,11 @@
   # method indicator's Fcitx D-Bus reader.
   python = pkgs.python3.withPackages (p: [p.pygobject3]);
 
+  # Upstream 8a787b6's capture pipeline execs `omasnap` by name, but the
+  # vendored tree ships no binary and nixpkgs has no package. Build it from
+  # the pinned upstream release artifact instead (packages/omasnap).
+  omasnapPkg = pkgs.callPackage ../omasnap {};
+
   runtimeDeps = with pkgs; [
     bash
     bluez # bluetoothctl, omarchy-bluetooth-device/power
@@ -54,7 +59,10 @@
     # Recorder binary; modules/aspects/desktop.nix enables the NixOS module
     # separately so gsr-kms-server also gets its required capability wrapper.
     gpu-screen-recorder # omarchy-capture-screenrecording*
-    grim # omarchy-capture-screenshot/text/qr
+    grim # omarchy-capture-region/text/qr
+    # omarchy-capture-screenshot and omarchy-clipboard-open's image action
+    # exec omasnap directly; without this they exit 127.
+    omasnapPkg
     hyprland
     hyprpicker # omarchy-capture-region's screen freeze (and capture color picker)
     inotify-tools
@@ -114,6 +122,9 @@
     # Stage 4 verbs kebun scripts call directly.
     "omarchy-menu-emoji"
     "omarchy-menu-clipboard"
+    # Clipboard-history "Open" action: image entries exec omasnap, and the jq
+    # entry lookup needs the runtimeDeps PATH as well.
+    "omarchy-clipboard-open"
     "omarchy-menu-select"
     "omarchy-menu-input"
     "omarchy-menu-keybindings"

@@ -9,6 +9,7 @@
     ./aspects.nix
     ./users.nix
     ./opencode-memory.nix
+    ./omarchy-capture-check.nix
     ./diagrams.nix
     ./diagrams-mermaid.nix
   ];
