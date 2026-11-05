@@ -287,12 +287,28 @@ in {
   # ─── xdg-mime defaults ───
   xdg.mimeApps = {
     enable = true;
+    # Some handlers (notably Neovim for XML) do not advertise these types.
+    associations.added = config.xdg.mimeApps.defaultApplications;
     defaultApplications = {
       "text/html" = "google-chrome.desktop";
       "text/plain" = "nvim.desktop";
+      # Cover Brave's advertised types explicitly so the desktop-entry cache
+      # cannot select it as a fallback. Keep Brave available for manual use.
+      "application/pdf" = "org.gnome.Evince.desktop";
+      "image/gif" = "imv.desktop";
+      "image/jpeg" = "imv.desktop";
+      "image/png" = "imv.desktop";
+      "image/webp" = "imv.desktop";
+      "application/rdf+xml" = "nvim.desktop";
+      "application/rss+xml" = "nvim.desktop";
+      "application/xml" = "nvim.desktop";
+      "text/xml" = "nvim.desktop";
+      "application/xhtml+xml" = "google-chrome.desktop";
+      "application/xhtml_xml" = "google-chrome.desktop";
       "x-scheme-handler/http" = "google-chrome.desktop";
       "x-scheme-handler/https" = "google-chrome.desktop";
       "x-scheme-handler/mailto" = "google-chrome.desktop";
+      "x-scheme-handler/chromium" = "google-chrome.desktop";
       # claude-desktop deep links (desktop actions, auth callbacks)
       "x-scheme-handler/claude" = "com.anthropic.Claude.desktop";
     };
