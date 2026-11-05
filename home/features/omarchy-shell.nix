@@ -18,11 +18,19 @@
     hyprland = import ../../lib/hyprland.nix {inherit inputs system;};
   };
   theme = import ../../packages/omarchy/theme.nix {inherit pkgs omarchy;};
+  # Already on the wrapped capture verbs' PATH through packages/omarchy, but
+  # also expose it on the user profile: a compositor session started before
+  # activation keeps the previous generation's OMARCHY_PATH, whose capture
+  # wrapper execs `omasnap` via PATH. The profile path is stable across
+  # generations, so stale sessions can resolve it without a relogin.
+  omasnap = pkgs.callPackage ../../packages/omasnap {};
 in {
   home.packages = [
     omarchy
     pkgs.quickshell
     pkgs.inotify-tools
+    # PATH fallback for stale compositor sessions (see `omasnap` in the let).
+    omasnap
     # AppLibrary.qml launches desktop entries via `uwsm app -- gtk-launch …`,
     # resolving through the user-manager PATH. gtk-launch ships in gtk3's bin
     # (already in the closure as a library dependency) but NixOS never exposes
