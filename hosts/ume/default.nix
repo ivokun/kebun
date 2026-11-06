@@ -145,6 +145,10 @@
     moonlight-qt
     ryubing
     davinci-resolve
+    # Pen (pen.dev) design canvas: the desktop app (pen-desktop) and the
+    # headless CLI (pen) — see packages/pen.
+    (callPackage ../../packages/pen {})
+    (callPackage ../../packages/pen/cli.nix {})
   ];
   systemd.user.services.lan-mouse = {
     description = "LAN Mouse";

@@ -129,7 +129,7 @@ in {
   # PATH lookup and no npx/uvx
   # downloads at launch (packages/opencode/default.nix: pinned nixpkgs and
   # release backports via the mcp-servers link farm, npm-tarball builds for
-  # GitNexus). Pencil's store-backed launcher needs the Pen AppImage running
+  # GitNexus). Pencil's store-backed launcher needs the Pen app running
   # separately; its embedded MCP server is not part of the Nix closure.
   # The github MCP is the official local server; its
   # token is fetched per launch from the gh keyring by the

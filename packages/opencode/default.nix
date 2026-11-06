@@ -42,12 +42,14 @@
     ln -s ${githubMcpServer}/bin/github-mcp-server $out/bin/github-mcp-server
   '';
 
-  # Pencil MCP: the server binary is NOT bundled or pinned here — pen.dev
-  # ships as an unmanaged AppImage, and the wrapper discovers its
-  # mcp-server-linux-x64 inside the live mount at launch. It is a runtime
-  # prerequisite: the Pen app must already be running when OpenCode starts
-  # this server, and the server's version follows the AppImage the user
-  # runs, not this repository.
+  # Pencil MCP: the server binary is NOT bundled or pinned here — the
+  # wrapper discovers the mcp-server-linux-x64 shipped inside whichever Pen
+  # app is running, so server and app versions always match. Two layouts:
+  # the Nix-wrapped app (packages/pen, ume) runs from its extracted store
+  # tree; a hand-run AppImage runs from its /tmp/.mount_Pen-* FUSE mount.
+  # It is a runtime prerequisite: the Pen app must already be running when
+  # the agent (OpenCode or Claude Code, home/features/claude-mcp.nix) starts
+  # this server.
   opencode-pencil-mcp = pkgs.writeShellScriptBin "opencode-pencil-mcp" ''
     # Nix-store interpreter and utilities; keep PATH-independent.
     set -euo pipefail
@@ -56,7 +58,7 @@
       pen_executable="$(${pkgs.coreutils}/bin/readlink "$process_executable" 2>/dev/null)" || continue
 
       case "$pen_executable" in
-        /tmp/.mount_Pen-*/pen)
+        /tmp/.mount_Pen-*/pen | /nix/store/*-pen-*-extracted/pen)
           server="''${pen_executable%/pen}/resources/app.asar.unpacked/out/mcp-server-linux-x64"
           if [[ -x "$server" ]]; then
             exec "$server" "$@"

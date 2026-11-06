@@ -1,4 +1,7 @@
 # Shared obsidian-multivault MCP definition for Claude Code and Claude Desktop.
+# Claude Code additionally gets pen.dev's MCP server through OpenCode's
+# store-backed launcher (packages/opencode: opencode-pencil-mcp), which execs
+# the server bundled in the running Pen app — start Pen first.
 #
 # Both clients reuse the SSH argument list from home/opencode/opencode.json (the
 # source of truth) instead of duplicating identity files, keepalives, host-key
@@ -21,6 +24,7 @@
 }: let
   opencodeConfig = builtins.fromJSON (builtins.readFile ../opencode/opencode.json);
   sourceCommand = opencodeConfig.mcp.servers."obsidian-multivault".command;
+  opencodePkgs = import ../../packages/opencode {inherit pkgs;};
 
   claudeServer = {
     command = "${pkgs.openssh}/bin/ssh";
@@ -41,7 +45,13 @@ in
       # Keep the repo's claude-code package as the only binary; the module only
       # manages the personal plugin that carries this MCP server.
       package = null;
-      mcpServers."obsidian-multivault" = claudeServer;
+      mcpServers = {
+        "obsidian-multivault" = claudeServer;
+        pencil = {
+          command = "${opencodePkgs.opencode-pencil-mcp}/bin/opencode-pencil-mcp";
+          args = ["--app" "desktop"];
+        };
+      };
     };
 
     # Keep the app-owned config outside HM's managed file tree. Mutations run
