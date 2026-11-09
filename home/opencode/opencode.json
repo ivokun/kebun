@@ -986,13 +986,11 @@
       }
     }
   },
-  "experimental": {
-    "policies": [
-      {
-        "action": "permission",
-        "resource": "read:*.env*",
-        "effect": "deny"
-      }
-    ]
-  }
+  "policies": [
+    {
+      "action": "tool.use",
+      "resource": "read:*.env*",
+      "effect": "deny"
+    }
+  ]
 }

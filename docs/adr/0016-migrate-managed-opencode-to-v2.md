@@ -200,6 +200,24 @@ accepted and build-verified migration, not a completed deployment.
   patchelf that Electron ≥43's zip no longer satisfies. Live checks (window
   opens under Hyprland, sidecar starts, service adoption) are post-activation
   gates on sakura, same as the CLI gates above.
+- 2026-11-09: bumped the vendored source to 2.2.6. The lockfile now targets
+  Bun 1.4.4 (the pinned nixpkgs Bun), so the 1.3.13 pin and its
+  `bun-1.3.13.nix` override are gone. The desktop no longer vendors an
+  Electron derivation: the pinned nixpkgs carries `electron_44-bin` (44.9.3),
+  which is what the GUI now packages against. 2.2.6's `script/build.ts`
+  stages the sidecar from `packages/cli/dist/cli-linux-x64-baseline` rather
+  than `OPENCODE_CLI_DIST`, and the channel-registration patch moved to
+  `background-service.ts`'s `prepare()` (the sidecar-probe patch is unchanged
+  in shape). Config: 2.2.6 deprecates `experimental.policies` for top-level
+  `policies`, and the dotenv-read hard policy's `permission` action is no
+  longer recognized — it is now `tool.use` with the same
+  `read:*.env*` resource. Isolated 2.2.6 checks: the managed agent set
+  resolves (`debug agents` reports 39 entries), all three local plugins load,
+  all 15 MCP servers register (most connect; the rest need auth or an
+  external runtime as before), and the directory watcher starts with the
+  inotify backend. `mcp list` on a cold location still
+  reports "No MCP servers configured" on its first call — upstream #54192,
+  not a packaging regression.
 - Date proposed: 2026-09-22
 - Date accepted: 2026-09-22
 - Proposed by: Ivokun

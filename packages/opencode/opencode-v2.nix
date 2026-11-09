@@ -9,15 +9,16 @@
   ripgrep,
   stdenv,
   stdenvNoCC,
+  versionCheckHook,
   wayland,
   writableTmpDirAsHomeHook,
 }: let
-  version = "2.0.29";
+  version = "2.2.6";
   src = fetchFromGitHub {
     owner = "anomalyco";
     repo = "opencode";
     tag = "v${version}";
-    hash = "sha256-qfT8gQCyGahr5v7v95wNArXrBOAnfQZja1WyJkaCpJI=";
+    hash = "sha256-6Of4/r4SKYtxMbHISu8/4yzSpCfHNGuTwfKdAKjNJnM=";
   };
 
   # V2 is not packaged by the pinned nixpkgs revision. Keep upstream's Bun
@@ -40,10 +41,12 @@
       runHook preBuild
 
       export BUN_INSTALL_CACHE_DIR=$(mktemp -d)
+      # The root workspace is included so Bun resolves the same peer contexts
+      # as a normal install (upstream's nix/node_modules.nix does the same).
       bun install \
         --cpu=x64 \
         --os=linux \
-        --filter '!./' \
+        --filter './' \
         --filter './packages/cli' \
         --filter './packages/desktop' \
         --filter './packages/app' \
@@ -68,9 +71,9 @@
     dontFixup = true;
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
-    # Recomputed with the pinned Nix/Bun toolchain. Upstream v2.0.29's
-    # published x86_64-linux hash does not reproduce with its own locked flake.
-    outputHash = "sha256-TrEQZDfqTVr6x7kdoR6e1caSXy5jNA+qmtCb/j3gCZM=";
+    # Recomputed with the pinned Nix/Bun toolchain. Upstream v2.2.6's
+    # published x86_64-linux hash did not reproduce here either.
+    outputHash = "sha256-O2hF8pGUSArKgYBeP99oOW3iXVVZl5bV5WPTp3E7JIA=";
   };
 in
   stdenvNoCC.mkDerivation (finalAttrs: {
@@ -87,9 +90,9 @@ in
       writableTmpDirAsHomeHook
     ];
 
-    # The pinned nixpkgs Bun may lag the version requested by upstream while
-    # remaining able to build the CLI. Match upstream's Nix packaging and turn
-    # that exact version gate into a warning.
+    # Upstream v2.2.6 pins Bun 1.4.4, which is the pinned nixpkgs Bun, so the
+    # version gate passes as-is. Keep the substitution so a local Bun drift
+    # warns instead of aborting the build.
     postPatch = ''
       substituteInPlace packages/script/src/index.ts \
         --replace-fail 'throw new Error(`This script requires bun@''${expectedBunVersionRange}' \
@@ -130,8 +133,9 @@ in
       # but not its native binding. Keep the pinned binding from nodeModules
       # beside the executable and use upstream's explicit override rather than
       # silently degrading recursive directory watches at runtime.
-      watcherNode=${finalAttrs.node_modules}/packages/cli/node_modules/@parcel/watcher-linux-x64-glibc/watcher.node
-      test -f "$watcherNode" || {
+      watcherNode=$(find ${finalAttrs.node_modules} -type f \
+        -path '*/@parcel/watcher-linux-x64-glibc/watcher.node' -print -quit)
+      test -n "$watcherNode" || {
         echo "parcel watcher addon missing from node_modules" >&2
         exit 1
       }
@@ -147,12 +151,38 @@ in
       runHook postInstall
     '';
 
+    # v2 dropped the `completion` subcommand; --completions is the global flag.
+    # Stage to files first because installShellCompletion's substitution step
+    # rejects anything that is not a regular file.
     postInstall = ''
+      $out/bin/opencode --completions bash > opencode.bash
+      $out/bin/opencode --completions zsh > _opencode
+      $out/bin/opencode --completions fish > opencode.fish
+
       installShellCompletion --cmd opencode \
-        --bash <($out/bin/opencode --completions bash) \
-        --zsh <($out/bin/opencode --completions zsh) \
-        --fish <($out/bin/opencode --completions fish)
+        --bash opencode.bash \
+        --fish opencode.fish \
+        --zsh _opencode
+
+      # OPENCODE_CLI_NAME is a build-time define, so the opencode2 copies are
+      # renamed rather than regenerated, matching upstream's nix/opencode.nix.
+      substitute opencode.bash opencode2.bash --replace-fail opencode opencode2
+      substitute _opencode _opencode2 --replace-fail opencode opencode2
+      substitute opencode.fish opencode2.fish --replace-fail opencode opencode2
+
+      installShellCompletion --cmd opencode2 \
+        --bash opencode2.bash \
+        --fish opencode2.fish \
+        --zsh _opencode2
     '';
+
+    nativeInstallCheckInputs = [
+      versionCheckHook
+      writableTmpDirAsHomeHook
+    ];
+    doInstallCheck = true;
+    versionCheckKeepEnvironment = ["HOME" "OPENCODE_DISABLE_MODELS_FETCH"];
+    versionCheckProgramArg = "--version";
 
     passthru = {
       inherit (finalAttrs) env;

@@ -47,6 +47,7 @@
   expat,
   alsa-lib,
   libgbm,
+  libdrm,
   mesa,
   udev,
   nss,
@@ -88,7 +89,7 @@
   OVMFFull,
 }: let
   pname = "claude-desktop";
-  version = "2.37337.1";
+  version = "4.23118.0";
 
   # The raw Electron tree from the official deb. The deb's maintainer scripts
   # (postinst: apt-repo registration + AppArmor profile) are deliberately not
@@ -99,7 +100,7 @@
 
     src = fetchurl {
       url = "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_${version}_amd64.deb";
-      hash = "sha256-QXRbCRTw/1FjGh/xu0A7g2v1yZWEXMpnQt05vKOi2hQ=";
+      hash = "sha256-GtmW6MqrBcmzdGRgUcQMtrudhPNxdW8VuNNyiJdRWpc=";
     };
 
     # A deb is an ar archive holding data.tar.xz — stdenv's ar/xz/tar unpack
@@ -162,6 +163,7 @@
         # Rendering
         mesa # EGL + DRI drivers
         libgbm
+        libdrm # new hard Depends in 4.x (libdrm2)
 
         # Misc runtime
         cups

@@ -1,26 +1,30 @@
 # OpenCode Desktop — the Electron GUI, built from the same vendored upstream
 # source tree as the CLI (packages/opencode/opencode-v2.nix). Ported from
-# upstream's nix/desktop.nix (tag v2.0.29) with kebun adaptations:
+# upstream's nix/desktop.nix (tag v2.2.6) with kebun adaptations:
 #
-# - The bundled sidecar CLI is the vendored opencode derivation, so the app
-#   runs the exact version the managed config targets. A package.json stub is
-#   staged beside it because the prebuild reads its version to stamp
-#   resources/opencode-cli.version (upstream's desktop.nix omits the stub and
-#   fails).
+# - The bundled sidecar CLI is the vendored opencode derivation (its Nix
+#   wrapper), so the app runs the exact version the managed config targets and
+#   the sidecar keeps ripgrep PATH, Wayland libraries, and the parcel watcher
+#   override. makeBinaryWrapper emits a native ELF, so upstream's afterPack
+#   architecture check still inspects it.
+# - A package.json stub is staged beside the CLI because upstream's
+#   script/build.ts reads its version to stamp resources/opencode-cli.version.
 # - The desktop auto-updater is disabled at source, like nixpkgs' V1
 #   packaging: electron-updater would download and exec an upstream-packaged
 #   app that is not patched for NixOS. Updates happen through this repository.
 # - electron-builder unpacks native .node modules (the @lydell/node-pty
 #   binding is externalized by electron-vite and dlopened at runtime).
-# - The bundled CLI copy is the wrapper produced by opencode-v2.nix, so the
-#   sidecar keeps its ripgrep PATH and wayland library setup.
+# - The desktop's client falls back to the unsuffixed service.json, but the
+#   managed CLI runs channel "prod" and registers service-prod.json
+#   (packages/cli/src/services/service-config.ts, filename()). Both discovery
+#   paths are pointed at the channel-resolved file the CLI writes.
 {
   lib,
   stdenv,
   stdenvNoCC,
   bun,
   nodejs,
-  callPackage,
+  electron,
   makeWrapper,
   writableTmpDirAsHomeHook,
   autoPatchelfHook,
@@ -28,8 +32,6 @@
   makeDesktopItem,
   opencode,
 }: let
-  electron = callPackage ./electron.nix {};
-
   # The desktop's client falls back to the unsuffixed service.json, but the
   # managed CLI runs channel "prod" and registers the channel-scoped
   # service-prod.json (packages/cli/src/services/service-config.ts,
@@ -40,7 +42,13 @@
   # discovery at the same channel-resolved file the CLI writes;
   # import.meta.env.OPENCODE_CHANNEL is baked by electron-vite from the
   # same build channel as the CLI's own define.
-  channelRegistrationFile = ''path.join(process.env.XDG_STATE_HOME ?? path.join(app.getPath("home"), ".local", "state"), "opencode", ["latest", "dev", "beta", "next"].includes(import.meta.env.OPENCODE_CHANNEL) ? "service.json" : `service-''${(import.meta.env.OPENCODE_CHANNEL ?? "prod").replace(/[^a-zA-Z0-9._-]/g, "-")}.json`)'';
+  channelRegistrationFile = ''    path.join(
+          process.env.XDG_STATE_HOME ?? path.join(app.getPath("home"), ".local", "state"),
+          "opencode",
+          ["latest", "dev", "beta", "next"].includes(CHANNEL)
+            ? "service.json"
+            : "service-" + CHANNEL.replace(/[^a-zA-Z0-9._-]/g, "-") + ".json",
+        )'';
 in
   stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "opencode-desktop";
@@ -82,7 +90,6 @@ in
         ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
       };
 
-    # Channel-scoped service discovery, see channelRegistrationFile above.
     postPatch =
       # NOTE: Relax Bun version check to be a warning instead of an error
       ''
@@ -91,15 +98,12 @@ in
                          'console.warn(`Warning: This script requires bun@''${expectedBunVersionRange}'
 
         # The desktop auto-updater would download and run an upstream binary
-        # that is not patched for NixOS. Disable it at source. v2.0.29 moved
-        # the updater out of the main process (the former
-        # constants.ts UPDATER_ENABLED) into the gui-extensions updater
-        # extension, where `enabled` is the same predicate. Forcing it false
-        # takes upstream's own opt-out path: ./platform — and with it
-        # electron-updater — is never imported, and the state machine reports
-        # status "disabled" while check/install stay guarded.
-        substituteInPlace packages/gui-extensions/src/updater/main.ts \
-          --replace-fail 'const enabled = build.packaged && build.channel !== "dev"' \
+        # that is not patched for NixOS. Disable it at source. v2.2.6 keeps
+        # the updater in the gui-plugins package; `enabled` is the predicate
+        # that gates the electron-updater import and every check/install
+        # action, so forcing it false takes upstream's own opt-out path.
+        substituteInPlace packages/gui-plugins/src/updater/main.ts \
+          --replace-fail 'const enabled = build.packaged' \
                          'const enabled = false'
       ''
       # https://github.com/electron/electron/issues/31121 — app.asar is passed
@@ -112,7 +116,7 @@ in
           packages/desktop/src/main/service/sidecar-probe.ts \
           --replace-fail "process.resourcesPath" "'$out/opt/opencode-desktop/resources'"
         substituteInPlace packages/desktop/src/main/service/background-service.ts \
-          --replace-fail ': undefined,' ': ${channelRegistrationFile},'
+        --replace-fail ': undefined' ': ${channelRegistrationFile}'
         substituteInPlace packages/desktop/src/main/service/sidecar-probe.ts \
           --replace-fail 'Service.discover({ version })' 'Service.discover({ version, file: ${channelRegistrationFile} })'
       '';
@@ -135,11 +139,11 @@ in
 
       cd packages/desktop
 
-      # Stage the vendored CLI where prebuild's copyBuiltCliToResources
-      # expects an npm-style CLI package: <dir>/bin/opencode plus a
-      # package.json whose version becomes resources/opencode-cli.version.
-      export OPENCODE_CLI_DIST="$TMPDIR/desktop-cli"
-      cli_package="$OPENCODE_CLI_DIST/cli-linux-x64-baseline"
+      # Stage the vendored CLI where upstream's script/build.ts looks for it:
+      # ../cli/dist/<getCurrentCli() package dir>, as an npm-style CLI package
+      # (bin/opencode plus a package.json whose version becomes
+      # resources/opencode-cli.version).
+      cli_package="$PWD/../cli/dist/cli-linux-x64-baseline"
       mkdir -p "$cli_package/bin"
       cp ${lib.getExe opencode} "$cli_package/bin/opencode"
       echo '{"name":"@opencode/cli-linux-x64-baseline","version":"'"${finalAttrs.version}"'"}' > "$cli_package/package.json"

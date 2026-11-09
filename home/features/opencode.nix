@@ -120,7 +120,7 @@ in {
   # Deploys opencode agent configs, prompts, skills, plugins, and MCP servers
   # to ~/.config/opencode/ via home-manager.
   #
-  # The managed wrapper pins OpenCode to pkgs.opencode (currently 2.0.18),
+  # The managed wrapper pins OpenCode to pkgs.opencode (currently 2.2.6),
   # disables self-updates, and
   # strips ambient GitHub credentials before plugins or tools run. Its exact
   # store bin is prepended to PATH so ~/.opencode/bin or mise cannot shadow it.
