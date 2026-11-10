@@ -219,6 +219,12 @@ in
     patch -d $out -p1 < ${./patches/network-iwd-state.patch}
     patch -d $out -p1 < ${./patches/network-impala-button.patch}
     patch -d $out -p1 < ${./patches/screenrecord-create-output-dir.patch}
+    # NixOS surfaces per-user package entries (/etc/profiles/per-user/<user>/
+    # share) through XDG_DATA_DIRS; upstream's fixed Arch-era path list (~/.local,
+    # ~/.nix-profile, /usr) misses them, leaving the browser exec empty so
+    # uwsm-app fails with `Command not found: ""`. This also breaks the agents
+    # panel's private-window sign-in flow (omarchy agent account add).
+    patch -d $out -p1 < ${./patches/browser-xdg-desktop-lookup.patch}
 
     # Wrap the entry scripts so their external commands resolve from the
     # closure, including repo-internal callees via $out/bin.
