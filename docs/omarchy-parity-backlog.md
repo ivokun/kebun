@@ -335,9 +335,15 @@ but all need a real sakura deploy or a follow-up decision:
 - **pamixer has no consumers at HEAD `2953acc`.** Zero callers in bindings or scripts
   (the v3 volume binds went to shell verbs), but it is still installed
   (`home/common.nix`, `hosts/common/desktop.nix`). Drop it once that stays true.
-- **v3's 900s idle-suspend is not carried.** Idle is the shell plugin now: screensaver
-  150s / lock 300s from the vendored `shell.json` — no system suspend on idle at all.
-  Confirm that's acceptable on the laptop, or port a suspend listener.
+- **v3's 900s idle-suspend is not carried.** Idle is the shell plugin now: lock
+  300s from the vendored `shell.json` — no system suspend on idle at all.
+  Confirm that's acceptable on the laptop, or port a suspend listener. The 150s
+  ASCII screensaver is **unported**: upstream renders it with `ttfx`, which is
+  not packaged, and its branding asset is not staged. The vendored default sets
+  `idle.screensaver: 0`, `omarchy-launch-screensaver` is a build-time no-op (so
+  a stored user config asking for 150s cannot resurrect the error), and the menu
+  entries are hidden. Port `ttfx` + a branding seed, drop both patches, and
+  re-enable the menu entries if the screensaver is ever wanted.
 - **Battery warnings are UPower-based now.** The shell's battery plugin warns at 10% via
   `omarchy-battery-low`; the manual readouts (`show-battery`, `battery-remaining-time`)
   are still kebun's raw-`/sys` scripts — §4.7 (full upower port with health/time-to-empty)

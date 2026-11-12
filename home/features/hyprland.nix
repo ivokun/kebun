@@ -802,8 +802,10 @@ in {
   '';
 
   # ─── Idle handling ───
-  # Idle is the shell's idle service plugin now; timings live in shell.json
-  # (screensaver 150s, lock 300s). No idle-suspend: the v3 hypridle 900s
+  # Idle is the shell's idle service plugin now; timings live in shell.json.
+  # Lock fires at 300s. The 150s ASCII screensaver is unported (ttfx is not
+  # packaged), so packages/omarchy disables it in the vendored default and
+  # turns the launcher into a no-op. No idle-suspend: the v3 hypridle 900s
   # suspend listener is intentionally not carried — noted for deploy
   # validation on sakura. That only means the machine never suspends from
   # idleness; suspends from the lid or the power menu are still preceded by a

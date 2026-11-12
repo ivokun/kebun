@@ -209,6 +209,22 @@ in
     substituteInPlace $out/shell/plugins/panels/elsewhen/Panel.qml \
       --replace-fail '"/usr/share/zoneinfo/zone1970.tab"' '"${pkgs.tzdata}/share/zoneinfo/zone1970.tab"'
 
+    # The ASCII screensaver is unported: upstream renders it with `ttfx`, which
+    # is not packaged, and no branding asset is staged — so `omarchy-screensaver`
+    # loops with "ttfx: command not found" inside a fullscreen terminal.
+    # Disable it at both ends so no host can hit it:
+    #   * the vendored default turns the idle screensaver off (idle.lock stays
+    #     at its 300s default), covering fresh installs; and
+    #   * the launcher exits before doing anything even when a stored user
+    #     shell.json (e.g. one restored from backup) still asks for a 150s
+    #     screensaver, and when a menu entry forces a launch.
+    # Revisit both if ttfx and a branding seed are ever ported.
+    substituteInPlace $out/config/omarchy/shell.json \
+      --replace-fail '"screensaver": 150' '"screensaver": 0'
+    substituteInPlace $out/bin/omarchy-launch-screensaver \
+      --replace-fail '# Exit early if screensaver is already running' \
+      'exit 0 # Kebun: unported screensaver (no ttfx in the closure) — see packages/omarchy/default.nix'
+
     # Kebun divergence patches on top of the pinned upstream tree. The network
     # panel's connection state has no iwd backend in Quickshell (ADR-0012), so
     # fall back to omarchy-network-status's script data and offer impala as the

@@ -121,6 +121,14 @@ in {
       "setup.network.dns"
       # No herdr on kebun.
       "learn.herdr-keybindings"
+      # The ASCII screensaver is unported (upstream's ttfx renderer is not
+      # packaged, no branding asset is staged). packages/omarchy turns the idle
+      # screensaver off and makes the launcher inert; hide the entries that
+      # would surface the dead feature — force-launch, the availability toggle,
+      # and the branding submenu.
+      "system.screensaver"
+      "trigger.toggle.screensaver"
+      "style.screensaver"
     ] (_: {when = "false";})
   );
 }
