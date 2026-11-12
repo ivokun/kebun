@@ -23,6 +23,22 @@
     inherit laptop pkgs;
     hyprland = import ../lib/hyprland.nix {inherit inputs system;};
   };
+
+  # Same instantiation as home/features/omarchy-shell.nix, so this resolves to
+  # the environment already installed — the `claude` wrapper uses its account
+  # helper.
+  omarchy = import ../packages/omarchy {
+    inherit pkgs;
+    hyprland = import ../lib/hyprland.nix {inherit inputs system;};
+  };
+  claudeCode = pkgs.callPackage ../packages/claude-code {};
+  # Upstream routes a bare `claude` through its mise shim; kebun has no mise,
+  # so install a wrapper that resolves Omarchy's active subscription account
+  # and execs the real CLI (packages/claude-account).
+  claudeAccount = pkgs.callPackage ../packages/claude-account {
+    inherit omarchy;
+    claude-code = claudeCode;
+  };
 in {
   nixpkgs.config.allowUnfree = true;
 
@@ -67,6 +83,9 @@ in {
 
       # Networking
       tailscale
+      # dig/nslookup — bind's dnsutils output. host(1) alone already arrives
+      # via environment.corePackages (tasks/network-interfaces.nix).
+      dnsutils
 
       # Security
       bitwarden-desktop
@@ -106,8 +125,10 @@ in {
       tldr
 
       # AI
-      # nixpkgs' claude-code, re-pointed at a newer release (packages/claude-code)
-      (pkgs.callPackage ../packages/claude-code {})
+      # Claude Code, re-pointed at a newer release (packages/claude-code) and
+      # wrapped so a bare `claude` follows Omarchy's active subscription
+      # account (packages/claude-account).
+      claudeAccount
       inputs.luvus.packages.${system}.default
       # Official Linux beta repackaged from Anthropic's .deb (packages/claude-desktop)
       (pkgs.callPackage ../packages/claude-desktop {})

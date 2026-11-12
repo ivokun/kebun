@@ -8,8 +8,9 @@
 # policy, or the pinned remote entry point. Claude Code uses Home Manager's
 # native programs.claude-code module, which writes the global personal plugin
 # ~/.claude/skills/claude-code-home-manager and adds `type = "stdio"` itself.
-# `package = null` keeps the repo's pinned claude-code from home/common.nix as
-# the only binary and leaves ~/.claude.json / ~/.claude/settings.json app-owned.
+# `package = null` keeps the repo's `claude` account wrapper from home/common.nix
+# as the only binary and leaves ~/.claude.json / ~/.claude/settings.json
+# app-owned.
 #
 # Claude Desktop has no Home Manager module, so its mutable
 # ~/.config/Claude/claude_desktop_config.json is never HM-owned or read at
@@ -42,8 +43,8 @@ in
   ) "claude-mcp.nix: the obsidian-multivault source command must start with ssh"; {
     programs.claude-code = {
       enable = true;
-      # Keep the repo's claude-code package as the only binary; the module only
-      # manages the personal plugin that carries this MCP server.
+      # Keep the repo's `claude` account wrapper as the only binary; the module
+      # only manages the personal plugin that carries this MCP server.
       package = null;
       mcpServers = {
         "obsidian-multivault" = claudeServer;
