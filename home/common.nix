@@ -228,6 +228,8 @@ in {
       toggle-gaps
       toggle-layout
       toggle-power-profile
+      wireguard-status
+      wireguard-toggle
       launch-or-focus
       launch-tui
       launch-audio

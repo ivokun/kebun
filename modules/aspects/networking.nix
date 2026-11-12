@@ -95,6 +95,53 @@ in {
     extraSetFlags = ["--operator=${builtins.head hostUserNames}"];
   };
 
+  # On-demand WireGuard tunnel into 10.42.0.0/16 (split tunnel: only that
+  # range is routed through it). autostart = false — nothing brings it up at
+  # boot; toggle with `sudo systemctl start|stop wg-quick-wg0`.
+  #
+  # The private key is NOT in the repo or the store: provision it per host as
+  # a root-only file before the first start:
+  #   sudo install -m 0600 -o root -g root /dev/stdin /etc/wireguard/wg0.key
+  # Both hosts share one peer identity (10.8.0.7), so bring the tunnel up on
+  # one host at a time — the server tracks a single endpoint per key.
+  networking.wg-quick.interfaces.wg0 = {
+    autostart = false;
+    address = ["10.8.0.7/32"];
+    privateKeyFile = "/etc/wireguard/wg0.key";
+    # wg-quick hands this to resolved's resolvconf shim as the exclusive
+    # (~.) resolver for the tunnel's lifetime, mirroring `DNS =` in a stock
+    # wg-quick config.
+    dns = ["10.42.0.2"];
+    # Global DNSSEC=yes would turn the remote resolver's private (unsigned)
+    # zones into SERVFAILs; relax validation on this link only.
+    postUp = "${config.systemd.package}/bin/resolvectl dnssec wg0 no";
+    peers = [
+      {
+        publicKey = "mlz6EXTfNy23PUcAFFUmJ8QnVg4SMrk7B5NjeOXbFVQ=";
+        allowedIPs = ["10.42.0.0/16"];
+        endpoint = "18.181.132.23:51820";
+        persistentKeepalive = 25;
+      }
+    ];
+  };
+  environment.systemPackages = [pkgs.wireguard-tools];
+  # Root-only home for the out-of-band private key above.
+  systemd.tmpfiles.rules = ["d /etc/wireguard 0700 root root -"];
+  # Let the desktop user toggle this one unit from an active local session
+  # without a password — the bar's wireguard-toggle runs as that user. Same
+  # operator scoping as Tailscale's --operator above.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.freedesktop.systemd1.manage-units" &&
+          action.lookup("unit") == "wg-quick-wg0.service" &&
+          ["start", "stop", "restart", "reset-failed"].indexOf(action.lookup("verb")) >= 0 &&
+          ${builtins.toJSON hostUserNames}.indexOf(subject.user) >= 0 &&
+          subject.local && subject.active) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
+
   # DNS
   services.resolved = {
     enable = true;

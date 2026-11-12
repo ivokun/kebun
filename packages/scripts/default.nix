@@ -204,6 +204,44 @@ in {
     fi
   '';
 
+  # On-demand WireGuard tunnel (networking.wg-quick.interfaces.wg0 in
+  # modules/aspects/networking.nix). The status script feeds a `type:
+  # "command"` bar module (Waybar-style JSON; class "active" highlights it);
+  # the toggle needs no password thanks to the polkit rule next to the
+  # interface definition.
+  wireguard-status = pkgs.writeShellScriptBin "wireguard-status" ''
+    icon=$'\U000f0582'
+    state=$(${pkgs.systemd}/bin/systemctl is-active wg-quick-wg0.service 2>/dev/null || true)
+    case "$state" in
+      active) printf '{"text":"%s","tooltip":"WireGuard wg0: connected","class":"active"}\n' "$icon" ;;
+      activating | deactivating) printf '{"text":"%s","tooltip":"WireGuard wg0: %s…"}\n' "$icon" "$state" ;;
+      failed) printf '{"text":"%s","tooltip":"WireGuard wg0: failed (journalctl -u wg-quick-wg0)"}\n' "$icon" ;;
+      *) printf '{"text":"%s","tooltip":"WireGuard wg0: disconnected"}\n' "$icon" ;;
+    esac
+  '';
+
+  wireguard-toggle = pkgs.writeShellScriptBin "wireguard-toggle" ''
+    set -uo pipefail
+    systemctl=${pkgs.systemd}/bin/systemctl
+    unit=wg-quick-wg0.service
+    if $systemctl is-active --quiet "$unit"; then
+      if $systemctl stop "$unit"; then
+        omarchy-notification-send "WireGuard" "Disconnected"
+      else
+        omarchy-notification-send -u critical "WireGuard" "Failed to disconnect"
+      fi
+    else
+      # A failed unit stays "failed" until reset; start would still work,
+      # but clear it so the bar shows the fresh outcome.
+      $systemctl reset-failed "$unit" 2>/dev/null || true
+      if $systemctl start "$unit"; then
+        omarchy-notification-send "WireGuard" "Connected to 10.42.0.0/16"
+      else
+        omarchy-notification-send -u critical "WireGuard" "Failed to connect — journalctl -u wg-quick-wg0"
+      fi
+    fi
+  '';
+
   # ─── TUI Launch System (inspired by Omarchy) ───
   # Smart focus-or-launch for TUI applications.
   # Prevents duplicate windows: if a window with the given class/title exists,
