@@ -12,6 +12,12 @@
   hardware.amdgpu.initrd.enable = true;
 
   # ─── Machine-specific kernel wiring (ThinkPad X13 Gen 1, AMD Renoir) ───
+  # Follow the highest stable mainline kernel in the pinned nixpkgs, same as
+  # ume, instead of the LTS default. The Renoir s0ix/S3 kernelParams below
+  # were tuned on 6.18 LTS: after a kernel bump, re-check suspend/resume
+  # (lid close on battery) before trusting it.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
   # vhost_vsock: Cowork (claude-desktop's VM) needs /dev/vhost-vsock.
   # rtsx_pci: SD card reader (Realtek RTS525A).
   boot.kernelModules = [
