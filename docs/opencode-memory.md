@@ -3,8 +3,8 @@
 ## Rollout boundary
 
 The v1 design is accepted in [ADR-0019](adr/0019-use-local-first-curated-opencode-memory.md).
-Local memory remains the baseline. ume declares remote sync through
-`kebun.host.memorySync` in `hosts/ume/default.nix`; sakura stays local-only.
+Local memory remains the baseline. ume and sakura declare remote sync through
+`kebun.host.memorySync` in `hosts/<name>/default.nix`.
 That opt-in records operator completion of the server gates in Pasal's
 `docs/memory-sync.md`, not automated enrollment. Building the package or a host
 closure does not waive those gates or prove runtime behavior.
@@ -253,13 +253,22 @@ confirmation records operator completion, not automated enrollment. HM passes
 sync cycle. Tokens belong in runtime secret files, never the repository, Nix
 store, command arguments, or memory records.
 
-ume is the only host opted in today: `hosts/ume/default.nix` declares
-`enable`, `enrollmentConfirmed`, the private endpoint, and the token path
-`/home/ivokun/.local/share/kebun-memory-tokens/ume.token`. That file is
+Both hosts are opted in: `hosts/<name>/default.nix` declares `enable`,
+`enrollmentConfirmed`, the private endpoint, and the token path
+`/home/ivokun/.local/share/kebun-memory-tokens/<name>.token`. That file is
 operator-provisioned and kept mode 0600, not a sops-nix secret; only its path
-is in Nix. ume otherwise uses sops-nix. Sakura stays local-only; its missing
-host recipient must be obtained and enrolled before opting in, not invented
-to make an opt-in evaluate.
+is in Nix, so sakura needs no sops recipient for sync. ume otherwise uses
+sops-nix; sakura has no sops recipient yet, and one must be obtained and
+enrolled, not invented, before sakura declares any sops secret.
+
+To check a host's enrollment before switching it, on that host: the token
+file must exist with mode 0600, and the server must accept it. In bash,
+`printf 'Authorization: Bearer %s\n' "$(<token>)" | curl -sS -o /dev/null
+-w '%{http_code}\n' -H @- <url>/v1/sync/info` prints `200` (`401` = not
+registered); the header goes through stdin so the token never appears in a
+process's arguments. The info
+response carries no actor ID, so also confirm on the sync server that the
+devices file maps this token's hash to this host's `memoryActorId`.
 
 Remove any unmanaged `sync.conf` systemd user drop-in for
 `kebun-memory.service`, but only after the new declarative base unit is

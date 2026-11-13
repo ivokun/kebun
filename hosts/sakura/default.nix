@@ -52,6 +52,15 @@
     isLaptop = true;
     greeterLayout = "jp";
     memoryActorId = "90241cd7-cf71-4927-8ff4-62ecb02ffdca";
+    # Same shape as ume: the token stays an operator-provisioned runtime
+    # secret (mode 0600) read by the daemon, never a Nix-store copy. A
+    # missing token file only pauses sync; local memory keeps working.
+    memorySync = {
+      enable = true;
+      enrollmentConfirmed = true;
+      url = "https://memory-sync.tetra-banded.ts.net";
+      tokenFile = "/home/ivokun/.local/share/kebun-memory-tokens/sakura.token";
+    };
     monitorsLua = ''
       -- Kebun monitor layout — moved verbatim from home/sakura.nix (ADR-0007
       -- Stage 3). sakura-specific values (X13 built-in panel + HDMI + 4K DP);
