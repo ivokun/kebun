@@ -205,7 +205,7 @@ in {
   };
 
   # ume: ASRock B550M-ITX/ac desktop (Ryzen 9 5900X, RX 9060 XT) — the
-  # current ivokun-htpc hardware, pre-install. Same shared workstation
+  # former ivokun-htpc hardware, installed 2026-10-15. Same shared workstation
   # aspects as sakura; machine facts stay in hosts/ume/.
   den.aspects.ume = {
     includes = sharedHostAspects;

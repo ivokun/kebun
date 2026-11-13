@@ -42,11 +42,10 @@
     memoryPercent = 50;
     algorithm = "zstd";
   };
-  # NOTE: The persistent swap device is a dedicated LUKS-encrypted partition.
-  # It was intended as a hibernation resume target, but hibernation is disabled
-  # because swap is smaller than RAM — see hosts/sakura/default.nix. The device
-  # stays in hardware-configuration.nix to avoid merge conflicts.
-  # Do NOT add swapDevices here.
+  # Disk swap is hardware-specific and lives in each host's
+  # hardware-configuration.nix: sakura has a dedicated LUKS swap partition,
+  # ume a Btrfs swapfile (ume also raises zram to 100% with higher priority).
+  # Neither hibernates — see hosts/<name>/. Do NOT add swapDevices here.
 
   # ─── Locale / Time ───
   time.timeZone = "Asia/Kuala_Lumpur";

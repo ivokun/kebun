@@ -1,7 +1,8 @@
 # Host: ume — ASRock B550M-ITX/ac desktop, Ryzen 9 5900X, RX 9060 XT (Navi 44).
-# Pre-install representation of the current ivokun-htpc hardware: the disk
-# facts live in hardware-configuration.nix (snapshot of the CURRENT layout —
-# regenerate it if installation repartitions; see the banner there).
+# The former ivokun-htpc hardware, installed 2026-10-15. Disk facts live in
+# hardware-configuration.nix (the real post-install layout — re-verify its
+# UUIDs against the live machine if the disk is repartitioned; see the
+# banner there).
 # Shared workstation policy comes from the aspects wired in
 # modules/aspects.nix (networking NFS, dev Docker, snapper home timeline);
 # only machine-specific facts live here.
