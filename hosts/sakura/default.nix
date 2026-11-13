@@ -1,37 +1,17 @@
-{
-  config,
-  lib,
-  pkgs,
-  inputs,
-  ...
-}: {
+# Host: sakura — ThinkPad X13 Gen 1 laptop, AMD Renoir (Ryzen 5 PRO 4650U).
+# Disk facts and initrd modules live in hardware-configuration.nix. Shared
+# workstation policy comes from the aspects wired in modules/aspects.nix;
+# only machine-specific facts live here.
+{pkgs, ...}: {
   imports = [
     ./hardware-configuration.nix
   ];
 
   # ─── AMD APU (Renoir / Ryzen 5 PRO 4650U) ───
   services.xserver.videoDrivers = ["amdgpu"];
+  hardware.amdgpu.initrd.enable = true;
 
   # ─── Machine-specific kernel wiring (ThinkPad X13 Gen 1, AMD Renoir) ───
-  # Moved out of modules/aspects/core.nix: these values are sakura-only
-  # (ThinkPad/Renoir hardware), so they belong here instead of a shared
-  # aspect. Lists kept verbatim from the old core.nix.
-  boot.initrd = {
-    availableKernelModules = [
-      "nvme"
-      "xhci_pci"
-      "ahci"
-      "usbhid"
-      "uas"
-      "sd_mod"
-      "btrfs"
-      # TPM2 (auto-unlock)
-      "tpm_crb"
-      "tpm_tis"
-    ];
-    kernelModules = ["amdgpu" "kvm-amd"];
-  };
-
   # vhost_vsock: Cowork (claude-desktop's VM) needs /dev/vhost-vsock.
   # rtsx_pci: SD card reader (Realtek RTS525A).
   boot.kernelModules = [
@@ -89,8 +69,7 @@
     crypttabExtraOpts = ["tpm2-device=auto"];
   };
 
-  # TPM2 kernel modules are merged into boot.initrd.availableKernelModules
-  # above.
+  # TPM2 initrd modules are in hardware-configuration.nix.
 
   # ─── Hibernation: NOT enabled, because it cannot work on this layout ───
   # The LUKS swap partition (luks-e1906…) is 8.8 GiB against 30.6 GiB of RAM,
@@ -140,9 +119,9 @@
       };
     };
 
-    # ThinkPad specific
+    # ThinkPad specific. Firmware (linux-firmware, sof-firmware for audio,
+    # wireless-regdb) all comes from enableRedistributableFirmware above.
     trackpoint.enable = true;
-    firmware = with pkgs; [linux-firmware sof-firmware wireless-regdb];
 
     # Ambient light sensor (if present)
     sensor.iio.enable = true;
@@ -161,11 +140,12 @@
   services.upower.enable = true;
   services.logind = {
     settings.Login = {
-      # "ignore", not "lock" (and not "suspend"): the shell's lock plugin
-      # does not listen to logind's Lock()/LockedHint, so a logind lock would
-      # be a no-op — locking on lid close is the Hyprland binding's job
-      # (lid-close script). On AC the machine stays awake: lock only, no
-      # suspend. Suspend on battery stays logind's.
+      # On battery, lid close suspends (logind). On AC or docked it is
+      # "ignore", not "lock": the shell's lock plugin does not listen to
+      # logind's Lock()/LockedHint, so a logind lock would be a no-op —
+      # locking on lid close is the Hyprland binding's job (lid-close
+      # script), and the machine stays awake. Pre-suspend locking is
+      # home/features/sleep-lock.nix.
       HandleLidSwitch = "suspend";
       HandleLidSwitchExternalPower = "ignore";
       HandleLidSwitchDocked = "ignore";
