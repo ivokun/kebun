@@ -191,6 +191,11 @@ in {
     "opencode/prompts/git.md".source = opencodeDir + "/prompts/git.md";
     "opencode/prompts/git.txt".source = opencodeDir + "/prompts/git.txt";
     "opencode/prompts/librarian.txt".source = opencodeDir + "/prompts/librarian.txt";
+    # meta7 design coordinator, vendored verbatim from
+    # https://gist.github.com/r17x/fb5d68381fa4cc4630b42740f72a1225
+    # (meta7.prompt blob bf757762308676e008c2d55922839ac0735f1f61, fetched 2026-11-14).
+    # Used by the `meta7` primary agent; run it from ~/Documents/dev/meta7.
+    "opencode/prompts/meta7.prompt".source = opencodeDir + "/prompts/meta7.prompt";
     "opencode/prompts/oracle.txt".source = opencodeDir + "/prompts/oracle.txt";
     "opencode/prompts/performance.txt".source = opencodeDir + "/prompts/performance.txt";
     "opencode/prompts/refactor.txt".source = opencodeDir + "/prompts/refactor.txt";

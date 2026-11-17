@@ -215,6 +215,60 @@
         }
       ]
     },
+    "meta7": {
+      "model": "opencode-go/glm-5.3-flash",
+      "request": {
+        "body": {
+          "reasoningEffort": "max"
+        }
+      },
+      "system": "{file:./prompts/meta7.prompt}",
+      "description": "meta7 - Autonomous design coordinator (r17x gist). Runs explore -> research -> design -> FV -> review -> impl prompt from a projects/<name>/.<name>.context. Start in the meta7 workspace and send: EXECUTE CONTEXT=./projects/<name>/.<name>.context",
+      "mode": "primary",
+      "steps": 500,
+      "permissions": [
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "shell",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "todowrite",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "question",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
     "explore": {
       "model": "opencode-go/deepseek-v4.1-flash#max",
       "request": {
