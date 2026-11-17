@@ -11,6 +11,9 @@
 #   compatibility backports in this directory.
 # - browsermcp and gitnexus are packed from their npm registry tarballs
 #   with lockfile-pinned dependency trees (./*.nix + ./*-package-lock.json).
+# - browse (OpenCode Browse) is built from its tagged Rust source; the store
+#   binary never self-updates and is paired with the Chrome Web Store
+#   extension via `browse pair`.
 # - the `opencode` wrapper pins command resolution to pkgs.opencode, disables
 #   self-updates, and removes ambient GitHub credentials before any plugin or
 #   tool runs.
@@ -19,6 +22,7 @@
 #   environment (`env -i`). This is environment hygiene, not isolation from
 #   other processes running as the same user and able to query the keyring.
 {pkgs}: let
+  browse = pkgs.callPackage ./browse.nix {};
   browsermcp = pkgs.callPackage ./browsermcp.nix {};
   gitnexus = pkgs.callPackage ./gitnexus.nix {};
   githubMcpServer = pkgs.callPackage ./github-mcp-server.nix {};
@@ -72,6 +76,7 @@
   '';
 in {
   inherit
+    browse
     browsermcp
     gitnexus
     githubMcpServer

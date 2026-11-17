@@ -2,7 +2,8 @@
   "$schema": "https://opencode.ai/config.json",
   "update": "disable",
   "instructions": [
-    "./prompts/memory-policy.md"
+    "./prompts/memory-policy.md",
+    "./prompts/browse-policy.md"
   ],
   "permissions": [
     {
@@ -57,6 +58,11 @@
     },
     {
       "action": "memory_open_nodes",
+      "resource": "*",
+      "effect": "allow"
+    },
+    {
+      "action": "browse_*",
       "resource": "*",
       "effect": "allow"
     }
@@ -281,6 +287,11 @@
       "mode": "subagent",
       "hidden": false,
       "permissions": [
+        {
+          "action": "browse_*",
+          "resource": "*",
+          "effect": "allow"
+        },
         {
           "action": "read",
           "resource": "*",
@@ -1028,6 +1039,17 @@
       "linear": {
         "type": "remote",
         "url": "https://mcp.linear.app/mcp"
+      },
+      "browse": {
+        "type": "local",
+        "command": [
+          "browse",
+          "mcp"
+        ],
+        "environment": {
+          "OPENCODE_BROWSER_AUTO_UPDATE": "off"
+        },
+        "disabled": false
       },
       "pencil": {
         "type": "local",

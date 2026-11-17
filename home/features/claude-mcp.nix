@@ -52,6 +52,12 @@ in
           command = "${opencodePkgs.opencode-pencil-mcp}/bin/opencode-pencil-mcp";
           args = ["--app" "desktop"];
         };
+        # OpenCode Browse; same store binary and relay as OpenCode's entry.
+        browse = {
+          command = "${opencodePkgs.browse}/bin/browse";
+          args = ["mcp"];
+          env.OPENCODE_BROWSER_AUTO_UPDATE = "off";
+        };
       };
     };
 

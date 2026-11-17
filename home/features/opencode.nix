@@ -11,6 +11,13 @@
   sourceConfig = builtins.fromJSON (builtins.readFile (opencodeDir + "/opencode.json"));
   sourceServers = sourceConfig.mcp.servers;
   memoryPolicy = opencodeDir + "/prompts/memory-policy.md";
+  browsePolicy = opencodeDir + "/prompts/browse-policy.md";
+  # Shared instruction files referenced workspace-relatively in the source
+  # JSON; rendered to their immutable store paths below.
+  sharedInstructions = {
+    "./prompts/memory-policy.md" = memoryPolicy;
+    "./prompts/browse-policy.md" = browsePolicy;
+  };
 
   githubTokenVariables = [
     "GITHUB_TOKEN"
@@ -20,6 +27,7 @@
     "GH_ENTERPRISE_TOKEN"
   ];
   expectedLocalMcpNames = lib.sort builtins.lessThan [
+    "browse"
     "excalidraw"
     "github"
     "gitnexus"
@@ -47,10 +55,12 @@
     sourceConfig
     // {
       # A relative instructions entry is workspace-relative in V2. Resolve
-      # this shared policy to its immutable absolute store path instead.
-      instructions =
-        lib.filter (instruction: instruction != "./prompts/memory-policy.md") (sourceConfig.instructions or [])
-        ++ ["${memoryPolicy}"];
+      # these shared policies to their immutable absolute store paths instead.
+      instructions = map (instruction:
+        if sharedInstructions ? ${instruction}
+        then "${sharedInstructions.${instruction}}"
+        else instruction)
+      (sourceConfig.instructions or []);
       mcp =
         sourceConfig.mcp
         // {
@@ -88,6 +98,15 @@
                 sourceServers.nixos
                 // {
                   command = sanitizedCommand (["PYTHONPATH"] ++ githubTokenVariables) "${mcpServers}/bin/mcp-nixos" [];
+                };
+              # The relay `browse mcp` spawns on demand inherits this
+              # environment; it starts from its own allowlisted env, so the
+              # token scrub is belt-and-braces. Auto-update stays off in the
+              # source JSON's `environment` block.
+              browse =
+                sourceServers.browse
+                // {
+                  command = sanitizedCommand githubTokenVariables "${opencodePkgs.browse}/bin/browse" ["mcp"];
                 };
               pencil =
                 sourceServers.pencil
@@ -156,6 +175,9 @@ in {
     opencodePkgs.opencode-excalidraw-mcp
     opencodePkgs.opencode-github-mcp
     opencodePkgs.opencode-pencil-mcp
+    # `browse pair` / `browse status` from a shell. Pair instead of running
+    # `browse install`, which would try to rewrite these HM-owned configs.
+    opencodePkgs.browse
     opencodePkgs.gitnexus
     opencodePkgs.mcp-servers
   ];
@@ -179,6 +201,7 @@ in {
 
     # Prompts
     "opencode/prompts/memory-policy.md".source = memoryPolicy;
+    "opencode/prompts/browse-policy.md".source = browsePolicy;
     "opencode/prompts/ai_engineer.txt".source = opencodeDir + "/prompts/ai_engineer.txt";
     "opencode/prompts/backend.txt".source = opencodeDir + "/prompts/backend.txt";
     "opencode/prompts/bug_hunter.txt".source = opencodeDir + "/prompts/bug_hunter.txt";
